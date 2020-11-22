@@ -1,0 +1,50 @@
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Folders
+_obj
+_test
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+
+*.cgo1.go
+*.cgo2.c
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+*.exe
+*.test
+*.prof
+
+.idea/
+*.iml
+
+privacy_api
+privacy_migrate
+
+# Miscellaneous
+.DS_Store
+
+# CI-related output
+reports
+src/
+vendor/
+
+# dev files
+.vscode/launch.json
+*.env
+*.key
+*.crt
+
+cover.html
+coverage.txt
+profile.cov
+profile.out
+
+.bin/
+.tmp/

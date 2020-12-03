@@ -18,8 +18,7 @@ func InitGnarkCircuitProvider() *GnarkCircuitProvider {
 }
 
 // Compile the circuit...
-func Compile(source string) (interface{}, error) {
-	var circuit *frontend.Circuit
+func Compile(circuit *frontend.Circuit) (interface{}, error) {
 	curveID := gurvy.BN256 // FIXME
 
 	r1cs, err := frontend.Compile(curveID, *circuit)

@@ -244,6 +244,8 @@ for d in "${pkgs[@]}" ; do
     DATABASE_PASSWORD=${DATABASE_PASSWORD} \
     IDENT_API_HOST=localhost:8081 \
     IDENT_API_SCHEME=http \
+    PRIVACY_API_HOST=localhost:8080 \
+    PRIVACY_API_SCHEME=http \
     VAULT_API_HOST=localhost:8082 \
     VAULT_API_SCHEME=http \
     LOG_LEVEL=DEBUG \
@@ -269,6 +271,8 @@ for d in "${pkgs[@]}" ; do
     DATABASE_PASSWORD=${DATABASE_PASSWORD} \
     IDENT_API_HOST=localhost:8081 \
     IDENT_API_SCHEME=http \
+    PRIVACY_API_HOST=localhost:8080 \
+    PRIVACY_API_SCHEME=http \
     VAULT_API_HOST=localhost:8082 \
     VAULT_API_SCHEME=http \
     LOG_LEVEL=DEBUG \

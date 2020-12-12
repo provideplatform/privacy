@@ -5,6 +5,7 @@ default: build
 build: clean mod
 	go fmt ./...
 	go build -v -o ./.bin/api ./cmd/api
+	go build -v -o ./.bin/migrate ./cmd/migrate
 
 clean:
 	rm -rf ./.bin 2>/dev/null || true

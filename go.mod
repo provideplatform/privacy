@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/consensys/gnark v0.3.5
 	github.com/consensys/gurvy v0.3.5
+	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jinzhu/gorm v1.9.16
@@ -16,7 +17,6 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.3
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
 	github.com/provideservices/provide-go v0.0.0-20201130183953-c2cd3d367d6a
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9 // indirect

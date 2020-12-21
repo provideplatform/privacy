@@ -9,7 +9,7 @@ import (
 
 func TestAPI(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "go-zkp api")
+	RunSpecs(t, "privacy api")
 }
 
 var _ = Describe("main", func() {})

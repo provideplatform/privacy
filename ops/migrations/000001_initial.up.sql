@@ -84,12 +84,22 @@ SET default_with_oids = false;
 CREATE TABLE public.circuits (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
+    application_id uuid,
+    organization_id uuid,
+    user_id uuid,
     name text NOT NULL,
     description text,
-    type character varying(32) NOT NULL,
+    identifier character varying(255),
+    provider character varying(255),
+    proving_system character varying(32) NOT NULL,
     curve character varying(16) NOT NULL,
-    constraint_system character varying(16) NOT NULL
+    vault_id uuid NOT NULL,
+    proving_key_id uuid,
+    verifying_key_id uuid,
+    abi bytea,
+    artifacts bytea
 );
+
 
 ALTER TABLE public.circuits OWNER TO current_user;
 
@@ -101,10 +111,34 @@ ALTER TABLE ONLY public.circuits
     ADD CONSTRAINT circuits_pkey PRIMARY KEY (id);
 
 --
--- Name: idx_circuits_type; Type: INDEX; Schema: public; Owner: privacy
+-- Name: idx_circuits_application_id; Type: INDEX; Schema: public; Owner: privacy
 --
 
-CREATE INDEX idx_circuits_type ON public.circuits USING btree (type);
+CREATE INDEX idx_circuits_application_id ON public.circuits USING btree (application_id);
+
+--
+-- Name: idx_circuits_organization_id; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_circuits_organization_id ON public.circuits USING btree (organization_id);
+
+--
+-- Name: idx_circuits_user_id; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_circuits_user_id ON public.circuits USING btree (user_id);
+
+--
+-- Name: idx_circuits_provider; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_circuits_provider ON public.circuits USING btree (provider);
+
+--
+-- Name: idx_circuits_proving_system; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_circuits_proving_system ON public.circuits USING btree (proving_system);
 
 --
 -- Name: idx_circuits_curve; Type: INDEX; Schema: public; Owner: privacy
@@ -112,11 +146,6 @@ CREATE INDEX idx_circuits_type ON public.circuits USING btree (type);
 
 CREATE INDEX idx_circuits_curve ON public.circuits USING btree (curve);
 
---
--- Name: idx_circuits_constraint_systems; Type: INDEX; Schema: public; Owner: privacy
---
-
-CREATE INDEX idx_circuits_constraint_system ON public.circuits USING btree (constraint_system);
 
 --
 -- PostgreSQL database dump complete

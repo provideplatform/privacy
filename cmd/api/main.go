@@ -14,6 +14,7 @@ import (
 	"github.com/provideapp/ident/common"
 	"github.com/provideapp/ident/token"
 	"github.com/provideapp/privacy/circuit"
+	privacycommon "github.com/provideapp/privacy/common"
 
 	provide "github.com/provideservices/provide-go/common"
 	util "github.com/provideservices/provide-go/common/util"
@@ -34,6 +35,8 @@ var (
 func init() {
 	util.RequireJWTVerifiers()
 	util.RequireGin()
+
+	privacycommon.RequireVault()
 }
 
 func main() {

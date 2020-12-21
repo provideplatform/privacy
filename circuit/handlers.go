@@ -8,6 +8,7 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
+	"github.com/provideservices/provide-go/api/privacy"
 	provide "github.com/provideservices/provide-go/common"
 	"github.com/provideservices/provide-go/common/util"
 )
@@ -36,7 +37,8 @@ func InstallAPI(r *gin.Engine) {
 func listCircuitsHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
-	if appID == nil && orgID == nil {
+	userID := util.AuthorizedSubjectID(c, "user")
+	if appID == nil && orgID == nil && userID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
 	}
@@ -100,7 +102,8 @@ func createCircuitHandler(c *gin.Context) {
 func circuitDetailsHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
-	if appID == nil && orgID == nil {
+	userID := util.AuthorizedSubjectID(c, "user")
+	if appID == nil && orgID == nil && userID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
 	}
@@ -128,7 +131,8 @@ func circuitDetailsHandler(c *gin.Context) {
 func proveCircuitHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
-	if appID == nil && orgID == nil {
+	userID := util.AuthorizedSubjectID(c, "user")
+	if appID == nil && orgID == nil && userID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
 	}
@@ -160,21 +164,21 @@ func proveCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	solution, solutionOk := params["solution"].(string)
-	if !solutionOk {
-		provide.RenderError("solution required for proof generation", 422, c)
+	witness, witnessOk := params["witness"].(string)
+	if !witnessOk {
+		provide.RenderError("witness required for proof generation", 422, c)
 		return
 	}
 
-	proof, err := circuit.Prove(solution)
+	proof, err := circuit.Prove(witness)
 	if err != nil {
 		provide.RenderError("bad request", 500, c)
 		return
 	}
 
 	common.Log.Debugf("generated proof: %v", proof)
-	provide.Render(map[string]interface{}{
-		"proof": proof,
+	provide.Render(&privacy.ProveResponse{
+		Proof: proof,
 	}, 200, c)
 }
 
@@ -182,7 +186,8 @@ func proveCircuitHandler(c *gin.Context) {
 func verifyCircuitHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
-	if appID == nil && orgID == nil {
+	userID := util.AuthorizedSubjectID(c, "user")
+	if appID == nil && orgID == nil && userID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
 	}
@@ -220,20 +225,19 @@ func verifyCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	solution, solutionOk := params["solution"].(string)
-	if !solutionOk {
-		provide.RenderError("solution required for verification", 422, c)
+	witness, witnessOk := params["witness"].(string)
+	if !witnessOk {
+		provide.RenderError("witness required for verification", 422, c)
 		return
 	}
 
-	result, err := circuit.Verify(proof, solution)
+	result, err := circuit.Verify(proof, witness)
 	if err != nil {
 		// TODO: typecheck error
 	}
 
 	common.Log.Debugf("verification result: %v", result)
-	// provide.Render(&privacy.VerificationResponse{}, 200, c)
-	provide.Render(map[string]interface{}{
-		"result": result,
+	provide.Render(&privacy.VerificationResponse{
+		Result: result,
 	}, 200, c)
 }

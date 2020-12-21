@@ -40,6 +40,8 @@ func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error)
 		return nil, err
 	}
 
+	common.Log.Debugf("r1cs: %v", r1cs)
+
 	common.Log.Debugf("compiled r1cs circuit: %s", r1cs)
 	return r1cs, err
 }
@@ -67,6 +69,8 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interfac
 // Prove generates a proof
 func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness string) (interface{}, error) {
 	var err error
+
+	common.Log.Debugf("r1cs serialized: %v", string(circuit))
 
 	var circuitR1CS r1cs.R1CS
 	err = cbor.Unmarshal(circuit, &circuitR1CS)

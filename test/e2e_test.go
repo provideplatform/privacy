@@ -32,4 +32,23 @@ func TestCreateCircuitGroth16Cubic(t *testing.T) {
 	}
 
 	t.Logf("created circuit %v", circuit)
+
+	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": "FIXME",
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
+		"proof":   "FIXME",
+		"witness": "FIXME",
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("proof/verification: %v / %v", proof.Proof, verification.Result)
 }

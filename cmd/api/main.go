@@ -37,6 +37,7 @@ func init() {
 	util.RequireGin()
 
 	privacycommon.RequireVault()
+	common.EnableAPIAccounting()
 }
 
 func main() {
@@ -92,7 +93,6 @@ func runAPI() {
 	r.Use(token.AuthMiddleware())
 	r.Use(common.AccountingMiddleware())
 	r.Use(common.RateLimitingMiddleware())
-	r.Use(util.TrackAPICalls())
 
 	circuit.InstallAPI(r)
 

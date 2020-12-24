@@ -16,7 +16,7 @@ func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 		"identifier":     identifier,
 		"name":           "my 1337 circuit",
 		"provider":       provider,
-		"proving_system": "groth16",
+		"proving_scheme": "groth16",
 	}
 }
 

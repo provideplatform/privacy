@@ -46,7 +46,7 @@ type Circuit struct {
 	Description   *string `json:"description"`
 	Identifier    *string `json:"identifier"`
 	Provider      *string `json:"provider"`
-	ProvingSystem *string `json:"proving_system"`
+	ProvingScheme *string `json:"proving_scheme"`
 	Curve         *string `json:"curve"`
 
 	// Policy *CircuitPolicy `json:""`
@@ -140,8 +140,8 @@ func (c *Circuit) Create() bool {
 		c.VaultID.String(),
 		string(c.provingKey),
 		fmt.Sprintf("%s circuit proving key", *c.Name),
-		fmt.Sprintf("%s circuit %s proving key", *c.Name, *c.ProvingSystem),
-		fmt.Sprintf("%s proving key", *c.ProvingSystem),
+		fmt.Sprintf("%s circuit %s proving key", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s proving key", *c.ProvingScheme),
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
@@ -156,8 +156,8 @@ func (c *Circuit) Create() bool {
 		c.VaultID.String(),
 		string(c.verifyingKey),
 		fmt.Sprintf("%s circuit verifying key", *c.Name),
-		fmt.Sprintf("%s circuit %s verifying key", *c.Name, *c.ProvingSystem),
-		fmt.Sprintf("%s verifying key", *c.ProvingSystem),
+		fmt.Sprintf("%s circuit %s verifying key", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s verifying key", *c.ProvingScheme),
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
@@ -167,7 +167,7 @@ func (c *Circuit) Create() bool {
 	}
 	c.VerifyingKeyID = &secret.ID
 
-	common.Log.Debugf("compiled circuit: %v", c)
+	common.Log.Debugf("compiled circuit: %s", artifacts)
 	common.Log.Debugf("verifying/provingkeys: %v, %v", vk, pk)
 
 	db := dbconf.DatabaseConnection()

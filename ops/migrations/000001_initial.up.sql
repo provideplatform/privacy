@@ -91,7 +91,7 @@ CREATE TABLE public.circuits (
     description text,
     identifier character varying(255),
     provider character varying(255),
-    proving_system character varying(32) NOT NULL,
+    proving_scheme character varying(32) NOT NULL,
     curve character varying(16) NOT NULL,
     vault_id uuid NOT NULL,
     proving_key_id uuid,
@@ -135,10 +135,10 @@ CREATE INDEX idx_circuits_user_id ON public.circuits USING btree (user_id);
 CREATE INDEX idx_circuits_provider ON public.circuits USING btree (provider);
 
 --
--- Name: idx_circuits_proving_system; Type: INDEX; Schema: public; Owner: privacy
+-- Name: idx_circuits_proving_scheme; Type: INDEX; Schema: public; Owner: privacy
 --
 
-CREATE INDEX idx_circuits_proving_system ON public.circuits USING btree (proving_system);
+CREATE INDEX idx_circuits_proving_scheme ON public.circuits USING btree (proving_scheme);
 
 --
 -- Name: idx_circuits_curve; Type: INDEX; Schema: public; Owner: privacy

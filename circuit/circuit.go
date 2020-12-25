@@ -1,11 +1,13 @@
 package circuit
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 
+	"github.com/consensys/gnark/backend/groth16"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 
-	"github.com/fxamacker/cbor/v2"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
@@ -81,6 +83,8 @@ func (c *Circuit) Create() bool {
 		return false
 	}
 
+	var buf *bytes.Buffer
+	var n int64
 	var artifacts interface{} // TODO: accept r1cs -- in addition to -- the "identifier" of the circuit??
 	var err error
 
@@ -103,37 +107,59 @@ func (c *Circuit) Create() bool {
 		}
 	}
 
-	c.Artifacts, err = cbor.Marshal(artifacts)
+	buf = bytes.NewBuffer([]byte{})
+	n, err = artifacts.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary artifacts for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
+	common.Log.Debugf("serialized %d-byte circuit artifacts", n)
+	c.Artifacts = buf.Bytes()
 
-	vk, pk := provider.Setup(artifacts)
-	if vk == nil || pk == nil {
+	vk, pk, err := provider.Setup(artifacts)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+		})
+		return false
+	} else if vk == nil || pk == nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s", *c.Identifier)),
 		})
 		return false
 	}
 
-	c.provingKey, err = cbor.Marshal(pk)
+	buf = bytes.NewBuffer([]byte{})
+	n, err = pk.(groth16.ProvingKey).WriteRawTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
+	common.Log.Debugf("serialized %d-byte proving key", n)
+	c.provingKey = buf.Bytes()
 
-	c.verifyingKey, err = cbor.Marshal(vk)
+	buf = bytes.NewBuffer([]byte{})
+	n, err = vk.(groth16.VerifyingKey).WriteRawTo(buf)
+	// c.Artifacts, err = cbor.Marshal(artifacts)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
+	common.Log.Debugf("serialized %d-byte verifying key", n)
+	c.verifyingKey = buf.Bytes()
+	// c.verifyingKey, err = cbor.Marshal(vk)
+	// if err != nil {
+	// 	c.Errors = append(c.Errors, &provide.Error{
+	// 		Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+	// 	})
+	// 	return false
+	// }
 
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,

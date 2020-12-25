@@ -16,6 +16,6 @@ type ZKSnarkCircuitProvider interface {
 	ExportVerifier(verifyingKey string) (interface{}, error)
 	GenerateProof(circuit interface{}, witness, provingKey string) (interface{}, error)
 	Prove(circuit, provingKey []byte, witness string) (interface{}, error)
-	Setup(circuit interface{}) (interface{}, interface{})
+	Setup(circuit interface{}) (interface{}, interface{}, error)
 	Verify(proof, verifyingKey []byte, witness string) error
 }

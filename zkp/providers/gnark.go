@@ -1,13 +1,13 @@
 package providers
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/r1cs"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy"
-	"github.com/fxamacker/cbor/v2"
 	"github.com/provideapp/privacy/common"
 )
 
@@ -19,6 +19,50 @@ type GnarkCircuitProvider struct{}
 // InitGnarkCircuitProvider initializes and configures a new GnarkCircuitProvider instance
 func InitGnarkCircuitProvider() *GnarkCircuitProvider {
 	return &GnarkCircuitProvider{}
+}
+
+func (p *GnarkCircuitProvider) decodeR1CS(curveID gurvy.ID, encodedR1CS []byte) (r1cs.R1CS, error) {
+	// var curveID gurvy.ID
+	// var decodedR1CS r1cs.R1CS
+
+	decodedR1CS := r1cs.New(curveID)
+	_, err := decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
+	if err != nil {
+		common.Log.Warningf("unable to decode R1CS; failed to decode curve id; %s", err.Error())
+		return nil, err
+	}
+
+	return decodedR1CS, nil
+}
+
+func (p *GnarkCircuitProvider) decodeProvingKey(curveID gurvy.ID, pk []byte) (groth16.ProvingKey, error) {
+	provingKey := groth16.NewProvingKey(curveID)
+	_, err := provingKey.ReadFrom(bytes.NewReader(pk))
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
+	}
+
+	return provingKey, nil
+}
+
+func (p *GnarkCircuitProvider) decodeVerifyingKey(curveID gurvy.ID, vk []byte) (groth16.VerifyingKey, error) {
+	verifyingKey := groth16.NewVerifyingKey(curveID)
+	_, err := verifyingKey.ReadFrom(bytes.NewReader(vk))
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
+	}
+
+	return verifyingKey, nil
+}
+
+func (p *GnarkCircuitProvider) decodeProof(curveID gurvy.ID, proof []byte) (groth16.Proof, error) {
+	prf := groth16.NewProof(curveID)
+	_, err := prf.ReadFrom(bytes.NewReader(proof))
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode proof; %s", err.Error())
+	}
+
+	return prf, nil
 }
 
 // Compile the circuit...
@@ -40,9 +84,6 @@ func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error)
 		return nil, err
 	}
 
-	common.Log.Debugf("r1cs: %v", r1cs)
-
-	common.Log.Debugf("compiled r1cs circuit: %s", r1cs)
 	return r1cs, err
 }
 
@@ -62,7 +103,7 @@ func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness, provi
 }
 
 // Setup runs the trusted setup
-func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interface{}) {
+func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interface{}, error) {
 	return groth16.Setup(circuit.(r1cs.R1CS))
 }
 
@@ -70,37 +111,33 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interfac
 func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness string) (interface{}, error) {
 	var err error
 
-	common.Log.Debugf("r1cs serialized: %v", string(circuit))
-
-	var circuitR1CS r1cs.R1CS
-	err = cbor.Unmarshal(circuit, &circuitR1CS)
+	r1cs, err := p.decodeR1CS(defaultCurveID, circuit)
 	if err != nil {
 		return nil, err
 	}
 
-	var pk groth16.ProvingKey
-	err = cbor.Unmarshal(provingKey, &pk)
+	pk, err := p.decodeProvingKey(defaultCurveID, provingKey)
 	if err != nil {
 		return nil, err
 	}
+	common.Log.Debugf("proving Key %s", pk)
 
-	return groth16.Prove(circuitR1CS, pk, witness)
+	return groth16.Prove(r1cs, pk, witness)
 }
 
 // Verify the given proof and witness
 func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness string) error {
 	var err error
 
-	var prf groth16.Proof
-	err = cbor.Unmarshal(proof, &prf)
+	prf, err := p.decodeProof(defaultCurveID, proof)
 	if err != nil {
 		return err
 	}
 
-	var vk groth16.VerifyingKey
-	err = cbor.Unmarshal(verifyingKey, &vk)
+	vk, err := p.decodeVerifyingKey(defaultCurveID, verifyingKey)
 	if err != nil {
 		return err
 	}
+
 	return groth16.Verify(prf, vk, witness)
 }

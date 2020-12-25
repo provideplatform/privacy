@@ -144,7 +144,6 @@ func (c *Circuit) Create() bool {
 
 	buf = bytes.NewBuffer([]byte{})
 	n, err = vk.(groth16.VerifyingKey).WriteRawTo(buf)
-	// c.Artifacts, err = cbor.Marshal(artifacts)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
@@ -153,13 +152,6 @@ func (c *Circuit) Create() bool {
 	}
 	common.Log.Debugf("serialized %d-byte verifying key", n)
 	c.verifyingKey = buf.Bytes()
-	// c.verifyingKey, err = cbor.Marshal(vk)
-	// if err != nil {
-	// 	c.Errors = append(c.Errors, &provide.Error{
-	// 		Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
-	// 	})
-	// 	return false
-	// }
 
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,

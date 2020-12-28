@@ -22,9 +22,6 @@ func InitGnarkCircuitProvider() *GnarkCircuitProvider {
 }
 
 func (p *GnarkCircuitProvider) decodeR1CS(curveID gurvy.ID, encodedR1CS []byte) (r1cs.R1CS, error) {
-	// var curveID gurvy.ID
-	// var decodedR1CS r1cs.R1CS
-
 	decodedR1CS := r1cs.New(curveID)
 	_, err := decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
 	if err != nil {

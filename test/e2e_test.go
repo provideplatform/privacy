@@ -4,11 +4,16 @@ package test
 
 import (
 	"testing"
+	"time"
 
 	uuid "github.com/kthomas/go.uuid"
 
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
+
+func init() {
+	time.Sleep(5)
+}
 
 func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 	return map[string]interface{}{

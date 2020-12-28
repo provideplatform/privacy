@@ -6,6 +6,8 @@ import (
 	"io"
 
 	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/r1cs"
+	"github.com/consensys/gurvy"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 
 	dbconf "github.com/kthomas/go-db-config"
@@ -107,7 +109,7 @@ func (c *Circuit) Create() bool {
 		}
 	}
 
-	buf = bytes.NewBuffer([]byte{})
+	buf = new(bytes.Buffer)
 	n, err = artifacts.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
@@ -131,8 +133,8 @@ func (c *Circuit) Create() bool {
 		return false
 	}
 
-	buf = bytes.NewBuffer([]byte{})
-	n, err = pk.(groth16.ProvingKey).WriteRawTo(buf)
+	buf = new(bytes.Buffer)
+	n, err = pk.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
@@ -142,8 +144,8 @@ func (c *Circuit) Create() bool {
 	common.Log.Debugf("serialized %d-byte proving key", n)
 	c.provingKey = buf.Bytes()
 
-	buf = bytes.NewBuffer([]byte{})
-	n, err = vk.(groth16.VerifyingKey).WriteRawTo(buf)
+	buf = new(bytes.Buffer)
+	n, err = vk.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
@@ -184,9 +186,6 @@ func (c *Circuit) Create() bool {
 		return false
 	}
 	c.VerifyingKeyID = &secret.ID
-
-	common.Log.Debugf("compiled circuit: %s", artifacts)
-	common.Log.Debugf("verifying/provingkeys: %v, %v", vk, pk)
 
 	db := dbconf.DatabaseConnection()
 	if db.NewRecord(c) {

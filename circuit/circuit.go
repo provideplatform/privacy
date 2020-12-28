@@ -5,14 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/backend/r1cs"
-	"github.com/consensys/gurvy"
-	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
-
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
+	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 	zkp "github.com/provideapp/privacy/zkp/providers"
 	provide "github.com/provideservices/provide-go/api"
 	vault "github.com/provideservices/provide-go/api/vault"

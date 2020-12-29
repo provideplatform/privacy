@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -15,12 +16,16 @@ var (
 	// Log is the configured logger
 	Log *logger.Logger
 
+	// ConsumeNATSStreamingSubscriptions is a flag the indicates if the privacy instance should consume NATS streamiung subscriptions
+	ConsumeNATSStreamingSubscriptions bool
+
 	// DefaultVault for this privacy instance
 	DefaultVault *vault.Vault
 )
 
 func init() {
 	godotenv.Load()
+	ConsumeNATSStreamingSubscriptions = strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) == "true"
 
 	requireLogger()
 }
@@ -40,6 +45,7 @@ func requireLogger() {
 	Log = logger.NewLogger("privacy", lvl, endpoint)
 }
 
+// RequireVault requires the vault service
 func RequireVault() {
 	util.RequireVault()
 

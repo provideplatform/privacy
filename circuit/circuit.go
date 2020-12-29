@@ -3,10 +3,13 @@ package circuit
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
+	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
@@ -15,6 +18,16 @@ import (
 	vault "github.com/provideservices/provide-go/api/vault"
 	util "github.com/provideservices/provide-go/common/util"
 )
+
+const circuitProvingSchemeGroth16 = "groth16"
+
+const circuitStatusFailed = "failed"
+const circuitStatusInit = "init"
+const circuitStatusCompiling = "compiling"
+const circuitStatusCompiled = "compiled"
+const circuitStatusPendingSetup = "pending_setup"
+const circuitStatusDeployingArtifacts = "deploying_artifacts" // optional -- if i.e. verifier contract should be deployed to blockchain
+const circuitStatusDeployed = "deployed"
 
 // Policy -- TODO? currently the following policy items are configured directly on the Circuit
 type Policy struct {
@@ -50,12 +63,18 @@ type Circuit struct {
 	ProvingScheme *string `json:"proving_scheme"`
 	Curve         *string `json:"curve"`
 
+	Status *string `sql:"not null;default:'init'" json:"status"`
+	// lifecycle: init -> compiling -> pending_setup -> [optional: deploying_artifacts (i.e., on-chain)] -> deployed
+
 	// Policy *CircuitPolicy `json:""`
 	// Seed -- entropy for uniqueness within the setup
 
 	// ephemeral fields
 	provingKey   []byte
 	verifyingKey []byte
+
+	// optional on-chain artifact (i.e., verifier contract)
+	verifierContractArtifact []byte
 }
 
 func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
@@ -82,10 +101,81 @@ func (c *Circuit) Create() bool {
 		return false
 	}
 
-	var buf *bytes.Buffer
-	// var n int64
-	var artifacts interface{} // TODO: accept r1cs -- in addition to -- the "identifier" of the circuit??
-	var err error
+	db := dbconf.DatabaseConnection()
+
+	if !c.compile(db) {
+		return false
+	}
+
+	if db.NewRecord(c) {
+		result := db.Create(&c)
+		rowsAffected := result.RowsAffected
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				c.Errors = append(c.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+		if !db.NewRecord(c) {
+			success := rowsAffected > 0
+			if success && c.setupRequired() {
+				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
+				payload, _ := json.Marshal(map[string]interface{}{
+					"circuit_id": c.ID.String(),
+				})
+				natsutil.NatsStreamingPublish(natsCreatedCircuitSetupSubject, payload)
+			}
+			return success
+		}
+	}
+
+	return false
+}
+
+// Prove generates a proof for the given witness
+func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
+	c.enrich()
+
+	provider := c.circuitProviderFactory()
+	if provider == nil {
+		return nil, fmt.Errorf("failed to resolve circuit provider")
+	}
+
+	proof, err := provider.Prove(c.Artifacts, c.provingKey, witness)
+	if err != nil {
+		common.Log.Warningf("failed to generate proof; %s", err.Error())
+		return nil, err
+	}
+
+	proofStr := proof.(string)
+
+	common.Log.Debugf("proof generated %s", proofStr)
+	return &proofStr, nil
+}
+
+// Verify a circuit
+func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, error) {
+	c.enrich()
+
+	provider := c.circuitProviderFactory()
+	if provider == nil {
+		return false, fmt.Errorf("failed to resolve circuit provider")
+	}
+
+	err := provider.Verify(c.Artifacts, c.verifyingKey, witness)
+	if err != nil {
+		return false, err
+	}
+
+	common.Log.Debugf("circuit witness %s verified for proof: %s", witness, proof)
+	return true, nil
+}
+
+// compile attempts to compile the circuit
+func (c *Circuit) compile(db *gorm.DB) bool {
+	c.updateStatus(db, circuitStatusCompiling, nil)
 
 	provider := c.circuitProviderFactory()
 	if provider == nil {
@@ -95,12 +185,25 @@ func (c *Circuit) Create() bool {
 		return false
 	}
 
-	if c.Identifier != nil && *c.Identifier == zkp.GnarkCircuitIdentifierCubic {
-		var circuit gnark.CubicCircuit
-		artifacts, err = provider.Compile(&circuit)
-		if err != nil {
+	var buf *bytes.Buffer
+	var artifacts interface{} // TODO: accept r1cs -- in addition to -- the "identifier" of the circuit??
+	var err error
+
+	if c.Identifier != nil {
+		switch *c.Identifier {
+		case zkp.GnarkCircuitIdentifierCubic:
+			var circuit gnark.CubicCircuit
+			artifacts, err = provider.Compile(&circuit)
+			if err != nil {
+				c.Errors = append(c.Errors, &provide.Error{
+					Message: common.StringOrNil(fmt.Sprintf("failed to compile circuit with identifier %s; %s", *c.Identifier, err.Error())),
+				})
+				return false
+			}
+			break
+		default:
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to compile circuit with identifier %s; %s", *c.Identifier, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to resolve circuit for provider: %s", *c.Provider)),
 			})
 			return false
 		}
@@ -116,7 +219,78 @@ func (c *Circuit) Create() bool {
 	}
 	c.Artifacts = buf.Bytes()
 
-	vk, pk, err := provider.Setup(artifacts)
+	c.updateStatus(db, circuitStatusCompiled, nil)
+	return len(c.Errors) == 0
+}
+
+// enrich the circuit
+func (c *Circuit) enrich() error {
+	if c.provingKey == nil && c.ProvingKeyID != nil {
+		secret, err := vault.FetchSecret(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.ProvingKeyID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+		c.provingKey, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode proving key secret from hex; %s", err.Error())
+		}
+	}
+
+	if c.verifyingKey == nil && c.VerifyingKeyID != nil {
+		secret, err := vault.FetchSecret(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.VerifyingKeyID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+		c.verifyingKey, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode verifying key secret from hex; %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (c *Circuit) setupRequired() bool {
+	return c.ProvingScheme != nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && c.Status != nil && *c.Status == circuitStatusCompiled
+}
+
+// setup attempts to setup the circuit
+func (c *Circuit) setup(db *gorm.DB) bool {
+	if !c.setupRequired() {
+		common.Log.Warningf("attempted to setup circuit for which setup is not required")
+		return false
+	}
+
+	c.updateStatus(db, circuitStatusPendingSetup, nil)
+
+	if c.Artifacts == nil || len(c.Artifacts) == 0 {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to setup circuit with identifier %s; no compiled artifacts", *c.Identifier)),
+		})
+		return false
+	}
+
+	provider := c.circuitProviderFactory()
+	if provider == nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil("failed to resolve circuit provider"),
+		})
+		return false
+	}
+
+	var buf *bytes.Buffer
+
+	vk, pk, err := provider.Setup(c.Artifacts)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),
@@ -181,10 +355,26 @@ func (c *Circuit) Create() bool {
 	}
 	c.VerifyingKeyID = &secret.ID
 
-	db := dbconf.DatabaseConnection()
-	if db.NewRecord(c) {
-		result := db.Create(&c)
-		rowsAffected := result.RowsAffected
+	success := len(c.Errors) == 0
+	if success {
+		if c.verifierContractArtifact != nil && len(c.verifierContractArtifact) != 0 {
+			common.Log.Warningf("verifier contract deployment not yet supported")
+			c.updateStatus(db, circuitStatusFailed, common.StringOrNil("verifier contract deployment not yet supported"))
+			return false
+		}
+		c.updateStatus(db, circuitStatusDeployed, nil)
+	}
+
+	return success
+}
+
+// updateStatus updates the circuit status and optional description
+func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) error {
+	// FIXME-- use distributed lock here
+	c.Status = common.StringOrNil(status)
+	c.Description = description
+	if !db.NewRecord(&c) {
+		result := db.Save(&c)
 		errors := result.GetErrors()
 		if len(errors) > 0 {
 			for _, err := range errors {
@@ -192,89 +382,9 @@ func (c *Circuit) Create() bool {
 					Message: common.StringOrNil(err.Error()),
 				})
 			}
-		}
-		if !db.NewRecord(c) {
-			success := rowsAffected > 0
-			return success
+			return errors[0]
 		}
 	}
-
-	return false
-}
-
-// Prove generates a proof for the given witness
-func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
-	c.enrich()
-
-	provider := c.circuitProviderFactory()
-	if provider == nil {
-		return nil, fmt.Errorf("failed to resolve circuit provider")
-	}
-
-	proof, err := provider.Prove(c.Artifacts, c.provingKey, witness)
-	if err != nil {
-		common.Log.Warningf("failed to generate proof; %s", err.Error())
-		return nil, err
-	}
-
-	proofStr := proof.(string)
-
-	common.Log.Debugf("proof generated %s", proofStr)
-	return &proofStr, nil
-}
-
-// Verify a circuit
-func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, error) {
-	c.enrich()
-
-	provider := c.circuitProviderFactory()
-	if provider == nil {
-		return false, fmt.Errorf("failed to resolve circuit provider")
-	}
-
-	err := provider.Verify(c.Artifacts, c.verifyingKey, witness)
-	if err != nil {
-		return false, err
-	}
-
-	common.Log.Debugf("circuit witness %s verified for proof: %s", witness, proof)
-	return true, nil
-}
-
-// enrich the circuit
-func (c *Circuit) enrich() error {
-	if c.provingKey == nil && c.ProvingKeyID != nil {
-		secret, err := vault.FetchSecret(
-			util.DefaultVaultAccessJWT,
-			c.VaultID.String(),
-			c.ProvingKeyID.String(),
-			map[string]interface{}{},
-		)
-		if err != nil {
-			return err
-		}
-		c.provingKey, err = hex.DecodeString(*secret.Value)
-		if err != nil {
-			common.Log.Warningf("failed to decode proving key secret from hex; %s", err.Error())
-		}
-	}
-
-	if c.verifyingKey == nil && c.VerifyingKeyID != nil {
-		secret, err := vault.FetchSecret(
-			util.DefaultVaultAccessJWT,
-			c.VaultID.String(),
-			c.VerifyingKeyID.String(),
-			map[string]interface{}{},
-		)
-		if err != nil {
-			return err
-		}
-		c.verifyingKey, err = hex.DecodeString(*secret.Value)
-		if err != nil {
-			common.Log.Warningf("failed to decode verifying key secret from hex; %s", err.Error())
-		}
-	}
-
 	return nil
 }
 
@@ -285,6 +395,12 @@ func (c *Circuit) validate() bool {
 	if c.Provider == nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil("circuit provider required"),
+		})
+	}
+
+	if c.ProvingScheme == nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil("circuit proving scheme required"),
 		})
 	}
 

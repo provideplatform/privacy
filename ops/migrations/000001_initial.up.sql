@@ -88,6 +88,7 @@ CREATE TABLE public.circuits (
     organization_id uuid,
     user_id uuid,
     name text NOT NULL,
+    status text NOT NULL DEFAULT 'init'::text,
     description text,
     identifier character varying(255),
     provider character varying(255),
@@ -146,6 +147,11 @@ CREATE INDEX idx_circuits_proving_scheme ON public.circuits USING btree (proving
 
 CREATE INDEX idx_circuits_curve ON public.circuits USING btree (curve);
 
+--
+-- Name: idx_circuits_status; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_circuits_status ON public.circuits USING btree (status);
 
 --
 -- PostgreSQL database dump complete

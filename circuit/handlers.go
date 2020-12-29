@@ -164,7 +164,7 @@ func proveCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	witness, witnessOk := params["witness"].(string)
+	witness, witnessOk := params["witness"].(map[string]interface{}) // FIXME-- support string witness also?
 	if !witnessOk {
 		provide.RenderError("witness required for proof generation", 422, c)
 		return
@@ -225,7 +225,7 @@ func verifyCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	witness, witnessOk := params["witness"].(string)
+	witness, witnessOk := params["witness"].(map[string]interface{})
 	if !witnessOk {
 		provide.RenderError("witness required for verification", 422, c)
 		return

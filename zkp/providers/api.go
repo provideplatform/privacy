@@ -14,8 +14,8 @@ type ZKSnarkCircuitProvider interface {
 	Compile(argv ...interface{}) (interface{}, error)
 	ComputeWitness(artifacts map[string]interface{}, argv ...interface{}) (interface{}, error)
 	ExportVerifier(verifyingKey string) (interface{}, error)
-	GenerateProof(circuit interface{}, witness, provingKey string) (interface{}, error)
-	Prove(circuit, provingKey []byte, witness string) (interface{}, error)
+	GenerateProof(circuit interface{}, witness map[string]interface{}, provingKey string) (interface{}, error)
+	Prove(circuit, provingKey []byte, witness map[string]interface{}) (interface{}, error)
 	Setup(circuit interface{}) (interface{}, interface{}, error)
-	Verify(proof, verifyingKey []byte, witness string) error
+	Verify(proof, verifyingKey []byte, witness map[string]interface{}) error
 }

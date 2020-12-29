@@ -2,6 +2,7 @@ package circuit
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 
@@ -82,7 +83,7 @@ func (c *Circuit) Create() bool {
 	}
 
 	var buf *bytes.Buffer
-	var n int64
+	// var n int64
 	var artifacts interface{} // TODO: accept r1cs -- in addition to -- the "identifier" of the circuit??
 	var err error
 
@@ -106,14 +107,13 @@ func (c *Circuit) Create() bool {
 	}
 
 	buf = new(bytes.Buffer)
-	n, err = artifacts.(io.WriterTo).WriteTo(buf)
+	_, err = artifacts.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary artifacts for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
-	common.Log.Debugf("serialized %d-byte circuit artifacts", n)
 	c.Artifacts = buf.Bytes()
 
 	vk, pk, err := provider.Setup(artifacts)
@@ -130,31 +130,29 @@ func (c *Circuit) Create() bool {
 	}
 
 	buf = new(bytes.Buffer)
-	n, err = pk.(io.WriterTo).WriteTo(buf)
+	_, err = pk.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
-	common.Log.Debugf("serialized %d-byte proving key", n)
 	c.provingKey = buf.Bytes()
 
 	buf = new(bytes.Buffer)
-	n, err = vk.(io.WriterTo).WriteTo(buf)
+	_, err = vk.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
-	common.Log.Debugf("serialized %d-byte verifying key", n)
 	c.verifyingKey = buf.Bytes()
 
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
-		string(c.provingKey),
+		hex.EncodeToString(c.provingKey),
 		fmt.Sprintf("%s circuit proving key", *c.Name),
 		fmt.Sprintf("%s circuit %s proving key", *c.Name, *c.ProvingScheme),
 		fmt.Sprintf("%s proving key", *c.ProvingScheme),
@@ -170,7 +168,7 @@ func (c *Circuit) Create() bool {
 	secret, err = vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
-		string(c.verifyingKey),
+		hex.EncodeToString(c.verifyingKey),
 		fmt.Sprintf("%s circuit verifying key", *c.Name),
 		fmt.Sprintf("%s circuit %s verifying key", *c.Name, *c.ProvingScheme),
 		fmt.Sprintf("%s verifying key", *c.ProvingScheme),
@@ -205,7 +203,7 @@ func (c *Circuit) Create() bool {
 }
 
 // Prove generates a proof for the given witness
-func (c *Circuit) Prove(witness string) (*string, error) {
+func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	c.enrich()
 
 	provider := c.circuitProviderFactory()
@@ -226,7 +224,7 @@ func (c *Circuit) Prove(witness string) (*string, error) {
 }
 
 // Verify a circuit
-func (c *Circuit) Verify(proof, witness string) (bool, error) {
+func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, error) {
 	c.enrich()
 
 	provider := c.circuitProviderFactory()
@@ -255,7 +253,10 @@ func (c *Circuit) enrich() error {
 		if err != nil {
 			return err
 		}
-		c.provingKey = []byte(*secret.Value)
+		c.provingKey, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode proving key secret from hex; %s", err.Error())
+		}
 	}
 
 	if c.verifyingKey == nil && c.VerifyingKeyID != nil {
@@ -268,7 +269,10 @@ func (c *Circuit) enrich() error {
 		if err != nil {
 			return err
 		}
-		c.verifyingKey = []byte(*secret.Value)
+		c.verifyingKey, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode verifying key secret from hex; %s", err.Error())
+		}
 	}
 
 	return nil

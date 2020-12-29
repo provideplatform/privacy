@@ -4,16 +4,11 @@ package test
 
 import (
 	"testing"
-	"time"
 
 	uuid "github.com/kthomas/go.uuid"
 
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
-
-func init() {
-	time.Sleep(5)
-}
 
 func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 	return map[string]interface{}{
@@ -22,6 +17,30 @@ func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 		"name":           "my 1337 circuit",
 		"provider":       provider,
 		"proving_scheme": "groth16",
+	}
+}
+
+func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t *testing.T) {
+	testUserID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(testUserID)
+	params := circuitParamsFactory("gnark", "cubic")
+
+	circuit, err := privacy.CreateCircuit(*token, params)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created circuit %v", circuit)
+
+	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"x": "3",
+			"Y": "9", // this will fail...
+		},
+	})
+	if err == nil {
+		t.Error("proof generation should have failed due to unsatisfied constraint")
 	}
 }
 
@@ -39,7 +58,10 @@ func TestCreateCircuitGroth16Cubic(t *testing.T) {
 	t.Logf("created circuit %v", circuit)
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": "FIXME",
+		"witness": map[string]interface{}{
+			"x": "3",
+			"Y": "9", // this will fail...
+		},
 	})
 	if err != nil {
 		t.Errorf("failed to generate proof; %s", err.Error())

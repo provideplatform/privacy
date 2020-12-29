@@ -33,7 +33,7 @@ func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t
 
 	t.Logf("created circuit %v", circuit)
 
-	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+	_, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
 			"x": "3",
 			"Y": "9", // this will fail...

@@ -268,7 +268,7 @@ networks:
     driver: bridge
     ipam:
       config:
-      - subnet: 172.40.0.0/24
+      - subnet: 172.50.0.0/24
 
 volumes:
   privacy-db:

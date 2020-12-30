@@ -155,7 +155,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	return &proofStr, nil
 }
 
-// Verify a circuit
+// Verify a proof to be verifiable for the given witness
 func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, error) {
 	c.enrich()
 
@@ -164,7 +164,7 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, er
 		return false, fmt.Errorf("failed to resolve circuit provider")
 	}
 
-	err := provider.Verify(c.Artifacts, c.verifyingKey, witness)
+	err := provider.Verify([]byte(proof), c.verifyingKey, witness)
 	if err != nil {
 		return false, err
 	}

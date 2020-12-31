@@ -43,7 +43,7 @@ type Circuit struct {
 	provide.Model
 
 	// Artifacts, i.e., r1cs, ABI, etc
-	ABI       []byte `json:"abi"`
+	ABI       []byte `json:"abi,omitempty"`
 	Artifacts []byte `json:"-"`
 
 	// Vault and the vault secret identifiers for the proving/verifying keys

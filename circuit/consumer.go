@@ -14,7 +14,10 @@ import (
 	"github.com/provideapp/privacy/common"
 )
 
-const natsCreatedCircuitSetupSubject = "privacy.circuit.setup"
+const natsCircuitSetupCompleteSubject = "privacy.circuit.setup.complete"
+const natsCircuitSetupFailedsSubject = "privacy.circuit.setup.failed"
+
+const natsCreatedCircuitSetupSubject = "privacy.circuit.setup.pending"
 const natsCreatedCircuitSetupMaxInFlight = 32
 const createCircuitAckWait = time.Hour * 1
 const createCircuitTimeout = int64(time.Hour * 1)

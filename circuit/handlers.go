@@ -14,7 +14,10 @@ import (
 )
 
 func resolveCircuitsQuery(db *gorm.DB, circuitID, orgID, appID *uuid.UUID) *gorm.DB {
-	query := db.Where("circuits.id = ?", circuitID)
+	query := db.Select("circuits.*")
+	if circuitID != nil {
+		query = query.Where("circuits.id = ?", circuitID)
+	}
 	if orgID != nil {
 		query = query.Where("circuits.organization_id = ?", orgID)
 	}

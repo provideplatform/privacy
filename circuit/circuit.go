@@ -26,8 +26,9 @@ const circuitStatusInit = "init"
 const circuitStatusCompiling = "compiling"
 const circuitStatusCompiled = "compiled"
 const circuitStatusPendingSetup = "pending_setup"
+const circuitStatusRunningSetup = "running_setup"
 const circuitStatusDeployingArtifacts = "deploying_artifacts" // optional -- if i.e. verifier contract should be deployed to blockchain
-const circuitStatusDeployed = "deployed"
+const circuitStatusProvisioned = "provisioned"
 
 // Policy -- TODO? currently the following policy items are configured directly on the Circuit
 type Policy struct {
@@ -64,7 +65,6 @@ type Circuit struct {
 	Curve         *string `json:"curve"`
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
-	// lifecycle: init -> compiling -> pending_setup -> [optional: deploying_artifacts (i.e., on-chain)] -> deployed
 
 	// Policy *CircuitPolicy `json:""`
 	// Seed -- entropy for uniqueness within the setup
@@ -120,13 +120,19 @@ func (c *Circuit) Create() bool {
 		}
 		if !db.NewRecord(c) {
 			success := rowsAffected > 0
-			if success && c.setupRequired() {
+			if success {
 				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
-				payload, _ := json.Marshal(map[string]interface{}{
-					"circuit_id": c.ID.String(),
-				})
-				natsutil.NatsStreamingPublish(natsCreatedCircuitSetupSubject, payload)
+
+				if c.setupRequired() {
+					c.updateStatus(db, circuitStatusPendingSetup, nil)
+
+					payload, _ := json.Marshal(map[string]interface{}{
+						"circuit_id": c.ID.String(),
+					})
+					natsutil.NatsStreamingPublish(natsCreatedCircuitSetupSubject, payload)
+				}
 			}
+
 			return success
 		}
 	}
@@ -271,7 +277,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 		return false
 	}
 
-	c.updateStatus(db, circuitStatusPendingSetup, nil)
+	c.updateStatus(db, circuitStatusRunningSetup, nil)
 
 	if c.Artifacts == nil || len(c.Artifacts) == 0 {
 		c.Errors = append(c.Errors, &provide.Error{
@@ -362,7 +368,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 			c.updateStatus(db, circuitStatusFailed, common.StringOrNil("verifier contract deployment not yet supported"))
 			return false
 		}
-		c.updateStatus(db, circuitStatusDeployed, nil)
+		c.updateStatus(db, circuitStatusProvisioned, nil)
 	}
 
 	return success

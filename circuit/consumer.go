@@ -15,7 +15,7 @@ import (
 )
 
 const natsCircuitSetupCompleteSubject = "privacy.circuit.setup.complete"
-const natsCircuitSetupFailedsSubject = "privacy.circuit.setup.failed"
+const natsCircuitSetupFailedSubject = "privacy.circuit.setup.failed"
 
 const natsCreatedCircuitSetupSubject = "privacy.circuit.setup.pending"
 const natsCreatedCircuitSetupMaxInFlight = 32
@@ -87,10 +87,13 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 
 	if circuit.setup(db) {
 		common.Log.Debugf("setup completed for circuit: %s", circuit.ID)
+		circuit.updateStatus(db, circuitStatusProvisioned, nil)
+		natsutil.NatsStreamingPublish(natsCircuitSetupCompleteSubject, msg.Data)
 		msg.Ack()
 	} else {
 		common.Log.Warningf("setup failed for circuit: %s; %s", circuit.ID, err.Error())
-		natsutil.AttemptNack(msg, createCircuitTimeout)
 		circuit.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
+		natsutil.NatsStreamingPublish(natsCircuitSetupFailedSubject, msg.Data)
+		natsutil.AttemptNack(msg, createCircuitTimeout)
 	}
 }

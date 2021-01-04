@@ -175,7 +175,7 @@ func proveCircuitHandler(c *gin.Context) {
 
 	proof, err := circuit.Prove(witness)
 	if err != nil {
-		provide.RenderError("bad request", 500, c)
+		provide.RenderError(err.Error(), 422, c)
 		return
 	}
 
@@ -237,6 +237,8 @@ func verifyCircuitHandler(c *gin.Context) {
 	result, err := circuit.Verify(proof, witness)
 	if err != nil {
 		// TODO: typecheck error
+		provide.RenderError(err.Error(), 422, c)
+		return
 	}
 
 	common.Log.Debugf("verification result: %v", result)

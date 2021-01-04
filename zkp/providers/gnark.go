@@ -36,8 +36,7 @@ func (p *GnarkCircuitProvider) decodeProvingKey(curveID gurvy.ID, pk []byte) (gr
 	provingKey := groth16.NewProvingKey(curveID)
 	_, err := provingKey.ReadFrom(bytes.NewReader(pk))
 	if err != nil {
-		common.Log.Warningf("unable to decode proving key; %s", err.Error()) // HACK
-		// return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
+		return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
 	}
 
 	return provingKey, nil
@@ -47,8 +46,7 @@ func (p *GnarkCircuitProvider) decodeVerifyingKey(curveID gurvy.ID, vk []byte) (
 	verifyingKey := groth16.NewVerifyingKey(curveID)
 	_, err := verifyingKey.ReadFrom(bytes.NewReader(vk))
 	if err != nil {
-		common.Log.Warningf("unable to decode verifying key; %s", err.Error()) // HACK?
-		// return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
+		return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
 	}
 
 	return verifyingKey, nil

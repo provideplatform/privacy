@@ -244,6 +244,7 @@ func (c *Circuit) enrich() error {
 		c.provingKey, err = hex.DecodeString(*secret.Value)
 		if err != nil {
 			common.Log.Warningf("failed to decode proving key secret from hex; %s", err.Error())
+			return err
 		}
 	}
 
@@ -260,6 +261,7 @@ func (c *Circuit) enrich() error {
 		c.verifyingKey, err = hex.DecodeString(*secret.Value)
 		if err != nil {
 			common.Log.Warningf("failed to decode verifying key secret from hex; %s", err.Error())
+			return err
 		}
 	}
 

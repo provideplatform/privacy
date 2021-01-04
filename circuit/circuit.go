@@ -267,7 +267,7 @@ func (c *Circuit) enrich() error {
 }
 
 func (c *Circuit) setupRequired() bool {
-	return c.ProvingScheme != nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && c.Status != nil && *c.Status == circuitStatusCompiled
+	return c.ProvingScheme != nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && c.Status != nil && (*c.Status == circuitStatusCompiled || *c.Status == circuitStatusPendingSetup)
 }
 
 // setup attempts to setup the circuit

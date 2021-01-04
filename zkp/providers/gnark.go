@@ -104,7 +104,12 @@ func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness map[st
 
 // Setup runs the trusted setup
 func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interface{}, error) {
-	return groth16.Setup(circuit.(r1cs.R1CS))
+	r1cs, err := p.decodeR1CS(defaultCurveID, circuit.([]byte))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return groth16.Setup(r1cs)
 }
 
 // Prove generates a proof

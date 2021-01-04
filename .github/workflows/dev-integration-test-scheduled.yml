@@ -34,8 +34,8 @@ jobs:
         working-directory: privacy
       - run: docker-compose -f ./ops/docker-compose.yml down
         working-directory: privacy
-      - run: docker volume rm ops_provide-db
-        working-directory: privacy                                        
+      - run: docker volume rm ops_privacy-db
+        working-directory: privacy
       - name: slack channel update
         uses: act10ns/slack@v1
         with:

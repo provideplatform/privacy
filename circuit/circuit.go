@@ -231,7 +231,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 
 // enrich the circuit
 func (c *Circuit) enrich() error {
-	if c.provingKey == nil && c.ProvingKeyID != nil {
+	if (c.provingKey == nil || len(c.provingKey) == 0) && c.ProvingKeyID != nil {
 		secret, err := vault.FetchSecret(
 			util.DefaultVaultAccessJWT,
 			c.VaultID.String(),
@@ -247,7 +247,7 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
-	if c.verifyingKey == nil && c.VerifyingKeyID != nil {
+	if (c.verifyingKey == nil || len(c.verifyingKey) == 0) && c.VerifyingKeyID != nil {
 		secret, err := vault.FetchSecret(
 			util.DefaultVaultAccessJWT,
 			c.VaultID.String(),

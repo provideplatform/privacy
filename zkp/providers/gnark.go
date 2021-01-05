@@ -3,6 +3,7 @@ package providers
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/r1cs"
@@ -11,18 +12,43 @@ import (
 	"github.com/provideapp/privacy/common"
 )
 
-const defaultCurveID = gurvy.BN256
-
 // GnarkCircuitProvider interacts with the go-native gnark package
-type GnarkCircuitProvider struct{}
-
-// InitGnarkCircuitProvider initializes and configures a new GnarkCircuitProvider instance
-func InitGnarkCircuitProvider() *GnarkCircuitProvider {
-	return &GnarkCircuitProvider{}
+type GnarkCircuitProvider struct {
+	curveID gurvy.ID
 }
 
-func (p *GnarkCircuitProvider) decodeR1CS(curveID gurvy.ID, encodedR1CS []byte) (r1cs.R1CS, error) {
-	decodedR1CS := r1cs.New(curveID)
+// InitGnarkCircuitProvider initializes and configures a new GnarkCircuitProvider instance
+func InitGnarkCircuitProvider(curveID *string) *GnarkCircuitProvider {
+	return &GnarkCircuitProvider{
+		curveID: curveIDFactory(curveID),
+	}
+}
+
+func curveIDFactory(curveID *string) gurvy.ID {
+	if curveID == nil {
+		common.Log.Warning("no curve id provided")
+		return gurvy.UNKNOWN
+	}
+
+	switch strings.ToLower(*curveID) {
+	case gurvy.BLS377.String():
+		return gurvy.BLS377
+	case gurvy.BLS381.String():
+		return gurvy.BLS381
+	case gurvy.BN256.String():
+		return gurvy.BN256
+	case gurvy.BW761.String():
+		return gurvy.BW761
+	default:
+		common.Log.Warningf("failed to resolve elliptic curve; unknown curve: %s", *curveID)
+
+	}
+
+	return gurvy.UNKNOWN
+}
+
+func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (r1cs.R1CS, error) {
+	decodedR1CS := r1cs.New(p.curveID)
 	_, err := decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
 	if err != nil {
 		common.Log.Warningf("unable to decode R1CS; %s", err.Error())
@@ -32,9 +58,10 @@ func (p *GnarkCircuitProvider) decodeR1CS(curveID gurvy.ID, encodedR1CS []byte) 
 	return decodedR1CS, nil
 }
 
-func (p *GnarkCircuitProvider) decodeProvingKey(curveID gurvy.ID, pk []byte) (groth16.ProvingKey, error) {
-	provingKey := groth16.NewProvingKey(curveID)
-	_, err := provingKey.ReadFrom(bytes.NewReader(pk))
+func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (groth16.ProvingKey, error) {
+	provingKey := groth16.NewProvingKey(p.curveID)
+	n, err := provingKey.ReadFrom(bytes.NewReader(pk))
+	common.Log.Debugf("read %d bytes during attempted proving key deserialization", n)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
 	}
@@ -42,9 +69,10 @@ func (p *GnarkCircuitProvider) decodeProvingKey(curveID gurvy.ID, pk []byte) (gr
 	return provingKey, nil
 }
 
-func (p *GnarkCircuitProvider) decodeVerifyingKey(curveID gurvy.ID, vk []byte) (groth16.VerifyingKey, error) {
-	verifyingKey := groth16.NewVerifyingKey(curveID)
-	_, err := verifyingKey.ReadFrom(bytes.NewReader(vk))
+func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (groth16.VerifyingKey, error) {
+	verifyingKey := groth16.NewVerifyingKey(p.curveID)
+	n, err := verifyingKey.ReadFrom(bytes.NewReader(vk))
+	common.Log.Debugf("read %d bytes during attempted verifying key deserialization", n)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
 	}
@@ -52,8 +80,8 @@ func (p *GnarkCircuitProvider) decodeVerifyingKey(curveID gurvy.ID, vk []byte) (
 	return verifyingKey, nil
 }
 
-func (p *GnarkCircuitProvider) decodeProof(curveID gurvy.ID, proof []byte) (groth16.Proof, error) {
-	prf := groth16.NewProof(curveID)
+func (p *GnarkCircuitProvider) decodeProof(proof []byte) (groth16.Proof, error) {
+	prf := groth16.NewProof(p.curveID)
 	_, err := prf.ReadFrom(bytes.NewReader(proof))
 	if err != nil {
 		common.Log.Warningf("unable to decode proof; %s", err.Error()) // HACK?
@@ -65,18 +93,8 @@ func (p *GnarkCircuitProvider) decodeProof(curveID gurvy.ID, proof []byte) (grot
 
 // Compile the circuit...
 func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error) {
-	var curveID gurvy.ID
-	var circuit frontend.Circuit
-
-	if len(argv) == 2 {
-		curveID = argv[0].(gurvy.ID)
-		circuit = argv[1].(frontend.Circuit)
-	} else if len(argv) == 1 {
-		curveID = defaultCurveID
-		circuit = argv[0].(frontend.Circuit)
-	}
-
-	r1cs, err := frontend.Compile(curveID, circuit)
+	circuit := argv[0].(frontend.Circuit)
+	r1cs, err := frontend.Compile(p.curveID, circuit)
 	if err != nil {
 		common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
 		return nil, err
@@ -102,7 +120,7 @@ func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness map[st
 
 // Setup runs the trusted setup
 func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interface{}, error) {
-	r1cs, err := p.decodeR1CS(defaultCurveID, circuit.([]byte))
+	r1cs, err := p.decodeR1CS(circuit.([]byte))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -114,12 +132,12 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interfac
 func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness map[string]interface{}) (interface{}, error) {
 	var err error
 
-	r1cs, err := p.decodeR1CS(defaultCurveID, circuit)
+	r1cs, err := p.decodeR1CS(circuit)
 	if err != nil {
 		return nil, err
 	}
 
-	pk, err := p.decodeProvingKey(defaultCurveID, provingKey)
+	pk, err := p.decodeProvingKey(provingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -131,12 +149,12 @@ func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness map[str
 func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness map[string]interface{}) error {
 	var err error
 
-	prf, err := p.decodeProof(defaultCurveID, proof)
+	prf, err := p.decodeProof(proof)
 	if err != nil {
 		return err
 	}
 
-	vk, err := p.decodeVerifyingKey(defaultCurveID, verifyingKey)
+	vk, err := p.decodeVerifyingKey(verifyingKey)
 	if err != nil {
 		return err
 	}

@@ -85,7 +85,7 @@ func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
 
 	switch *c.Provider {
 	case zkp.ZKSnarkCircuitProviderGnark:
-		return zkp.InitGnarkCircuitProvider()
+		return zkp.InitGnarkCircuitProvider(c.Curve)
 	case zkp.ZKSnarkCircuitProviderZoKrates:
 		return nil // not implemented
 	default:

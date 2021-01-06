@@ -143,6 +143,7 @@ func (c *Circuit) Create() bool {
 // Prove generates a proof for the given witness
 func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	c.enrich()
+	var _proof *string
 
 	provider := c.circuitProviderFactory()
 	if provider == nil {
@@ -155,10 +156,18 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
-	proofStr := proof.(string)
+	buf := new(bytes.Buffer)
+	_, err = proof.(io.WriterTo).WriteTo(buf)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proof for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+		})
+		return nil, err
+	}
 
-	common.Log.Debugf("proof generated %s", proofStr)
-	return &proofStr, nil
+	_proof = common.StringOrNil(hex.EncodeToString(buf.Bytes()))
+	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
+	return _proof, nil
 }
 
 // Verify a proof to be verifiable for the given witness
@@ -298,7 +307,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 
 	var buf *bytes.Buffer
 
-	vk, pk, err := provider.Setup(c.Artifacts)
+	pk, vk, err := provider.Setup(c.Artifacts)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),

@@ -179,7 +179,16 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, er
 		return false, fmt.Errorf("failed to resolve circuit provider")
 	}
 
-	err := provider.Verify([]byte(proof), c.verifyingKey, witness)
+	var _proof []byte
+	var err error
+
+	_proof, err = hex.DecodeString(proof)
+	if err != nil {
+		common.Log.Tracef("failed to decode proof as hex; %s", err.Error())
+		_proof = []byte(proof)
+	}
+
+	err = provider.Verify(_proof, c.verifyingKey, witness)
 	if err != nil {
 		return false, err
 	}

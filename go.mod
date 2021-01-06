@@ -3,8 +3,8 @@ module github.com/provideapp/privacy
 go 1.15
 
 require (
-	github.com/consensys/gnark v0.3.8
-	github.com/consensys/gurvy v0.3.6
+	github.com/consensys/gnark v0.3.9-0.20210105172149-6b79d629394f
+	github.com/consensys/gurvy v0.3.8-0.20210105143504-812ca66b4e5e
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jinzhu/gorm v1.9.16
@@ -21,7 +21,6 @@ require (
 	github.com/onsi/gomega v1.10.3
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
 	github.com/provideservices/provide-go v0.0.0-20201223103541-4dbed2176a48
-	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9 // indirect
 )
 
 replace github.com/provideapp/ident => ../ident

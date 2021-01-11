@@ -101,13 +101,13 @@ func consumeCircuitCompileMsg(msg *stan.Msg) {
 
 	if circuit == nil || circuit.ID == uuid.Nil {
 		common.Log.Warningf("failed to resolve circuit during async compilation; circuit id: %s", circuitID)
-		natsutil.AttemptNack(msg, setupCircuitTimeout)
+		natsutil.AttemptNack(msg, compileCircuitTimeout)
 		return
 	}
 
 	if circuit.Source == nil {
 		common.Log.Warningf("attempted to compile circuit without source; circuit id: %s", circuitID)
-		natsutil.AttemptNack(msg, setupCircuitTimeout)
+		natsutil.AttemptNack(msg, compileCircuitTimeout)
 		return
 	}
 

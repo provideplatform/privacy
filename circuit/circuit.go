@@ -63,6 +63,7 @@ type Circuit struct {
 	Provider      *string `json:"provider"`
 	ProvingScheme *string `json:"proving_scheme"`
 	Curve         *string `json:"curve"`
+	Source        *string `json:"source"`
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
@@ -129,7 +130,7 @@ func (c *Circuit) Create() bool {
 					payload, _ := json.Marshal(map[string]interface{}{
 						"circuit_id": c.ID.String(),
 					})
-					natsutil.NatsStreamingPublish(natsCreatedCircuitSetupSubject, payload)
+					natsutil.NatsStreamingPublish(natsCircuitSetupSubject, payload)
 				}
 			}
 

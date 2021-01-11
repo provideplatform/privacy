@@ -17,10 +17,15 @@ import (
 const natsCircuitSetupCompleteSubject = "privacy.circuit.setup.complete"
 const natsCircuitSetupFailedSubject = "privacy.circuit.setup.failed"
 
-const natsCreatedCircuitSetupSubject = "privacy.circuit.setup.pending"
-const natsCreatedCircuitSetupMaxInFlight = 32
-const createCircuitAckWait = time.Hour * 1
-const createCircuitTimeout = int64(time.Hour * 1)
+const natsCircuitCompileSubject = "privacy.circuit.compile"
+const compileCircuitAckWait = time.Hour * 1
+const compileCircuitMaxInFlight = 32
+const compileCircuitTimeout = int64(time.Hour * 1)
+
+const natsCircuitSetupSubject = "privacy.circuit.setup"
+const setupCircuitAckWait = time.Hour * 1
+const setupCircuitMaxInFlight = 32
+const setupCircuitTimeout = int64(time.Hour * 1)
 
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
@@ -32,28 +37,89 @@ func init() {
 
 	var waitGroup sync.WaitGroup
 
+	createNatsCircuitCompileSubscriptions(&waitGroup)
 	createNatsCircuitSetupSubscriptions(&waitGroup)
+}
+
+func createNatsCircuitCompileSubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		natsutil.RequireNatsStreamingSubscription(wg,
+			compileCircuitAckWait,
+			natsCircuitCompileSubject,
+			natsCircuitCompileSubject,
+			consumeCircuitCompileMsg,
+			compileCircuitAckWait,
+			compileCircuitMaxInFlight,
+			nil,
+		)
+	}
 }
 
 func createNatsCircuitSetupSubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
 		natsutil.RequireNatsStreamingSubscription(wg,
-			createCircuitAckWait,
-			natsCreatedCircuitSetupSubject,
-			natsCreatedCircuitSetupSubject,
+			setupCircuitAckWait,
+			natsCircuitSetupSubject,
+			natsCircuitSetupSubject,
 			consumeCircuitSetupMsg,
-			createCircuitAckWait,
-			natsCreatedCircuitSetupMaxInFlight,
+			setupCircuitAckWait,
+			setupCircuitMaxInFlight,
 			nil,
 		)
 	}
+}
+
+func consumeCircuitCompileMsg(msg *stan.Msg) {
+	defer func() {
+		if r := recover(); r != nil {
+			common.Log.Warningf("recovered during circuit compilation; %s", r)
+			natsutil.AttemptNack(msg, compileCircuitTimeout)
+		}
+	}()
+
+	common.Log.Debugf("consuming %d-byte NATS circuit compile message on subject: %s", msg.Size(), msg.Subject)
+
+	params := map[string]interface{}{}
+	err := json.Unmarshal(msg.Data, &params)
+	if err != nil {
+		common.Log.Warningf("failed to unmarshal circuit compile message; %s", err.Error())
+		natsutil.Nack(msg)
+		return
+	}
+
+	circuitID, circuitIDOk := params["circuit_id"].(string)
+	if !circuitIDOk {
+		common.Log.Warning("failed to unmarshal circuit_id during compile message handler")
+		natsutil.Nack(msg)
+		return
+	}
+
+	db := dbconf.DatabaseConnection()
+
+	circuit := &Circuit{}
+	db.Where("id = ?", circuitID).Find(&circuit)
+
+	if circuit == nil || circuit.ID == uuid.Nil {
+		common.Log.Warningf("failed to resolve circuit during async compilation; circuit id: %s", circuitID)
+		natsutil.AttemptNack(msg, setupCircuitTimeout)
+		return
+	}
+
+	if circuit.Source == nil {
+		common.Log.Warningf("attempted to compile circuit without source; circuit id: %s", circuitID)
+		natsutil.AttemptNack(msg, setupCircuitTimeout)
+		return
+	}
+
+	// TODO: compile it...
+
 }
 
 func consumeCircuitSetupMsg(msg *stan.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit setup; %s", r)
-			natsutil.AttemptNack(msg, createCircuitTimeout)
+			natsutil.AttemptNack(msg, setupCircuitTimeout)
 		}
 	}()
 
@@ -81,7 +147,7 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 
 	if circuit == nil || circuit.ID == uuid.Nil {
 		common.Log.Warningf("failed to resolve circuit during async setup; circuit id: %s", circuitID)
-		natsutil.AttemptNack(msg, createCircuitTimeout)
+		natsutil.AttemptNack(msg, setupCircuitTimeout)
 		return
 	}
 
@@ -94,6 +160,6 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 		common.Log.Warningf("setup failed for circuit: %s; %s", circuit.ID, err.Error())
 		circuit.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
 		natsutil.NatsStreamingPublish(natsCircuitSetupFailedSubject, msg.Data)
-		natsutil.AttemptNack(msg, createCircuitTimeout)
+		natsutil.AttemptNack(msg, setupCircuitTimeout)
 	}
 }

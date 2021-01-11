@@ -3,7 +3,7 @@ module github.com/provideapp/privacy
 go 1.15
 
 require (
-	github.com/consensys/gnark v0.3.9-0.20210105172149-6b79d629394f
+	github.com/consensys/gnark v0.3.9-0.20210104230216-9ae542174ae7
 	github.com/consensys/gurvy v0.3.8-0.20210105143504-812ca66b4e5e
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang-migrate/migrate v3.5.4+incompatible

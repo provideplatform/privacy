@@ -63,7 +63,7 @@ type Circuit struct {
 	Provider      *string `json:"provider"`
 	ProvingScheme *string `json:"proving_scheme"`
 	Curve         *string `json:"curve"`
-	Source        *string `json:"source"`
+	Source        *string `json:"source,omitempty"`
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
 

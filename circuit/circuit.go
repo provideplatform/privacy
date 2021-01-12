@@ -39,10 +39,9 @@ type Circuit struct {
 	Binary []byte `gorm:"column:bin" json:"-"`
 
 	// Vault and the vault secret identifiers for the proving/verifying keys
-	VaultID                    *uuid.UUID `json:"vault_id"`
-	ProvingKeyID               *uuid.UUID `json:"proving_key_id"`
-	VerifyingKeyID             *uuid.UUID `json:"verifying_key_id"`
-	VerifierContractArtifactID *uuid.UUID `json:"verifier_contract_artifact_id,omitempty"`
+	VaultID        *uuid.UUID `json:"vault_id"`
+	ProvingKeyID   *uuid.UUID `json:"proving_key_id"`
+	VerifyingKeyID *uuid.UUID `json:"verifying_key_id"`
 
 	// Associations
 	ApplicationID  *uuid.UUID `sql:"type:uuid" json:"-"`
@@ -63,8 +62,10 @@ type Circuit struct {
 	verifyingKey []byte
 
 	// optional on-chain artifact (i.e., verifier contract)
+	VerifierContract         map[string]interface{} `sql:"-" json:"verifier_contract,omitempty"`
 	verifierContractABI      []byte
 	verifierContractArtifact []byte
+	verifierContractSource   []byte
 }
 
 func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
@@ -273,17 +274,15 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
-	if (c.verifierContractArtifact == nil || len(c.verifierContractArtifact) == 0) && c.VerifierContractArtifactID != nil {
-		secret, err := vault.FetchSecret(
-			util.DefaultVaultAccessJWT,
-			c.VaultID.String(),
-			c.VerifierContractArtifactID.String(),
-			map[string]interface{}{},
-		)
+	if c.VerifierContract == nil {
+		err := c.exportVerifier()
 		if err != nil {
-			return err
+			common.Log.Debugf("failed to export verifier contract for circuit; %s", err.Error())
+		} else if c.verifierContractSource != nil && len(c.verifierContractSource) > 0 {
+			c.VerifierContract = map[string]interface{}{
+				"source": string(c.verifierContractSource),
+			}
 		}
-		c.verifierContractArtifact = []byte(*secret.Value)
 	}
 
 	return nil
@@ -295,30 +294,12 @@ func (c *Circuit) exportVerifier() error {
 		return fmt.Errorf("failed to resolve circuit provider")
 	}
 
-	c.enrich()
 	verifierContract, err := provider.ExportVerifier(string(c.verifyingKey))
 	if err != nil {
 		return err
 	}
 
-	c.verifierContractArtifact = verifierContract.([]byte)
-
-	secret, err := vault.CreateSecret(
-		util.DefaultVaultAccessJWT,
-		c.VaultID.String(),
-		string(c.verifierContractArtifact),
-		fmt.Sprintf("%s circuit verifier contract", *c.Name),
-		fmt.Sprintf("%s circuit %s verifier contract", *c.Name, *c.ProvingScheme),
-		fmt.Sprintf("%s verifier contract", *c.ProvingScheme),
-	)
-	if err != nil {
-		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to store verifier contract for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
-		})
-		return err
-	}
-	c.VerifierContractArtifactID = &secret.ID
-
+	c.verifierContractSource = verifierContract.([]byte)
 	return nil
 }
 
@@ -419,12 +400,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 
 	success := len(c.Errors) == 0
 	if success {
-		// if c.verifierContractArtifact != nil && len(c.verifierContractArtifact) != 0 {
-		// 	common.Log.Warningf("verifier contract deployment not yet supported")
-		// 	c.updateStatus(db, circuitStatusFailed, common.StringOrNil("verifier contract deployment not yet supported"))
-		// 	return false
-		// }
-		c.exportVerifier()
+		c.enrich()
 		c.updateStatus(db, circuitStatusProvisioned, nil)
 	}
 

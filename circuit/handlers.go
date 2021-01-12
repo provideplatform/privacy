@@ -126,7 +126,7 @@ func circuitDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	// circuit.Enrich(db)
+	circuit.enrich()
 	provide.Render(circuit, 200, c)
 }
 

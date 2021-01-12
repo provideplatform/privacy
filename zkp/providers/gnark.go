@@ -110,7 +110,19 @@ func (p *GnarkCircuitProvider) ComputeWitness(artifacts map[string]interface{}, 
 
 // ExportVerifier exports the verifier contract, if supported; returns nil if the `Verify` method should be called
 func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{}, error) {
-	return nil, fmt.Errorf("gnark does not not implement ExportVerifier()")
+	vk, err := p.decodeVerifyingKey([]byte(verifyingKey))
+	if err != nil {
+		return nil, err
+	}
+
+	buf := new(bytes.Buffer)
+	err = vk.ExportSolidity(buf)
+	if err != nil {
+		common.Log.Warningf("failed to export verifier contract for using gnark; %s", err.Error())
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 // GenerateProof generates a proof

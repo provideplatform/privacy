@@ -30,27 +30,19 @@ const circuitStatusRunningSetup = "running_setup"
 const circuitStatusDeployingArtifacts = "deploying_artifacts" // optional -- if i.e. verifier contract should be deployed to blockchain
 const circuitStatusProvisioned = "provisioned"
 
-// Policy -- TODO? currently the following policy items are configured directly on the Circuit
-type Policy struct {
-	// configuration of the curve + Input/Outputs; preprocessing or processing; interactive/noninteractive, etc.
-	// MIME type (aka file format)
-	// ConstraintSystem *string `json:"constraint_system"`
-	// Curve *string `json:"curve"`
-	// ABI (i.e., inputs, outputs etc)
-}
-
 // Circuit model
 type Circuit struct {
 	provide.Model
 
 	// Artifacts, i.e., r1cs, ABI, etc
-	ABI       []byte `json:"abi,omitempty"`
-	Artifacts []byte `json:"-"`
+	ABI    []byte `json:"abi,omitempty"`
+	Binary []byte `gorm:"column:bin" json:"-"`
 
 	// Vault and the vault secret identifiers for the proving/verifying keys
-	VaultID        *uuid.UUID `json:"vault_id"`
-	ProvingKeyID   *uuid.UUID `json:"proving_key_id"`
-	VerifyingKeyID *uuid.UUID `json:"verifying_key_id"`
+	VaultID                    *uuid.UUID `json:"vault_id"`
+	ProvingKeyID               *uuid.UUID `json:"proving_key_id"`
+	VerifyingKeyID             *uuid.UUID `json:"verifying_key_id"`
+	VerifierContractArtifactID *uuid.UUID `json:"verifier_contract_artifact_id,omitempty"`
 
 	// Associations
 	ApplicationID  *uuid.UUID `sql:"type:uuid" json:"-"`
@@ -66,14 +58,12 @@ type Circuit struct {
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
-	// Policy *CircuitPolicy `json:""`
-	// Seed -- entropy for uniqueness within the setup
-
 	// ephemeral fields
 	provingKey   []byte
 	verifyingKey []byte
 
 	// optional on-chain artifact (i.e., verifier contract)
+	verifierContractABI      []byte
 	verifierContractArtifact []byte
 }
 
@@ -150,7 +140,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, fmt.Errorf("failed to resolve circuit provider")
 	}
 
-	proof, err := provider.Prove(c.Artifacts, c.provingKey, witness)
+	proof, err := provider.Prove(c.Binary, c.provingKey, witness)
 	if err != nil {
 		common.Log.Warningf("failed to generate proof; %s", err.Error())
 		return nil, err
@@ -241,7 +231,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 		})
 		return false
 	}
-	c.Artifacts = buf.Bytes()
+	c.Binary = buf.Bytes()
 
 	c.updateStatus(db, circuitStatusCompiled, nil)
 	return len(c.Errors) == 0
@@ -283,6 +273,52 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
+	if (c.verifierContractArtifact == nil || len(c.verifierContractArtifact) == 0) && c.VerifierContractArtifactID != nil {
+		secret, err := vault.FetchSecret(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.VerifierContractArtifactID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+		c.verifierContractArtifact = []byte(*secret.Value)
+	}
+
+	return nil
+}
+
+func (c *Circuit) exportVerifier() error {
+	provider := c.circuitProviderFactory()
+	if provider == nil {
+		return fmt.Errorf("failed to resolve circuit provider")
+	}
+
+	c.enrich()
+	verifierContract, err := provider.ExportVerifier(string(c.verifyingKey))
+	if err != nil {
+		return err
+	}
+
+	c.verifierContractArtifact = verifierContract.([]byte)
+
+	secret, err := vault.CreateSecret(
+		util.DefaultVaultAccessJWT,
+		c.VaultID.String(),
+		string(c.verifierContractArtifact),
+		fmt.Sprintf("%s circuit verifier contract", *c.Name),
+		fmt.Sprintf("%s circuit %s verifier contract", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s verifier contract", *c.ProvingScheme),
+	)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to store verifier contract for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+		})
+		return err
+	}
+	c.VerifierContractArtifactID = &secret.ID
+
 	return nil
 }
 
@@ -299,7 +335,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 
 	c.updateStatus(db, circuitStatusRunningSetup, nil)
 
-	if c.Artifacts == nil || len(c.Artifacts) == 0 {
+	if c.Binary == nil || len(c.Binary) == 0 {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup circuit with identifier %s; no compiled artifacts", *c.Identifier)),
 		})
@@ -316,7 +352,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 
 	var buf *bytes.Buffer
 
-	pk, vk, err := provider.Setup(c.Artifacts)
+	pk, vk, err := provider.Setup(c.Binary)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),
@@ -383,11 +419,12 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 
 	success := len(c.Errors) == 0
 	if success {
-		if c.verifierContractArtifact != nil && len(c.verifierContractArtifact) != 0 {
-			common.Log.Warningf("verifier contract deployment not yet supported")
-			c.updateStatus(db, circuitStatusFailed, common.StringOrNil("verifier contract deployment not yet supported"))
-			return false
-		}
+		// if c.verifierContractArtifact != nil && len(c.verifierContractArtifact) != 0 {
+		// 	common.Log.Warningf("verifier contract deployment not yet supported")
+		// 	c.updateStatus(db, circuitStatusFailed, common.StringOrNil("verifier contract deployment not yet supported"))
+		// 	return false
+		// }
+		c.exportVerifier()
 		c.updateStatus(db, circuitStatusProvisioned, nil)
 	}
 

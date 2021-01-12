@@ -97,8 +97,9 @@ CREATE TABLE public.circuits (
     vault_id uuid NOT NULL,
     proving_key_id uuid,
     verifying_key_id uuid,
+    verifier_contract_artifact_id uuid,
     abi bytea,
-    artifacts bytea
+    bin bytea
 );
 
 

@@ -78,10 +78,9 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/cloudflare/cloudflare-go v0.10.2-0.20190916151808-a80f83b9add9/go.mod h1:1MxXX1Ux4x6mqPmjkUgTP1CdXIBXKX7T+Jk9Gxrmx+U=
 github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e/go.mod h1:P13beTBKr5Q18lJe1rIoLUqjM+CB1zYrRg44ZqGuQSA=
 github.com/consensys/bavard v0.1.7/go.mod h1:Bpd0/3mZuaj6Sj+PqrmIquiOKy397AKGThQPaGzNXAQ=
-github.com/consensys/gnark v0.3.9-0.20210104230216-9ae542174ae7 h1:FOajtKnRfmCBC1B1Y6aEmg/Z5kqD/v8qWSV84V/58HY=
-github.com/consensys/gnark v0.3.9-0.20210104230216-9ae542174ae7/go.mod h1:1cc8W/GDpLla0VwdKmRFEHOxKiq6Hzqbt5D8NPHVLPM=
+github.com/consensys/gnark v0.3.9-0.20210105172149-6b79d629394f h1:8PJne3kpe+abyJDDAHRxH6hj79kwbGxZCT9HUYH0Xdo=
+github.com/consensys/gnark v0.3.9-0.20210105172149-6b79d629394f/go.mod h1:Y4Mf8JRspek3CUsr8yBnnnvQK2wHxchvxiv4FO745UA=
 github.com/consensys/goff v0.3.9/go.mod h1:sVd8qmGLPDVaNkeEc54IvC7/dGxuZdJBbo792ZLD5Ng=
-github.com/consensys/gurvy v0.3.7/go.mod h1:Finhem0KVGlIK77Z//KemelnzAmFZDabkzbCN23lqpY=
 github.com/consensys/gurvy v0.3.8-0.20210105143504-812ca66b4e5e h1:jw2nseJi59XXKWkkj0TpSqggxweypm/EL+4sEEHsCyE=
 github.com/consensys/gurvy v0.3.8-0.20210105143504-812ca66b4e5e/go.mod h1:Finhem0KVGlIK77Z//KemelnzAmFZDabkzbCN23lqpY=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=

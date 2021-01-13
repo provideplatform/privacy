@@ -61,6 +61,9 @@ type Circuit struct {
 	provingKey   []byte
 	verifyingKey []byte
 
+	// artifacts
+	Artifacts map[string]interface{} `sql:"-" json:"artifacts,omitempty"`
+
 	// optional on-chain artifact (i.e., verifier contract)
 	VerifierContract         map[string]interface{} `sql:"-" json:"verifier_contract,omitempty"`
 	verifierContractABI      []byte
@@ -271,6 +274,14 @@ func (c *Circuit) enrich() error {
 		if err != nil {
 			common.Log.Warningf("failed to decode verifying key secret from hex; %s", err.Error())
 			return err
+		}
+	}
+
+	if c.Artifacts == nil {
+		c.Artifacts = map[string]interface{}{
+			"binary":        hex.EncodeToString(c.Binary),
+			"proving_key":   hex.EncodeToString(c.provingKey),
+			"verifying_key": hex.EncodeToString(c.verifyingKey),
 		}
 	}
 

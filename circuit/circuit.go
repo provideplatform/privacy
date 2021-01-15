@@ -96,12 +96,13 @@ func (c *Circuit) Create() bool {
 	}
 
 	db := dbconf.DatabaseConnection()
+	isImport := c.Artifacts != nil
 
 	if !c.importArtifacts(db) && !c.compile(db) {
 		return false
 	}
 
-	if db.NewRecord(c) {
+	if db.NewRecord(c) || isImport {
 		result := db.Create(&c)
 		rowsAffected := result.RowsAffected
 		errors := result.GetErrors()
@@ -124,6 +125,8 @@ func (c *Circuit) Create() bool {
 						"circuit_id": c.ID.String(),
 					})
 					natsutil.NatsStreamingPublish(natsCreatedCircuitSetupSubject, payload)
+				} else if isImport {
+					c.updateStatus(db, circuitStatusProvisioned, nil)
 				}
 			}
 
@@ -357,7 +360,6 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		return false
 	}
 
-	c.updateStatus(db, circuitStatusProvisioned, nil)
 	return len(c.Errors) == 0
 }
 

@@ -316,6 +316,11 @@ func (c *Circuit) exportVerifier() error {
 
 // importArtifacts attempts to import the circuit from existing artifacts
 func (c *Circuit) importArtifacts(db *gorm.DB) bool {
+	if c.Artifacts == nil {
+		common.Log.Debugf("short-circuiting the creation of circuit %s from binary artifacts", *c.Identifier)
+		return false
+	}
+
 	var err error
 
 	if binary, binaryOk := c.Artifacts["binary"].(string); binaryOk {

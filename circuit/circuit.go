@@ -97,7 +97,7 @@ func (c *Circuit) Create() bool {
 
 	db := dbconf.DatabaseConnection()
 
-	if !c.compile(db) {
+	if !c.importArtifacts(db) && !c.compile(db) {
 		return false
 	}
 
@@ -204,7 +204,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 	}
 
 	var buf *bytes.Buffer
-	var artifacts interface{} // TODO: accept r1cs -- in addition to -- the "identifier" of the circuit??
+	var artifacts interface{}
 	var err error
 
 	if c.Identifier != nil {
@@ -314,6 +314,85 @@ func (c *Circuit) exportVerifier() error {
 	return nil
 }
 
+// importArtifacts attempts to import the circuit from existing artifacts
+func (c *Circuit) importArtifacts(db *gorm.DB) bool {
+	var err error
+
+	if binary, binaryOk := c.Artifacts["binary"].(string); binaryOk {
+		c.Binary, err = hex.DecodeString(binary)
+		if err != nil {
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to import binary artifact for circuit %s; %s", *c.Identifier, err.Error())),
+			})
+			return false
+		}
+	}
+
+	if provingKey, provingKeyOk := c.Artifacts["proving_key"].(string); provingKeyOk {
+		c.provingKey, err = hex.DecodeString(provingKey)
+		if err != nil {
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to import proving key for circuit %s; %s", *c.Identifier, err.Error())),
+			})
+			return false
+		}
+	}
+
+	if verifyingKey, verifyingKeyOk := c.Artifacts["verifying_key"].(string); verifyingKeyOk {
+		c.verifyingKey, err = hex.DecodeString(verifyingKey)
+		if err != nil {
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to import verifying key for circuit %s; %s", *c.Identifier, err.Error())),
+			})
+			return false
+		}
+	}
+
+	if !c.persistKeys() {
+		return false
+	}
+
+	c.updateStatus(db, circuitStatusProvisioned, nil)
+	return len(c.Errors) == 0
+}
+
+// persistKeys attempts to persist the proving and verifying keys
+func (c *Circuit) persistKeys() bool {
+	secret, err := vault.CreateSecret(
+		util.DefaultVaultAccessJWT,
+		c.VaultID.String(),
+		hex.EncodeToString(c.provingKey),
+		fmt.Sprintf("%s circuit proving key", *c.Name),
+		fmt.Sprintf("%s circuit %s proving key", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s proving key", *c.ProvingScheme),
+	)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to store proving key for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+		})
+		return false
+	}
+	c.ProvingKeyID = &secret.ID
+
+	secret, err = vault.CreateSecret(
+		util.DefaultVaultAccessJWT,
+		c.VaultID.String(),
+		hex.EncodeToString(c.verifyingKey),
+		fmt.Sprintf("%s circuit verifying key", *c.Name),
+		fmt.Sprintf("%s circuit %s verifying key", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s verifying key", *c.ProvingScheme),
+	)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to store verifying key for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+		})
+		return false
+	}
+	c.VerifyingKeyID = &secret.ID
+
+	return c.ProvingKeyID != nil && c.VerifyingKeyID != nil
+}
+
 func (c *Circuit) setupRequired() bool {
 	return c.ProvingScheme != nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && c.Status != nil && (*c.Status == circuitStatusCompiled || *c.Status == circuitStatusPendingSetup)
 }
@@ -377,39 +456,8 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 	}
 	c.verifyingKey = buf.Bytes()
 
-	secret, err := vault.CreateSecret(
-		util.DefaultVaultAccessJWT,
-		c.VaultID.String(),
-		hex.EncodeToString(c.provingKey),
-		fmt.Sprintf("%s circuit proving key", *c.Name),
-		fmt.Sprintf("%s circuit %s proving key", *c.Name, *c.ProvingScheme),
-		fmt.Sprintf("%s proving key", *c.ProvingScheme),
-	)
-	if err != nil {
-		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to store proving key for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
-		})
-		return false
-	}
-	c.ProvingKeyID = &secret.ID
-
-	secret, err = vault.CreateSecret(
-		util.DefaultVaultAccessJWT,
-		c.VaultID.String(),
-		hex.EncodeToString(c.verifyingKey),
-		fmt.Sprintf("%s circuit verifying key", *c.Name),
-		fmt.Sprintf("%s circuit %s verifying key", *c.Name, *c.ProvingScheme),
-		fmt.Sprintf("%s verifying key", *c.ProvingScheme),
-	)
-	if err != nil {
-		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to store verifying key for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
-		})
-		return false
-	}
-	c.VerifyingKeyID = &secret.ID
-
-	success := len(c.Errors) == 0
+	keysPersisted := c.persistKeys()
+	success := len(c.Errors) == 0 && keysPersisted
 	if success {
 		c.enrich()
 		c.updateStatus(db, circuitStatusProvisioned, nil)

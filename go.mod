@@ -14,7 +14,7 @@ require (
 	github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05
 	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
-	github.com/lib/pq v1.4.0 // indirect
+	github.com/lib/pq v1.9.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/nats-io/stan.go v0.7.0
 	github.com/onsi/ginkgo v1.14.2

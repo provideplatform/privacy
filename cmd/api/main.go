@@ -15,6 +15,7 @@ import (
 	"github.com/provideapp/ident/token"
 	"github.com/provideapp/privacy/circuit"
 	privacycommon "github.com/provideapp/privacy/common"
+	"github.com/provideapp/privacy/store"
 
 	provide "github.com/provideservices/provide-go/common"
 	util "github.com/provideservices/provide-go/common/util"
@@ -95,6 +96,7 @@ func runAPI() {
 	r.Use(common.RateLimitingMiddleware())
 
 	circuit.InstallAPI(r)
+	store.InstallAPI(r)
 
 	srv = &http.Server{
 		Addr:    util.ListenAddr,

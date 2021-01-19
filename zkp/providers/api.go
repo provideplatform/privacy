@@ -3,6 +3,9 @@ package providers
 // GnarkCircuitIdentifierCubic gnark cubic circuit
 const GnarkCircuitIdentifierCubic = "cubic"
 
+// GnarkCircuitIdentifierBaselineDocument gnark circuit
+const GnarkCircuitIdentifierBaselineDocument = "baseline_document"
+
 // ZKSnarkCircuitProviderGnark gnark zksnark circuit provider
 const ZKSnarkCircuitProviderGnark = "gnark"
 

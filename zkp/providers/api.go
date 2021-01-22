@@ -12,10 +12,13 @@ const ZKSnarkCircuitProviderZoKrates = "zokrates"
 // ZKSnarkCircuitProvider provides a common interface to interact with zksnark circuits
 type ZKSnarkCircuitProvider interface {
 	Compile(argv ...interface{}) (interface{}, error)
-	ComputeWitness(artifacts map[string]interface{}, argv ...interface{}) (interface{}, error)
+	ComputeWitness(artifacts interface{}, argv ...interface{}) (interface{}, error)
 	ExportVerifier(verifyingKey string) (interface{}, error)
-	GenerateProof(circuit interface{}, witness map[string]interface{}, provingKey string) (interface{}, error)
-	Prove(circuit, provingKey []byte, witness map[string]interface{}) (interface{}, error)
+	GenerateProof(circuit interface{}, witness interface{}, provingKey string) (interface{}, error)
+	Prove(circuit, provingKey []byte, witness interface{}) (interface{}, error)
 	Setup(circuit interface{}) (interface{}, interface{}, error)
-	Verify(proof, verifyingKey []byte, witness map[string]interface{}) error
+	Verify(proof, verifyingKey []byte, witness interface{}) error
+
+	CircuitFactory(identifier string) interface{}
+	WitnessFactory(identifier string, curve string, inputs interface{}) (interface{}, error)
 }

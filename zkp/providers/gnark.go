@@ -3,13 +3,16 @@ package providers
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/r1cs"
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy"
 	"github.com/provideapp/privacy/common"
+	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
 // GnarkCircuitProvider interacts with the go-native gnark package
@@ -22,6 +25,51 @@ func InitGnarkCircuitProvider(curveID *string) *GnarkCircuitProvider {
 	return &GnarkCircuitProvider{
 		curveID: curveIDFactory(curveID),
 	}
+}
+
+// CircuitFactory returns a library circuit by name
+func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
+	switch identifier {
+	case GnarkCircuitIdentifierCubic:
+		return &gnark.CubicCircuit{}
+	default:
+		return nil
+	}
+}
+
+// WitnessFactory generates a valid witness for the given circuit identifier, curve and named inputs
+func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, inputs interface{}) (interface{}, error) {
+	w := p.CircuitFactory(identifier)
+	if w == nil {
+		return nil, fmt.Errorf("failed to serialize witness; %s circuit not resolved", identifier)
+	}
+
+	var buf *bytes.Buffer
+
+	if witmap, witmapOk := inputs.(map[string]interface{}); witmapOk {
+		witval := reflect.Indirect(reflect.ValueOf(w))
+		for k := range witmap {
+			field := witval.FieldByName(k)
+			if !field.CanSet() {
+				return nil, fmt.Errorf("failed to serialize witness; field %s does not exist on %s circuit", k, identifier)
+			}
+
+			v := frontend.Variable{}
+			v.Assign(witmap[k])
+			witval.Set(reflect.ValueOf(v))
+		}
+
+		buf = new(bytes.Buffer)
+		err := witness.WriteFull(buf, w.(frontend.Witness), curveIDFactory(&curve))
+		if err != nil {
+			common.Log.Warningf("failed to serialize witness for %s circuit; %s", identifier, err.Error())
+			return nil, err
+		}
+
+		return w, nil
+	}
+
+	return nil, fmt.Errorf("failed to serialize witness for %s circuit", identifier)
 }
 
 func curveIDFactory(curveID *string) gurvy.ID {
@@ -104,7 +152,7 @@ func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error)
 }
 
 // ComputeWitness computes a witness for the given inputs
-func (p *GnarkCircuitProvider) ComputeWitness(artifacts map[string]interface{}, argv ...interface{}) (interface{}, error) {
+func (p *GnarkCircuitProvider) ComputeWitness(artifacts interface{}, argv ...interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("gnark does not not implement ComputeWitness()")
 }
 
@@ -126,7 +174,7 @@ func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{},
 }
 
 // GenerateProof generates a proof
-func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness map[string]interface{}, provingKey string) (interface{}, error) {
+func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness interface{}, provingKey string) (interface{}, error) {
 	return nil, fmt.Errorf("gnark does not not implement GenerateProof()")
 }
 
@@ -141,7 +189,7 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interfac
 }
 
 // Prove generates a proof
-func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness map[string]interface{}) (interface{}, error) {
+func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interface{}) (interface{}, error) {
 	var err error
 
 	r1cs, err := p.decodeR1CS(circuit)
@@ -154,11 +202,11 @@ func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness map[str
 		return nil, err
 	}
 
-	return groth16.Prove(r1cs, pk, witness)
+	return groth16.Prove(r1cs, pk, witness.(frontend.Witness))
 }
 
 // Verify the given proof and witness
-func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness map[string]interface{}) error {
+func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interface{}) error {
 	var err error
 
 	prf, err := p.decodeProof(proof)
@@ -171,5 +219,5 @@ func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness map[st
 		return err
 	}
 
-	return groth16.Verify(prf, vk, witness)
+	return groth16.Verify(prf, vk, witness.(frontend.Witness))
 }

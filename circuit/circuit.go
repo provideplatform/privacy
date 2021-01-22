@@ -12,7 +12,6 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
-	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 	zkp "github.com/provideapp/privacy/zkp/providers"
 	provide "github.com/provideservices/provide-go/api"
 	vault "github.com/provideservices/provide-go/api/vault"
@@ -61,6 +60,9 @@ type Circuit struct {
 	provingKey   []byte
 	verifyingKey []byte
 
+	// fullWitnessLength   int64
+	// publicWitnessLength int64
+
 	// artifacts
 	Artifacts map[string]interface{} `sql:"-" json:"artifacts,omitempty"`
 
@@ -73,7 +75,7 @@ type Circuit struct {
 
 func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
 	if c.Provider == nil {
-		common.Log.Warning("failed to initialize zk circuit provider; no provider defined")
+		common.Log.Warning("failed to initialize circuit provider; no provider defined")
 		return nil
 	}
 
@@ -83,7 +85,7 @@ func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
 	case zkp.ZKSnarkCircuitProviderZoKrates:
 		return nil // not implemented
 	default:
-		common.Log.Warningf("failed to initialize zk circuit provider; unknown provider: %s", *c.Provider)
+		common.Log.Warningf("failed to initialize circuit provider; unknown provider: %s", *c.Provider)
 	}
 
 	return nil
@@ -140,14 +142,19 @@ func (c *Circuit) Create() bool {
 // Prove generates a proof for the given witness
 func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	c.enrich()
-	var _proof *string
 
 	provider := c.circuitProviderFactory()
 	if provider == nil {
 		return nil, fmt.Errorf("failed to resolve circuit provider")
 	}
 
-	proof, err := provider.Prove(c.Binary, c.provingKey, witness)
+	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness)
+	if err != nil {
+		common.Log.Warningf("failed to read serialize witness; %s", err.Error())
+		return nil, err
+	}
+
+	proof, err := provider.Prove(c.Binary, c.provingKey, witval)
 	if err != nil {
 		common.Log.Warningf("failed to generate proof; %s", err.Error())
 		return nil, err
@@ -162,7 +169,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
-	_proof = common.StringOrNil(hex.EncodeToString(buf.Bytes()))
+	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
 	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
 	return _proof, nil
 }
@@ -185,7 +192,13 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, er
 		_proof = []byte(proof)
 	}
 
-	err = provider.Verify(_proof, c.verifyingKey, witness)
+	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness)
+	if err != nil {
+		common.Log.Warningf("failed to read serialize witness; %s", err.Error())
+		return false, err
+	}
+
+	err = provider.Verify(_proof, c.verifyingKey, witval)
 	if err != nil {
 		return false, err
 	}
@@ -211,18 +224,17 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 	var err error
 
 	if c.Identifier != nil {
-		switch *c.Identifier {
-		case zkp.GnarkCircuitIdentifierCubic:
-			var circuit gnark.CubicCircuit
-			artifacts, err = provider.Compile(&circuit)
+		circuit := provider.CircuitFactory(*c.Identifier)
+
+		if circuit != nil {
+			artifacts, err = provider.Compile(circuit)
 			if err != nil {
 				c.Errors = append(c.Errors, &provide.Error{
 					Message: common.StringOrNil(fmt.Sprintf("failed to compile circuit with identifier %s; %s", *c.Identifier, err.Error())),
 				})
 				return false
 			}
-			break
-		default:
+		} else {
 			c.Errors = append(c.Errors, &provide.Error{
 				Message: common.StringOrNil(fmt.Sprintf("failed to resolve circuit for provider: %s", *c.Provider)),
 			})
@@ -298,6 +310,9 @@ func (c *Circuit) enrich() error {
 			}
 		}
 	}
+
+	// c.fullWitnessLength = int((c.r1cs.GetNbPublicWires() + c.r1cs.GetNbSecretWires())) * c.r1cs.SizeFrElement()
+	// c.publicWitnessLength = int((c.r1cs.GetNbPublicWires() - 1)) * c.r1cs.SizeFrElement()
 
 	return nil
 }

@@ -56,7 +56,7 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 
 			v := frontend.Variable{}
 			v.Assign(witmap[k])
-			witval.Set(reflect.ValueOf(v))
+			field.Set(reflect.ValueOf(v))
 		}
 
 		buf = new(bytes.Buffer)

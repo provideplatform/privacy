@@ -7,6 +7,8 @@ import (
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
+	"github.com/provideapp/privacy/common"
+	"github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/privacy"
 	provide "github.com/provideservices/provide-go/common"
 	"github.com/provideservices/provide-go/common/util"
@@ -178,7 +180,10 @@ func proveCircuitHandler(c *gin.Context) {
 
 	proof, err := circuit.Prove(witness)
 	if err != nil {
-		provide.RenderError(err.Error(), 422, c)
+		provide.Render(&privacy.ProveResponse{
+			Errors: []*api.Error{{Message: common.StringOrNil(err.Error())}},
+			Proof:  nil,
+		}, 422, c)
 		return
 	}
 
@@ -238,8 +243,10 @@ func verifyCircuitHandler(c *gin.Context) {
 
 	result, err := circuit.Verify(proof, witness)
 	if err != nil {
-		// TODO: typecheck error
-		provide.RenderError(err.Error(), 422, c)
+		provide.Render(&privacy.VerificationResponse{
+			Errors: []*api.Error{{Message: common.StringOrNil(err.Error())}},
+			Result: false,
+		}, 422, c)
 		return
 	}
 

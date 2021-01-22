@@ -60,9 +60,6 @@ type Circuit struct {
 	provingKey   []byte
 	verifyingKey []byte
 
-	// fullWitnessLength   int64
-	// publicWitnessLength int64
-
 	// artifacts
 	Artifacts map[string]interface{} `sql:"-" json:"artifacts,omitempty"`
 

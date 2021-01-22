@@ -311,9 +311,6 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
-	// c.fullWitnessLength = int((c.r1cs.GetNbPublicWires() + c.r1cs.GetNbSecretWires())) * c.r1cs.SizeFrElement()
-	// c.publicWitnessLength = int((c.r1cs.GetNbPublicWires() - 1)) * c.r1cs.SizeFrElement()
-
 	return nil
 }
 

@@ -7,7 +7,6 @@ import (
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/privacy/common"
 	"github.com/provideservices/provide-go/api/privacy"
 	provide "github.com/provideservices/provide-go/common"
 	"github.com/provideservices/provide-go/common/util"
@@ -183,7 +182,6 @@ func proveCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	common.Log.Debugf("generated proof: %v", proof)
 	provide.Render(&privacy.ProveResponse{
 		Proof: proof,
 	}, 200, c)
@@ -245,7 +243,6 @@ func verifyCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	common.Log.Debugf("verification result: %v", result)
 	provide.Render(&privacy.VerificationResponse{
 		Result: result,
 	}, 200, c)

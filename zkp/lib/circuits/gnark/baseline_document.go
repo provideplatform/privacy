@@ -1,8 +1,6 @@
 package gnark
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gurvy"
@@ -25,7 +23,6 @@ func (circuit *BaselineDocumentCircuit) Define(curveID gurvy.ID, cs *frontend.Co
 	// mimc(PreImage) == hash
 
 	hash := mimc.Hash(cs, circuit.PreImage)
-	fmt.Println(hash)
 	cs.AssertIsEqual(circuit.Hash, hash)
 
 	return nil

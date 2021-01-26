@@ -91,7 +91,7 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 		natsutil.NatsStreamingPublish(natsCircuitSetupCompleteSubject, msg.Data)
 		msg.Ack()
 	} else {
-		common.Log.Warningf("setup failed for circuit: %s; %s", circuit.ID, err.Error())
+		common.Log.Warningf("setup failed for circuit: %s", circuit.ID)
 		circuit.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
 		natsutil.NatsStreamingPublish(natsCircuitSetupFailedSubject, msg.Data)
 		natsutil.AttemptNack(msg, createCircuitTimeout)

@@ -3,16 +3,12 @@ package gnark
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/twistededwards"
+	"github.com/consensys/gnark/std/signature/eddsa"
 	"github.com/consensys/gurvy"
 )
 
-type PublicKey struct {
-	A     twistededwards.Point
-	Curve twistededwards.EdCurve
-}
-
 type OwnershipSkCircuit struct {
-	Pk PublicKey         `gnark:"pk,public"`
+	Pk eddsa.PublicKey   `gnark:"pk,public"`
 	Sk frontend.Variable `gnark:"sk"`
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"math"
 	"math/big"
 	"strings"
@@ -50,12 +51,14 @@ type MemoryMerkleTree struct {
 	Mutex    sync.RWMutex
 	Nodes    [][]*Node
 	RootNode *Node
+	Digest   hash.Hash
 }
 
 func (tree *MemoryMerkleTree) init() {
 	if tree.Hash == nil {
 		tree.Hash = func(data ...[]byte) []byte {
-			digest := sha256.New()
+			digest := tree.Digest
+			digest.Reset()
 			for i := range data {
 				_, err := digest.Write(data[i])
 				if err != nil {
@@ -199,8 +202,10 @@ func (tree *MemoryMerkleTree) RawInsert(hash string) (index int, insertedLeaf Me
 	tree.Mutex.RLock()
 	index = len(tree.Nodes[0])
 
+	dec, _ := hex.DecodeString(hash)
+
 	leaf := &Node{
-		[]byte(hash),
+		dec,
 		index,
 		nil,
 	}
@@ -354,9 +359,17 @@ func (tree *MemoryMerkleTree) MarshalJSON() ([]byte, error) {
 	return []byte(res), nil
 }
 
-// NewMerkleTree returns a pointer to an initialized MemoryMerkleTree
-func NewMerkleTree() *MemoryMerkleTree {
+var defaultDigest = sha256.New()
+
+// NewMerkleTree returns a pointer to an initialized MemoryMerkleTree.
+// If hash type not provided, sha256 will be used by default
+func NewMerkleTree(h hash.Hash) *MemoryMerkleTree {
 	var tree MemoryMerkleTree
+	if h == nil {
+		tree.Digest = defaultDigest
+	} else {
+		tree.Digest = h
+	}
 	tree.init()
 	return &tree
 }

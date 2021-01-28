@@ -27,7 +27,7 @@ type DurableMerkleTree struct {
 
 // LoadMerkleTree loads a MerkleTree by id and enables persistence using the given db connection
 func LoadMerkleTree(db *gorm.DB, id uuid.UUID) (*DurableMerkleTree, error) {
-	tree := NewMerkleTree()
+	tree := NewMerkleTree(nil)
 	err := getAndInsertStoredHashes(db, id, tree)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func LoadMerkleTree(db *gorm.DB, id uuid.UUID) (*DurableMerkleTree, error) {
 	}, nil
 }
 
-// Add hashes the given datam, adds it to the tree and triggers recalculation
+// Add hashes the given data, adds it to the tree and triggers recalculation
 func (tree *DurableMerkleTree) Add(data []byte) (index int, hash string) {
 	tree.mutex.Lock()
 	index, hash = tree.FullMerkleTree.Add(data)

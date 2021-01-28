@@ -34,6 +34,8 @@ func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
 		return &gnark.CubicCircuit{}
 	case GnarkCircuitIdentifierBaselineDocument:
 		return &gnark.BaselineDocumentCircuit{}
+	case GnarkCircuitIdentifierBaselineRollup:
+		return &gnark.BaselineRollupCircuit{}
 	default:
 		return nil
 	}

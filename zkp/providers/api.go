@@ -6,6 +6,9 @@ const GnarkCircuitIdentifierCubic = "cubic"
 // GnarkCircuitIdentifierBaselineDocument gnark circuit
 const GnarkCircuitIdentifierBaselineDocument = "baseline_document"
 
+// GnarkCircuitIdentifierBaselineRollup gnark circuit
+const GnarkCircuitIdentifierBaselineRollup = "baseline_rollup"
+
 // ZKSnarkCircuitProviderGnark gnark zksnark circuit provider
 const ZKSnarkCircuitProviderGnark = "gnark"
 

@@ -8,11 +8,17 @@ import (
 )
 
 type OwnershipSkCircuit struct {
-	Pk eddsa.PublicKey   `gnark:"pk,public"`
-	Sk frontend.Variable `gnark:"sk"`
+	Pk eddsa.PublicKey `gnark:",public"`
+	Sk frontend.Variable
 }
 
 func (circuit *OwnershipSkCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+	params, err := twistededwards.NewEdCurve(curveID)
+	if err != nil {
+		return err
+	}
+	circuit.Pk.Curve = params
+
 	computedPk := twistededwards.Point{}
 	computedPk.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk, circuit.Pk.Curve)
 	computedPk.MustBeOnCurve(cs, circuit.Pk.Curve)

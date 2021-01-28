@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/gurvy"
 )
 
-// FIX: Use MimcCircuit here
 type Document struct {
 	PreImage frontend.Variable
 	Hash     frontend.Variable `gnark:",public"`
@@ -22,8 +21,13 @@ type BaselineDocumentCompleteCircuit struct {
 }
 
 func (circuit *BaselineDocumentCompleteCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+	params, err := twistededwards.NewEdCurve(curveID)
+	if err != nil {
+		return err
+	}
+	circuit.Pk.Curve = params
+
 	// Check for ownership of sk
-	// FIX: Use OwnershipSkCircuit here
 	computedPk := twistededwards.Point{}
 	computedPk.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk, circuit.Pk.Curve)
 	computedPk.MustBeOnCurve(cs, circuit.Pk.Curve)
@@ -32,7 +36,6 @@ func (circuit *BaselineDocumentCompleteCircuit) Define(curveID gurvy.ID, cs *fro
 	cs.AssertIsEqual(circuit.Pk.A.Y, computedPk.Y)
 
 	// Check for valid signature
-	// FIX: pass MimcCircuit as witness here, pass OwnershipSkCircuit as witness too
 	eddsa.Verify(cs, circuit.Sig, circuit.Doc.Hash, circuit.Pk)
 
 	// Check for knowledge of preimage

@@ -151,12 +151,12 @@ func TestBaselineDocument(t *testing.T) {
 	dv.text = "test"
 	var i big.Int
 
-	preImage := i.SetBytes(dv.Serialize()).String()
+	preImage := i.SetBytes(dv.Digest()).String()
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
 			"PreImage": preImage,
-			"Hash":     "20060286978070528279958951500719148627258111740306120210467537499973541529993",
+			"Hash":     "4511120069326357802246315184921336344580039746739647562931138731310930627466",
 		},
 	})
 	if err != nil {
@@ -168,7 +168,7 @@ func TestBaselineDocument(t *testing.T) {
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
 			"PreImage": preImage,
-			"Hash":     "20060286978070528279958951500719148627258111740306120210467537499973541529993",
+			"Hash":     "4511120069326357802246315184921336344580039746739647562931138731310930627466",
 		},
 	})
 	if err != nil {
@@ -184,28 +184,30 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 
 	var dv DocVars
 	var buf bytes.Buffer
-	segmentSize := hFunc.Size()
 
+	// write different vars into the bytes buffer, using the digest to ensure they are of uniform length
+	// for gnark's merkle tree reader
 	dv.val = 1234.5678
 	dv.text = "test1"
-	digest, _ := mimc.Sum("seed", dv.Serialize())
+	digest, _ := mimc.Sum("seed", dv.Digest())
 	buf.Write(digest)
 
 	dv.val = 102020.35
 	dv.text = "test2"
-	digest, _ = mimc.Sum("seed", dv.Serialize())
+	digest, _ = mimc.Sum("seed", dv.Digest())
 	buf.Write(digest)
 
 	dv.val = 145.10
 	dv.text = "test3"
-	digest, _ = mimc.Sum("seed", dv.Serialize())
+	digest, _ = mimc.Sum("seed", dv.Digest())
 	buf.Write(digest)
 
 	dv.val = 1110007.78
 	dv.text = "test4"
-	digest, _ = mimc.Sum("seed", dv.Serialize())
+	digest, _ = mimc.Sum("seed", dv.Digest())
 	buf.Write(digest)
 
+	segmentSize := dv.Size()
 	proofIndex := uint64(0)
 	merkleRoot, proofSet, numLeaves, err := gnark_merkle.BuildReaderProof(&buf, hFunc, segmentSize, proofIndex)
 	if err != nil {
@@ -221,6 +223,7 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 
 	var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
 
+	// to compile the circuit, the witnesses must be allocated in the correct sizes
 	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
 	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
 	r1cs, err := frontend.Compile(gurvy.BN256, &baselineCircuit)
@@ -248,6 +251,8 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 		return
 	}
 
+	// log size of proving key to evaluate requirements of vault
+	// size of proving key grows roughly linearly with size of proof set
 	var provingKeyBuf *bytes.Buffer
 	provingKeyBuf = new(bytes.Buffer)
 	_, err = pk.(io.WriterTo).WriteTo(provingKeyBuf)
@@ -286,6 +291,7 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 	segmentSize := hFunc.Size()
 
 	// Pad out tree with default hashes if proof count is not a power of two
+	// This appears to be due to lack of auto-balancing in our merkle tree
 	paddedSize := int(math.Exp2(math.Ceil(math.Log2(float64(len(proofs))))))
 	for i := 0; i < len(proofs); i++ {
 		hFunc.Reset()
@@ -294,10 +300,8 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 		buf.Write(sum)
 	}
 	for i := len(proofs); i < paddedSize; i++ {
-		hFunc.Reset()
-		hFunc.Write([]byte{})
-		sum := hFunc.Sum(nil)
-		buf.Write(sum)
+		empty := make([]byte, segmentSize)
+		buf.Write(empty)
 	}
 
 	proofIndex := uint64(0)
@@ -327,10 +331,8 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 		t.Logf("index/hash: %d / %s", index, hash)
 	}
 	for i := len(proofs); i < paddedSize; i++ {
-		hFunc.Reset()
-		hFunc.Write([]byte{})
-		sum := hFunc.Sum(nil)
-		index, hash := tr.RawAdd(sum)
+		empty := make([]byte, segmentSize)
+		index, hash := tr.RawAdd(empty)
 		t.Logf("index/hash: %d / %s", index, hash)
 	}
 	tr.Recalculate()

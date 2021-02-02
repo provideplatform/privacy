@@ -3,7 +3,11 @@ package test
 import (
 	"encoding/binary"
 	"math"
+
+	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 )
+
+var hFunc = mimc.NewMiMC("seed")
 
 // DocVars describes private identifying variables taken from a document intended for validation
 type DocVars struct {
@@ -17,23 +21,24 @@ func (dv *DocVars) Reset() {
 	dv.text = ""
 }
 
-// Serialize serializes DocVars as a concatenation of the bits in the float val with the text string
-// length of return array is capped at 32 bytes
-func (dv *DocVars) Serialize() []byte {
-	var res [32]byte
-
-	binary.BigEndian.PutUint64(res[0:], math.Float64bits(dv.val))
-	copy(res[8:32], []byte(dv.text))
-
-	return res[:]
+// Size returns the size of the digested data
+func (dv *DocVars) Size() int {
+	return hFunc.Size()
 }
 
-// Deserialize deserializes DocVars from a byte array comprised of the concatenation of the bits in the float val with the text string
-func Deserialize(res *DocVars, data []byte) error {
-	res.Reset()
+// Digest hashes the document variables to produce a unique transaction signature of uniform length
+func (dv *DocVars) Digest() []byte {
+	var floatBytes [8]byte
 
-	res.val = float64(binary.BigEndian.Uint64(data[:8]))
-	res.text = string(data[8:32])
+	binary.BigEndian.PutUint64(floatBytes[:], math.Float64bits(dv.val))
+	_, err := hFunc.Write(floatBytes[:])
+	if err != nil {
+		return nil
+	}
+	_, err = hFunc.Write([]byte(dv.text))
+	if err != nil {
+		return nil
+	}
 
-	return nil
+	return hFunc.Sum(nil)
 }

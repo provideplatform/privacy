@@ -1,63 +1,117 @@
 package gnark
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/crypto/signature"
+
+	eddsabls377 "github.com/consensys/gnark/crypto/signature/eddsa/bls377"
+	eddsabls381 "github.com/consensys/gnark/crypto/signature/eddsa/bls381"
 	eddsabn256 "github.com/consensys/gnark/crypto/signature/eddsa/bn256"
+	eddsabw761 "github.com/consensys/gnark/crypto/signature/eddsa/bw761"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy"
+	edwardsbls377 "github.com/consensys/gurvy/bls377/twistededwards"
+	edwardsbls381 "github.com/consensys/gurvy/bls381/twistededwards"
 	edwardsbn256 "github.com/consensys/gurvy/bn256/twistededwards"
+	edwardsbw761 "github.com/consensys/gurvy/bw761/twistededwards"
 	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
-func TestOwnershipSkBN256(t *testing.T) {
+func parseKeys(id gurvy.ID, pubKeyBuf []byte, privKeyBuf []byte) ([]byte, []byte, []byte) {
+	var pointbn256 edwardsbn256.PointAffine
+	var pointbls381 edwardsbls381.PointAffine
+	var pointbls377 edwardsbls377.PointAffine
+	var pointbw761 edwardsbw761.PointAffine
+
+	fmt.Println(pubKeyBuf)
+	fmt.Println(privKeyBuf)
+	switch id {
+	case gurvy.BN256:
+		pointbn256.SetBytes(pubKeyBuf[:32])
+		aX := pointbn256.X.Bytes()
+		aY := pointbn256.Y.Bytes()
+		scalar := privKeyBuf[32:64]
+		return aX[:], aY[:], scalar
+	case gurvy.BLS381:
+		pointbls381.SetBytes(pubKeyBuf[:32])
+		aX := pointbls381.X.Bytes()
+		aY := pointbls381.Y.Bytes()
+		scalar := privKeyBuf[32:64]
+		return aX[:], aY[:], scalar
+	case gurvy.BLS377:
+		pointbls377.SetBytes(pubKeyBuf[:32])
+		aX := pointbls377.X.Bytes()
+		aY := pointbls377.Y.Bytes()
+		scalar := privKeyBuf[32:64]
+		return aX[:], aY[:], scalar
+	case gurvy.BW761:
+		pointbw761.SetBytes(pubKeyBuf[:48])
+		aX := pointbw761.X.Bytes()
+		aY := pointbw761.Y.Bytes()
+		scalar := privKeyBuf[48:96]
+		return aX[:], aY[:], scalar
+	default:
+		return pubKeyBuf, pubKeyBuf, privKeyBuf
+	}
+}
+
+func TestOwnershipSk(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var ownershipSkCircuit libgnark.OwnershipSkCircuit
+	signature.Register(signature.EDDSA_BN256, eddsabn256.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS381, eddsabls381.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS377, eddsabls377.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BW761, eddsabw761.GenerateKeyInterfaces)
 
-	r1cs, err := frontend.Compile(gurvy.BN256, &ownershipSkCircuit)
-	assert.NoError(err)
-
-	{
-		var witness libgnark.OwnershipSkCircuit
-		witness.Pk.A.X.Assign(42)
-		witness.Pk.A.Y.Assign(42)
-		witness.Sk.Assign(42)
-
-		assert.ProverFailed(r1cs, &witness)
+	confs := map[gurvy.ID]signature.SignatureScheme{
+		gurvy.BN256:  signature.EDDSA_BN256,
+		gurvy.BLS381: signature.EDDSA_BLS381,
+		gurvy.BLS377: signature.EDDSA_BLS377,
+		gurvy.BW761:  signature.EDDSA_BW761,
 	}
 
-	{
-		// Generate eddsa bn256 sk, pk
-		signature.Register(signature.EDDSA_BN256, eddsabn256.GenerateKeyInterfaces)
-
-		src := rand.NewSource(0)
-		r := rand.New(src)
-
-		privKey, err := signature.EDDSA_BN256.New(r)
+	for id, ss := range confs {
+		var ownershipSkCircuit libgnark.OwnershipSkCircuit
+		r1cs, err := frontend.Compile(id, &ownershipSkCircuit)
 		assert.NoError(err)
-		pubKey := privKey.Public()
 
-		// Parse pk, sk
-		var pointbn256 edwardsbn256.PointAffine
-		pointbn256.SetBytes(pubKey.Bytes()[:32])
-		pubkeyAx := pointbn256.X.Bytes()
-		pubkeyAy := pointbn256.Y.Bytes()
-		pkAx := pubkeyAx[:]
-		pkAy := pubkeyAy[:]
+		// Correct sk, pk
+		{
+			// Generate eddsa sk, pk
+			src := rand.NewSource(0)
+			r := rand.New(src)
+			privKey, err := ss.New(r)
+			assert.NoError(err)
+			pubKey := privKey.Public()
 
-		privkeyScalar := privKey.Bytes()[32:64]
+			// Parse sk, pk
+			fmt.Println(id)
+			fmt.Println(ss)
+			pubkeyAx, pubkeyAy, privkeyScalar := parseKeys(id, pubKey.Bytes(), privKey.Bytes())
+			fmt.Println(pubkeyAx)
+			fmt.Println(pubkeyAy)
+			fmt.Println(privkeyScalar)
 
-		// Check constraints for generate eddsa bn256 sk, pk
-		var witness libgnark.OwnershipSkCircuit
-		witness.Pk.A.X.Assign(pkAx)
-		witness.Pk.A.Y.Assign(pkAy)
-		witness.Sk.Assign(privkeyScalar)
+			var witness libgnark.OwnershipSkCircuit
+			witness.Pk.A.X.Assign(pubkeyAx)
+			witness.Pk.A.Y.Assign(pubkeyAy)
+			witness.Sk.Assign(privkeyScalar)
 
-		assert.SolvingSucceeded(r1cs, &witness)
+			assert.SolvingSucceeded(r1cs, &witness)
+		}
+
+		// Incorrect sk, pk
+		{
+			var witness libgnark.OwnershipSkCircuit
+			witness.Pk.A.X.Assign(42)
+			witness.Pk.A.Y.Assign(42)
+			witness.Sk.Assign(42)
+
+			assert.ProverFailed(r1cs, &witness)
+		}
 	}
-
 }

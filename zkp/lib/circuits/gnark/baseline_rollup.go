@@ -2,26 +2,26 @@ package gnark
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gurvy"
 )
 
-// BaselineRollupCircuit defines a rollup verification circuit
-// methodology TBD
+// BaselineRollupCircuit defines a pre-image knowledge proof
 type BaselineRollupCircuit struct {
-	PreImage frontend.Variable
-	Root     frontend.Variable `gnark:",public"`
+	Proofs, Helpers []frontend.Variable
+	RootHash        frontend.Variable `gnark:",public"`
 }
 
 // Define declares the circuit constraints
 func (circuit *BaselineRollupCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, _ := mimc.NewMiMC("seed", curveID)
+	mimc, err := mimc.NewMiMC("seed", curveID)
+	if err != nil {
+		return err
+	}
 
-	// specify constraints
-	// mimc(PreImage) == hash
-	hash := mimc.Hash(cs, circuit.PreImage)
-	cs.AssertIsEqual(circuit.Root, hash)
+	merkle.VerifyProof(cs, mimc, circuit.RootHash, circuit.Proofs, circuit.Helpers)
 
 	return nil
 }

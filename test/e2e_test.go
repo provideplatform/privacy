@@ -5,15 +5,21 @@ package test
 import (
 	"bytes"
 	"encoding/hex"
+	"io"
 	"math"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/consensys/gnark/backend/groth16"
 	gnark_merkle "github.com/consensys/gnark/crypto/accumulator/merkletree"
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/accumulator/merkle"
+	"github.com/consensys/gurvy"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/store/providers/merkletree"
+	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
@@ -173,64 +179,101 @@ func TestBaselineDocument(t *testing.T) {
 	t.Logf("proof/verification: %v / %v", proof.Proof, verification.Result)
 }
 
-func TestBaselineRollup(t *testing.T) {
-	testUserID, _ := uuid.NewV4()
-	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "baseline_document")
+func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
+	hFunc := mimc.NewMiMC("seed")
 
-	circuit, err := privacy.CreateCircuit(*token, params)
+	var dv DocVars
+	var buf bytes.Buffer
+	segmentSize := hFunc.Size()
+
+	dv.val = 1234.5678
+	dv.text = "test1"
+	digest, _ := mimc.Sum("seed", dv.Serialize())
+	buf.Write(digest)
+
+	dv.val = 102020.35
+	dv.text = "test2"
+	digest, _ = mimc.Sum("seed", dv.Serialize())
+	buf.Write(digest)
+
+	dv.val = 145.10
+	dv.text = "test3"
+	digest, _ = mimc.Sum("seed", dv.Serialize())
+	buf.Write(digest)
+
+	dv.val = 1110007.78
+	dv.text = "test4"
+	digest, _ = mimc.Sum("seed", dv.Serialize())
+	buf.Write(digest)
+
+	proofIndex := uint64(0)
+	merkleRoot, proofSet, numLeaves, err := gnark_merkle.BuildReaderProof(&buf, hFunc, segmentSize, proofIndex)
 	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
+		t.Errorf("failed to build merkle proof; %s", err.Error())
 		return
 	}
 
-	t.Logf("created circuit %v", circuit)
+	proofVerified := gnark_merkle.VerifyProof(hFunc, merkleRoot, proofSet, proofIndex, numLeaves)
+	if !proofVerified {
+		t.Errorf("failed to verify merkle proof; %s", err.Error())
+		return
+	}
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
 
-	var dv DocVars
-	dv.val = 1234.5678
-	dv.text = "test"
-	var i big.Int
+	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
+	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	r1cs, err := frontend.Compile(gurvy.BN256, &baselineCircuit)
+	if err != nil {
+		t.Errorf("failed to compile circuit; %s", err.Error())
+		return
+	}
 
-	preImage := i.SetBytes(dv.Serialize()).String()
+	merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
 
-	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"PreImage": preImage,
-			"Hash":     "20060286978070528279958951500719148627258111740306120210467537499973541529993",
-		},
-	})
+	publicWitness.Proofs = make([]frontend.Variable, len(proofSet))
+	publicWitness.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	publicWitness.RootHash.Assign(merkleRoot)
+	for i := 0; i < len(proofSet); i++ {
+		publicWitness.Proofs[i].Assign(proofSet[i])
+
+		if i < len(proofSet)-1 {
+			publicWitness.Helpers[i].Assign(merkleProofHelper[i])
+		}
+	}
+
+	pk, vk, err := groth16.Setup(r1cs)
+	if err != nil {
+		t.Errorf("failed to setup circuit; %s", err.Error())
+		return
+	}
+
+	var provingKeyBuf *bytes.Buffer
+	provingKeyBuf = new(bytes.Buffer)
+	_, err = pk.(io.WriterTo).WriteTo(provingKeyBuf)
+	if err != nil {
+		t.Errorf("failed to write proving key to bytes buffer; %s", err.Error())
+		return
+	}
+
+	t.Logf("proving key size in bytes: %d", provingKeyBuf.Len())
+
+	proof, err := groth16.Prove(r1cs, pk, &publicWitness)
 	if err != nil {
 		t.Errorf("failed to generate proof; %s", err.Error())
 		return
 	}
 
-	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"PreImage": preImage,
-			"Hash":     "20060286978070528279958951500719148627258111740306120210467537499973541529993",
-		},
-	})
+	err = groth16.Verify(proof, vk, &publicWitness)
 	if err != nil {
 		t.Errorf("failed to verify proof; %s", err.Error())
 		return
 	}
 
-	t.Logf("proof/verification: %v / %v", proof.Proof, verification.Result)
-
-	data := make([]byte, len(*proof.Proof))
-	copy(data, []byte(*proof.Proof))
-
-	tree := merkletree.NewMerkleTree(mimc.NewMiMC("seed"))
-	index, hash := tree.RawAdd(data)
-
-	t.Logf("added proof to merkle tree at index/hash: %v / %v", index, hash)
+	t.Logf("proof verified")
 }
 
-func TestMerkleImplementations(t *testing.T) {
+func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 	hFunc := mimc.NewMiMC("seed")
 
 	proofs := []string{

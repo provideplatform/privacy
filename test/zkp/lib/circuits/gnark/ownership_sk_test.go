@@ -10,18 +10,19 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy"
 	edwardsbn256 "github.com/consensys/gurvy/bn256/twistededwards"
+	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
 func TestOwnershipSkBN256(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var ownershipSkCircuit OwnershipSkCircuit
+	var ownershipSkCircuit libgnark.OwnershipSkCircuit
 
 	r1cs, err := frontend.Compile(gurvy.BN256, &ownershipSkCircuit)
 	assert.NoError(err)
 
 	{
-		var witness OwnershipSkCircuit
+		var witness libgnark.OwnershipSkCircuit
 		witness.Pk.A.X.Assign(42)
 		witness.Pk.A.Y.Assign(42)
 		witness.Sk.Assign(42)
@@ -51,7 +52,7 @@ func TestOwnershipSkBN256(t *testing.T) {
 		privkeyScalar := privKey.Bytes()[32:64]
 
 		// Check constraints for generate eddsa bn256 sk, pk
-		var witness OwnershipSkCircuit
+		var witness libgnark.OwnershipSkCircuit
 		witness.Pk.A.X.Assign(pkAx)
 		witness.Pk.A.Y.Assign(pkAy)
 		witness.Sk.Assign(privkeyScalar)

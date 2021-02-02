@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gurvy"
 )
 
-// Circuit defines a pre-image knowledge proof
+// MimcCircuit defines a pre-image knowledge proof
 // mimc(secret preImage) = public hash
 type MimcCircuit struct {
 	// struct tag on a variable is optional

@@ -8,11 +8,13 @@ import (
 	"github.com/consensys/gurvy"
 )
 
+// Document is similar to MimcCircuit
 type Document struct {
 	PreImage frontend.Variable
 	Hash     frontend.Variable `gnark:",public"`
 }
 
+// BaselineDocumentCompleteCircuit combines proof of ownership of sk, proof of knowledge of secret preimage to hash and verifies eddsa signature
 type BaselineDocumentCompleteCircuit struct {
 	Doc Document
 	Pk  eddsa.PublicKey `gnark:",public"`
@@ -20,6 +22,7 @@ type BaselineDocumentCompleteCircuit struct {
 	Sig eddsa.Signature `gnark:",public"`
 }
 
+// Define declares the circuit's contraints
 func (circuit *BaselineDocumentCompleteCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
 	params, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {

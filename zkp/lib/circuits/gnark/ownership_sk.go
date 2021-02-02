@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gurvy"
 )
 
-// OwnershipSkCircuit defines circuit for prove of ownership of sk
+// OwnershipSkCircuit defines circuit for proof of ownership of sk
 type OwnershipSkCircuit struct {
 	Pk eddsa.PublicKey `gnark:",public"`
 	Sk frontend.Variable

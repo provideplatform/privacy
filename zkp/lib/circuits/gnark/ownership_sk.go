@@ -7,11 +7,13 @@ import (
 	"github.com/consensys/gurvy"
 )
 
+// OwnershipSkCircuit defines circuit for prove of ownership of sk
 type OwnershipSkCircuit struct {
 	Pk eddsa.PublicKey `gnark:",public"`
 	Sk frontend.Variable
 }
 
+// Define declares the circuit's constraints
 func (circuit *OwnershipSkCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
 	params, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {

@@ -8,12 +8,14 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/consensys/gnark/backend/groth16"
 	gnark_merkle "github.com/consensys/gnark/crypto/accumulator/merkletree"
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
+	eddsa "github.com/consensys/gnark/crypto/signature/eddsa/bn256"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gurvy"
@@ -295,6 +297,7 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 	paddedSize := int(math.Exp2(math.Ceil(math.Log2(float64(len(proofs))))))
 	for i := 0; i < len(proofs); i++ {
 		hFunc.Reset()
+		// mimc Write never returns an error
 		hFunc.Write([]byte(proofs[i]))
 		sum := hFunc.Sum(nil)
 		buf.Write(sum)
@@ -325,6 +328,7 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 
 	for i := 0; i < len(proofs); i++ {
 		hFunc.Reset()
+		// mimc Write never returns an error
 		hFunc.Write([]byte(proofs[i]))
 		sum := hFunc.Sum(nil)
 		index, hash := tr.RawAdd(sum)
@@ -343,4 +347,215 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 		t.Error("calculated root for each implementation should match for proof counts which are powers of two")
 		return
 	}
+}
+
+func TestProcurement(t *testing.T) {
+	assert := groth16.NewAssert(t)
+	hFunc := mimc.NewMiMC("seed")
+
+	var merkleBuf bytes.Buffer
+	var poCircuit gnark.PurchaseOrderCircuit
+	r1cs, err := frontend.Compile(gurvy.BN256, &poCircuit)
+	if err != nil {
+		t.Error("failed to compile purchase order circuit")
+		return
+	}
+
+	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
+	soNumber := []byte("1234567890")
+	certificateNumber, err := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
+	if err != nil {
+		t.Error("failed to convert uuid to bytes")
+		return
+	}
+
+	// mimc Write never returns an error
+	hFunc.Write(globalPurchaseOrderNumber)
+	hFunc.Write(soNumber)
+	hFunc.Write(certificateNumber.Bytes())
+	// + some sort of nonce?
+	// preimage is itself a digest due to the field element size limitation of the curve
+	preImage := hFunc.Sum(nil)
+
+	var purchaseOrderCircuit gnark.PurchaseOrderCircuit
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ := mimc.Sum("seed", preImage)
+	purchaseOrderCircuit.Document.PreImage.Assign(preImage)
+	purchaseOrderCircuit.Document.Hash.Assign(hash)
+	assert.ProverSucceeded(r1cs, &purchaseOrderCircuit)
+
+	// bytes.Buffer.Write() may panic, but never returns an error
+	merkleBuf.Write(preImage)
+
+	var soCircuit gnark.SalesOrderCircuit
+	r1cs, err = frontend.Compile(gurvy.BN256, &soCircuit)
+	if err != nil {
+		t.Error("failed to compile sales order circuit")
+		return
+	}
+
+	globalSalesOrderNumber := []byte("ENTITY-1234567890")
+	createdOn := []byte("01/02/2021 04:40 PM UTC")
+
+	hFunc.Reset()
+	hFunc.Write(globalPurchaseOrderNumber)
+	hFunc.Write(globalSalesOrderNumber)
+	hFunc.Write(createdOn)
+	// + some sort of nonce?
+	preImage = hFunc.Sum(nil)
+
+	var salesOrderCircuit gnark.SalesOrderCircuit
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ = mimc.Sum("seed", preImage)
+	salesOrderCircuit.Document.PreImage.Assign(preImage)
+	salesOrderCircuit.Document.Hash.Assign(hash)
+	assert.ProverSucceeded(r1cs, &salesOrderCircuit)
+
+	// bytes.Buffer.Write() may panic, but never returns an error
+	merkleBuf.Write(preImage)
+
+	var snCircuit gnark.ShipmentNotificationCircuit
+	r1cs, err = frontend.Compile(gurvy.BN256, &snCircuit)
+	if err != nil {
+		t.Error("failed to compile sn circuit")
+		return
+	}
+
+	globalShipmentNumber := []byte("ENTITY-0000123456")
+	soldTo := []byte("56785678")
+
+	hFunc.Reset()
+	hFunc.Write(globalPurchaseOrderNumber)
+	hFunc.Write(globalShipmentNumber)
+	hFunc.Write(soldTo)
+	// + some sort of nonce?
+	preImage = hFunc.Sum(nil)
+
+	var shipmentNotificationCircuit gnark.ShipmentNotificationCircuit
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ = mimc.Sum("seed", preImage)
+	shipmentNotificationCircuit.Document.PreImage.Assign(preImage)
+	shipmentNotificationCircuit.Document.Hash.Assign(hash)
+	assert.ProverSucceeded(r1cs, &shipmentNotificationCircuit)
+
+	// bytes.Buffer.Write() may panic, but never returns an error
+	merkleBuf.Write(preImage)
+
+	var grCircuit gnark.GoodsReceiptCircuit
+	r1cs, err = frontend.Compile(gurvy.BN256, &grCircuit)
+	if err != nil {
+		t.Error("failed to compile goods receipt circuit")
+		return
+	}
+
+	globalGoodsReceiptNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001-GR")
+	createdOn = []byte("01/04/2021 01:40 PM UTC")
+
+	hFunc.Reset()
+	hFunc.Write(globalPurchaseOrderNumber)
+	hFunc.Write(globalGoodsReceiptNumber)
+	hFunc.Write(createdOn)
+	// + some sort of nonce?
+	preImage = hFunc.Sum(nil)
+
+	var goodsReceiptCircuit gnark.GoodsReceiptCircuit
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ = mimc.Sum("seed", preImage)
+	goodsReceiptCircuit.Document.PreImage.Assign(preImage)
+	goodsReceiptCircuit.Document.Hash.Assign(hash)
+	assert.ProverSucceeded(r1cs, &goodsReceiptCircuit)
+
+	// bytes.Buffer.Write() may panic, but never returns an error
+	merkleBuf.Write(preImage)
+
+	src := rand.NewSource(0)
+	r := rand.New(src)
+
+	privKey, _ := eddsa.GenerateKey(r)
+	pubKey := privKey.PublicKey
+
+	invoiceIntStr := "123456789123456789123456789123456789"
+	invoiceData := []byte(invoiceIntStr) // placeholder
+
+	hFunc.Reset()
+	hFunc.Write(invoiceData)
+	preImage = hFunc.Sum(nil)
+
+	sigBytes, err := privKey.Sign(invoiceData, hFunc)
+	if err != nil {
+		t.Error("failed to sign invoice data")
+		return
+	}
+
+	verified, err := pubKey.Verify(sigBytes, invoiceData, hFunc)
+	if err != nil || !verified {
+		t.Error("failed to verify invoice data")
+		return
+	}
+
+	var inCircuit gnark.InvoiceCircuit
+	r1cs, err = frontend.Compile(gurvy.BN256, &inCircuit)
+	if err != nil {
+		t.Error("failed to compile invoice circuit")
+		return
+	}
+
+	var invoiceCircuit gnark.InvoiceCircuit
+
+	var sig eddsa.Signature
+	sig.SetBytes(sigBytes)
+
+	invoiceCircuit.Msg.Assign(invoiceIntStr)
+
+	invoiceCircuit.PubKey.A.X.Assign(pubKey.A.X.Bytes())
+	invoiceCircuit.PubKey.A.Y.Assign(pubKey.A.Y.Bytes())
+
+	invoiceCircuit.Sig.R.A.X.Assign(sig.R.X.Bytes())
+	invoiceCircuit.Sig.R.A.Y.Assign(sig.R.Y.Bytes())
+	invoiceCircuit.Sig.S.Assign(sig.S)
+
+	assert.SolvingSucceeded(r1cs, &invoiceCircuit)
+
+	segmentSize := hFunc.Size()
+	proofIndex := uint64(0)
+	merkleRoot, proofSet, numLeaves, err := gnark_merkle.BuildReaderProof(&merkleBuf, hFunc, segmentSize, proofIndex)
+	if err != nil {
+		t.Errorf("failed to build merkle proof; %s", err.Error())
+		return
+	}
+
+	proofVerified := gnark_merkle.VerifyProof(hFunc, merkleRoot, proofSet, proofIndex, numLeaves)
+	if !proofVerified {
+		t.Errorf("failed to verify merkle proof; %s", err.Error())
+		return
+	}
+
+	var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
+
+	// to compile the circuit, the witnesses must be allocated in the correct sizes
+	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
+	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	r1cs, err = frontend.Compile(gurvy.BN256, &baselineCircuit)
+	if err != nil {
+		t.Errorf("failed to compile circuit; %s", err.Error())
+		return
+	}
+
+	merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
+
+	publicWitness.Proofs = make([]frontend.Variable, len(proofSet))
+	publicWitness.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	publicWitness.RootHash.Assign(merkleRoot)
+	for i := 0; i < len(proofSet); i++ {
+		publicWitness.Proofs[i].Assign(proofSet[i])
+
+		if i < len(proofSet)-1 {
+			publicWitness.Helpers[i].Assign(merkleProofHelper[i])
+		}
+	}
+	assert.ProverSucceeded(r1cs, &publicWitness)
 }

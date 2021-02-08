@@ -19,6 +19,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gurvy"
+	"github.com/consensys/gurvy/bn256/twistededwards"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/store/providers/merkletree"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
@@ -478,20 +479,18 @@ func TestProcurement(t *testing.T) {
 	privKey, _ := eddsa.GenerateKey(r)
 	pubKey := privKey.PublicKey
 
-	invoiceIntStr := "123456789123456789123456789123456789"
-	invoiceData := []byte(invoiceIntStr) // placeholder
+	var invoiceData big.Int
+	invoiceIntStr := "123456789123456789123456789123456789" // placeholder
+	invoiceData.SetString(invoiceIntStr, 10)
+	invoiceDataBytes := invoiceData.Bytes()
 
-	hFunc.Reset()
-	hFunc.Write(invoiceData)
-	preImage = hFunc.Sum(nil)
-
-	sigBytes, err := privKey.Sign(invoiceData, hFunc)
+	sigBytes, err := privKey.Sign(invoiceDataBytes, hFunc)
 	if err != nil {
 		t.Error("failed to sign invoice data")
 		return
 	}
 
-	verified, err := pubKey.Verify(sigBytes, invoiceData, hFunc)
+	verified, err := pubKey.Verify(sigBytes, invoiceDataBytes, hFunc)
 	if err != nil || !verified {
 		t.Error("failed to verify invoice data")
 		return
@@ -511,14 +510,49 @@ func TestProcurement(t *testing.T) {
 
 	invoiceCircuit.Msg.Assign(invoiceIntStr)
 
-	invoiceCircuit.PubKey.A.X.Assign(pubKey.A.X.Bytes())
-	invoiceCircuit.PubKey.A.Y.Assign(pubKey.A.Y.Bytes())
+	var point twistededwards.PointAffine
+	point.SetBytes(pubKey.Bytes())
+	xKey := point.X.Bytes()
+	yKey := point.Y.Bytes()
+	invoiceCircuit.PubKey.A.X.Assign(xKey[:])
+	invoiceCircuit.PubKey.A.Y.Assign(yKey[:])
 
-	invoiceCircuit.Sig.R.A.X.Assign(sig.R.X.Bytes())
-	invoiceCircuit.Sig.R.A.Y.Assign(sig.R.Y.Bytes())
-	invoiceCircuit.Sig.S.Assign(sig.S)
+	point.SetBytes(sigBytes)
+	xSig := point.X.Bytes()
+	ySig := point.Y.Bytes()
+	invoiceCircuit.Sig.R.A.X.Assign(xSig[:])
+	invoiceCircuit.Sig.R.A.Y.Assign(ySig[:])
+	invoiceCircuit.Sig.S.Assign(sigBytes[32:])
 
-	assert.SolvingSucceeded(r1cs, &invoiceCircuit)
+	pk, vk, err := groth16.Setup(r1cs)
+	if err != nil {
+		t.Errorf("failed to setup circuit; %s", err.Error())
+		return
+	}
+
+	// log size of proving key to evaluate requirements of vault
+	// size of proving key grows roughly linearly with size of proof set
+	var provingKeyBuf *bytes.Buffer
+	provingKeyBuf = new(bytes.Buffer)
+	_, err = pk.(io.WriterTo).WriteTo(provingKeyBuf)
+	if err != nil {
+		t.Errorf("failed to write proving key to bytes buffer; %s", err.Error())
+		return
+	}
+
+	t.Logf("proving key size in bytes: %d", provingKeyBuf.Len())
+
+	proof, err := groth16.Prove(r1cs, pk, &invoiceCircuit)
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	err = groth16.Verify(proof, vk, &invoiceCircuit)
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
 
 	segmentSize := hFunc.Size()
 	proofIndex := uint64(0)

@@ -102,6 +102,7 @@ func TestOwnershipSk(t *testing.T) {
 			witness.Sk.Assign(privkeyScalar)
 
 			assert.SolvingSucceeded(r1cs, &witness)
+			//assert.ProverSucceeded(r1cs, &witness)
 		}
 
 		// Incorrect sk, pk
@@ -111,7 +112,8 @@ func TestOwnershipSk(t *testing.T) {
 			witness.Pk.A.Y.Assign(42)
 			witness.Sk.Assign(42)
 
-			assert.ProverFailed(r1cs, &witness)
+			assert.SolvingFailed(r1cs, &witness)
+			//assert.ProverFailed(r1cs, &witness)
 		}
 	}
 }

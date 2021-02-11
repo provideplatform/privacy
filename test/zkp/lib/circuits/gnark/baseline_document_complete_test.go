@@ -83,7 +83,7 @@ func parsePoint(id gurvy.ID, buf []byte) ([]byte, []byte) {
 	}
 }
 
-func parseSkscalar(id gurvy.ID, buf []byte) []byte {
+func parseSkScalar(id gurvy.ID, buf []byte) []byte {
 	switch id {
 	case gurvy.BN256:
 		scalar := buf[32:64]
@@ -102,7 +102,7 @@ func parseSkscalar(id gurvy.ID, buf []byte) []byte {
 	}
 }
 
-func TestBaselineDocumentCompleteBN256(t *testing.T) {
+func TestBaselineDocumentComplete(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	signature.Register(signature.EDDSA_BN256, eddsabn256.GenerateKeyInterfaces)
@@ -138,17 +138,16 @@ func TestBaselineDocumentCompleteBN256(t *testing.T) {
 
 			// Parse sk, pk
 			pubkeyAx, pubkeyAy := parsePoint(id, pubKey.Bytes())
-			privkeyScalar := parseSkscalar(id, privKey.Bytes())
+			privkeyScalar := parseSkScalar(id, privKey.Bytes())
 
 			// Generate signature for hash given pk, sk
 			hFunc := conf.h.New("seed")
-			preimage := 35
-			hash := "16130099170765464552823636852555369511329944820189892919423002775646948828469"
-			var frHash big.Int
-			frHash.SetString(hash, 10)
-			hashBin := frHash.Bytes()
+			var preimage big.Int
+			preimage.SetString("35", 10)
+			hFunc.Write(preimage.Bytes())
+			hash := hFunc.Sum(nil)
 
-			sig, err := privKey.Sign(hashBin[:], hFunc)
+			sig, err := privKey.Sign(hash, hFunc)
 			assert.NoError(err)
 
 			// Parse signature

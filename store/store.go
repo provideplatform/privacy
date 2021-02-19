@@ -93,7 +93,7 @@ func (s *Store) Contains(proof string) bool {
 func (s *Store) Insert(proof string) (*int, error) {
 	provider := s.storeProviderFactory()
 	if provider != nil {
-		idx := provider.Insert(proof)
+		idx, _ := provider.Add([]byte(proof)) // FIXME-- should this be hex.DecodeString? RawAdd? return the hash?
 		return &idx, nil
 	}
 	return nil, fmt.Errorf("failed to insert proof in store %s", s.ID)

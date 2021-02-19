@@ -36,6 +36,18 @@ func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
 		return &gnark.BaselineDocumentCircuit{}
 	case GnarkCircuitIdentifierBaselineRollup:
 		return &gnark.BaselineRollupCircuit{}
+	case GnarkCircuitIdentifierPurchaseOrderCircuit:
+		return &gnark.PurchaseOrderCircuit{}
+	case GnarkCircuitIdentifierSalesOrderCircuit:
+		return &gnark.SalesOrderCircuit{}
+	case GnarkCircuitIdentifierShipmentNotificationCircuit:
+		return &gnark.ShipmentNotificationCircuit{}
+	case GnarkCircuitIdentifierGoodsReceiptCircuit:
+		return &gnark.GoodsReceiptCircuit{}
+	case GnarkCircuitIdentifierInvoiceCircuit:
+		return &gnark.InvoiceCircuit{}
+	case GnarkCircuitIdentifierInvoiceSubdividedCircuit:
+		return &gnark.InvoiceCircuitSubdivided{}
 	default:
 		return nil
 	}

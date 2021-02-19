@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
+	proofstorage "github.com/provideapp/privacy/store"
+	storeprovider "github.com/provideapp/privacy/store/providers"
 	zkp "github.com/provideapp/privacy/zkp/providers"
 	provide "github.com/provideservices/provide-go/api"
 	vault "github.com/provideservices/provide-go/api/vault"
@@ -56,6 +59,10 @@ type Circuit struct {
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
+	// proof storage
+	StoreID *uuid.UUID `sql:"type:uuid" json:"-"`
+	store   *proofstorage.Store
+
 	// ephemeral fields
 	provingKey   []byte
 	verifyingKey []byte
@@ -68,6 +75,9 @@ type Circuit struct {
 	verifierContractABI      []byte
 	verifierContractArtifact []byte
 	verifierContractSource   []byte
+
+	// mutex
+	mutex sync.Mutex
 }
 
 func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
@@ -116,6 +126,16 @@ func (c *Circuit) Create() bool {
 			success := rowsAffected > 0
 			if success {
 				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
+
+				err := c.initStore()
+				if err != nil {
+					common.Log.Warning(err.Error())
+					c.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
+					c.Errors = append(c.Errors, &provide.Error{
+						Message: common.StringOrNil(err.Error()),
+					})
+					return false
+				}
 
 				if c.setupRequired() {
 					c.updateStatus(db, circuitStatusPendingSetup, nil)
@@ -168,6 +188,16 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 
 	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
 	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
+
+	if c.store != nil {
+		idx, err := c.store.Insert(*_proof)
+		if err != nil {
+			common.Log.Warningf("failed to insert proof; %s", err.Error())
+		} else {
+			common.Log.Debugf("inserted proof at location %d for circuit %s: %s", *idx, c.ID, *_proof)
+		}
+	}
+
 	return _proof, nil
 }
 
@@ -198,6 +228,15 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, er
 	err = provider.Verify(_proof, c.verifyingKey, witval)
 	if err != nil {
 		return false, err
+	}
+
+	if c.store != nil {
+		idx, err := c.store.Insert(proof)
+		if err != nil {
+			common.Log.Warningf("failed to insert proof; %s", err.Error())
+		} else {
+			common.Log.Debugf("inserted proof at location %d for circuit %s: %s", *idx, c.ID, proof)
+		}
 	}
 
 	common.Log.Debugf("circuit witness %s verified for proof: %s", witness, proof)
@@ -297,6 +336,10 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
 	if c.VerifierContract == nil {
 		err := c.exportVerifier()
 		if err != nil {
@@ -370,6 +413,34 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 	}
 
 	return len(c.Errors) == 0
+}
+
+// initStore attempts to initialize proof storage for the circuit instance
+func (c *Circuit) initStore() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.StoreID != nil {
+		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store has already been initialized", c.ID)
+	}
+
+	common.Log.Debugf("attempting to initialize proof storage for circuit %s", c.ID)
+
+	store := &proofstorage.Store{
+		CircuitID: &c.ID,
+		Name:      common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
+		Provider:  common.StringOrNil(storeprovider.StoreProviderMerkleTree),
+	}
+
+	if store.Create() {
+		common.Log.Debugf("initialized proof storage for circuit with identifier %s", c.ID)
+		c.StoreID = &store.ID
+		c.store = store
+	} else {
+		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store not persisted", c.ID)
+	}
+
+	return nil
 }
 
 // persistKeys attempts to persist the proving and verifying keys

@@ -97,6 +97,7 @@ CREATE TABLE public.circuits (
     vault_id uuid NOT NULL,
     proving_key_id uuid,
     verifying_key_id uuid,
+    store_id uuid,
     abi bytea,
     bin bytea
 );
@@ -152,6 +153,60 @@ CREATE INDEX idx_circuits_curve ON public.circuits USING btree (curve);
 --
 
 CREATE INDEX idx_circuits_status ON public.circuits USING btree (status);
+
+--
+-- Name: stores; Type: TABLE; Schema: public; Owner: privacy
+--
+
+CREATE TABLE public.stores (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    circuit_id uuid NOT NULL,
+    name text NOT NULL,
+    description text,
+    provider character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.stores OWNER TO current_user;
+
+--
+-- Name: stores stores_pkey; Type: CONSTRAINT; Schema: public; Owner: privacy
+--
+
+ALTER TABLE ONLY public.stores
+    ADD CONSTRAINT stores_pkey PRIMARY KEY (id);
+
+--
+-- Name: idx_stores_circuit_id; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_stores_circuit_id ON public.stores USING btree (circuit_id);
+
+--
+-- Name: idx_stores_provider; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_stores_provider ON public.stores USING btree (provider);
+
+--
+-- Name: stores; Type: TABLE; Schema: public; Owner: privacy
+--
+
+CREATE TABLE public.proofs (
+    id SERIAL PRIMARY KEY,
+    store_id uuid NOT NULL,
+    proof VARCHAR(66) NOT NULL
+);
+
+
+ALTER TABLE public.proofs OWNER TO current_user;
+
+--
+-- Name: idx_proofs_store_id; Type: INDEX; Schema: public; Owner: privacy
+--
+
+CREATE INDEX idx_proofs_store_id ON public.proofs USING btree (store_id);
 
 --
 -- PostgreSQL database dump complete

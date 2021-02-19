@@ -1,6 +1,8 @@
 package store
 
 import (
+	"fmt"
+
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
@@ -35,6 +37,17 @@ func (s *Store) storeProviderFactory() proofstorage.StoreProvider {
 	return nil
 }
 
+// Find loads a store by id
+func Find(storeID uuid.UUID) *Store {
+	store := &Store{}
+	db := dbconf.DatabaseConnection()
+	db.Where("id = ?", storeID).Find(&store)
+	if store == nil || store.ID == uuid.Nil {
+		return nil
+	}
+	return store
+}
+
 // Create a store
 func (s *Store) Create() bool {
 	if !s.validate() {
@@ -65,6 +78,37 @@ func (s *Store) Create() bool {
 	}
 
 	return false
+}
+
+// Contains returns true if the given proof exists in the store
+func (s *Store) Contains(proof string) bool {
+	provider := s.storeProviderFactory()
+	if provider != nil {
+		return provider.Contains(proof)
+	}
+	return false
+}
+
+// Insert a proof into the state of the configured storage provider
+func (s *Store) Insert(proof string) (*int, error) {
+	provider := s.storeProviderFactory()
+	if provider != nil {
+		idx := provider.Insert(proof)
+		return &idx, nil
+	}
+	return nil, fmt.Errorf("failed to insert proof in store %s", s.ID)
+}
+
+// Recalculate the underlying state of the configured storage provider
+// (i.e., the root in the case of a merkle tree provider)
+func (s *Store) Recalculate() (*string, error) {
+	provider := s.storeProviderFactory()
+	if provider != nil {
+		root := provider.Recalculate()
+		return &root, nil
+
+	}
+	return nil, fmt.Errorf("failed to recalculate store %s", s.ID)
 }
 
 // validate the store params

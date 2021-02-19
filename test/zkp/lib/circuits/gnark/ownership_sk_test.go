@@ -1,7 +1,6 @@
 package gnark
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 
@@ -27,8 +26,6 @@ func parseKeys(id gurvy.ID, pubKeyBuf []byte, privKeyBuf []byte) ([]byte, []byte
 	var pointbls377 edwardsbls377.PointAffine
 	var pointbw761 edwardsbw761.PointAffine
 
-	fmt.Println(pubKeyBuf)
-	fmt.Println(privKeyBuf)
 	switch id {
 	case gurvy.BN256:
 		pointbn256.SetBytes(pubKeyBuf[:32])
@@ -89,17 +86,17 @@ func TestOwnershipSk(t *testing.T) {
 			pubKey := privKey.Public()
 
 			// Parse sk, pk
-			fmt.Println(id)
-			fmt.Println(ss)
 			pubkeyAx, pubkeyAy, privkeyScalar := parseKeys(id, pubKey.Bytes(), privKey.Bytes())
-			fmt.Println(pubkeyAx)
-			fmt.Println(pubkeyAy)
-			fmt.Println(privkeyScalar)
+			privKeyScalarLength := len(privkeyScalar)
+			privKeyScalarUpper := privkeyScalar[:privKeyScalarLength/2]
+			privKeyScalarLower := privkeyScalar[privKeyScalarLength/2:]
 
 			var witness libgnark.OwnershipSkCircuit
 			witness.Pk.A.X.Assign(pubkeyAx)
 			witness.Pk.A.Y.Assign(pubkeyAy)
-			witness.Sk.Assign(privkeyScalar)
+
+			witness.Sk.Upper.Assign(privKeyScalarUpper)
+			witness.Sk.Lower.Assign(privKeyScalarLower)
 
 			assert.SolvingSucceeded(r1cs, &witness)
 			//assert.ProverSucceeded(r1cs, &witness)
@@ -108,12 +105,14 @@ func TestOwnershipSk(t *testing.T) {
 		// Incorrect sk, pk
 		{
 			var witness libgnark.OwnershipSkCircuit
-			witness.Pk.A.X.Assign(42)
+			witness.Pk.A.X.Assign(42) // / these are nonsense values for this circuit
 			witness.Pk.A.Y.Assign(42)
-			witness.Sk.Assign(42)
+			witness.Sk.Upper.Assign(42)
+			witness.Sk.Lower.Assign(0)
 
 			assert.SolvingFailed(r1cs, &witness)
 			//assert.ProverFailed(r1cs, &witness)
 		}
+
 	}
 }

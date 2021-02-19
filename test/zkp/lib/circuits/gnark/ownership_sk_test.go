@@ -105,7 +105,7 @@ func TestOwnershipSk(t *testing.T) {
 		// Incorrect sk, pk
 		{
 			var witness libgnark.OwnershipSkCircuit
-			witness.Pk.A.X.Assign(42) // / these are nonsense values for this circuit
+			witness.Pk.A.X.Assign(42) // these are nonsense values for this circuit
 			witness.Pk.A.Y.Assign(42)
 			witness.Sk.Upper.Assign(42)
 			witness.Sk.Lower.Assign(0)

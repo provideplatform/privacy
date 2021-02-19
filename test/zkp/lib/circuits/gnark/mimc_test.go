@@ -1,35 +1,53 @@
 package gnark
 
 import (
+	"math/big"
 	"testing"
 
-	"github.com/consensys/gurvy"
-
 	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/crypto/hash"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gurvy"
 	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
 func TestPreimage(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var mimcCircuit libgnark.MimcCircuit
-
-	r1cs, err := frontend.Compile(gurvy.BN256, &mimcCircuit)
-	assert.NoError(err)
-
-	{
-		var witness libgnark.MimcCircuit
-		witness.Hash.Assign(42)
-		witness.PreImage.Assign(42)
-		assert.ProverFailed(r1cs, &witness)
+	confs := map[gurvy.ID]hash.Hash{
+		gurvy.BN256:  hash.MIMC_BN256,
+		gurvy.BLS381: hash.MIMC_BLS381,
+		gurvy.BLS377: hash.MIMC_BLS377,
+		gurvy.BW761:  hash.MIMC_BW761,
 	}
 
-	{
-		var witness libgnark.MimcCircuit
-		witness.PreImage.Assign(35)
-		witness.Hash.Assign("16130099170765464552823636852555369511329944820189892919423002775646948828469")
-		assert.ProverSucceeded(r1cs, &witness)
-	}
+	for id, h := range confs {
+		var mimcCircuit libgnark.MimcCircuit
+		r1cs, err := frontend.Compile(id, &mimcCircuit)
+		assert.NoError(err)
 
+		{
+			hFunc := h.New("seed")
+			var preimage big.Int
+			preimage.SetString("35", 10)
+			hFunc.Write(preimage.Bytes())
+			hash := hFunc.Sum(nil)
+
+			var witness libgnark.MimcCircuit
+			witness.PreImage.Assign(preimage)
+			witness.Hash.Assign(hash)
+
+			assert.SolvingSucceeded(r1cs, &witness)
+			//assert.ProverSucceeded(r1cs, &witness)
+		}
+
+		{
+			var witness libgnark.MimcCircuit
+			witness.Hash.Assign(42) // these are nonsense values for this circuit
+			witness.PreImage.Assign(42)
+
+			assert.SolvingFailed(r1cs, &witness)
+			//assert.ProverFailed(r1cs, &witness)
+		}
+	}
 }

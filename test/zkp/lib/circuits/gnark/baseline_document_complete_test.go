@@ -1,6 +1,7 @@
 package gnark
 
 import (
+	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -26,6 +27,7 @@ func parseSignature(id gurvy.ID, buf []byte) ([]byte, []byte, []byte) {
 	var pointbls381 edwardsbls381.PointAffine
 	var pointbls377 edwardsbls377.PointAffine
 	var pointbw761 edwardsbw761.PointAffine
+
 	switch id {
 	case gurvy.BN256:
 		pointbn256.SetBytes(buf[:32])
@@ -57,6 +59,7 @@ func parsePoint(id gurvy.ID, buf []byte) ([]byte, []byte) {
 	var pointbls381 edwardsbls381.PointAffine
 	var pointbls377 edwardsbls377.PointAffine
 	var pointbw761 edwardsbw761.PointAffine
+
 	switch id {
 	case gurvy.BN256:
 		pointbn256.SetBytes(buf[:32])
@@ -124,10 +127,11 @@ func TestBaselineDocumentComplete(t *testing.T) {
 
 	for id, conf := range confs {
 		var baselineDocumentComplete libgnark.BaselineDocumentCompleteCircuit
-		r1cs, err := frontend.Compile(gurvy.BN256, &baselineDocumentComplete)
+		r1cs, err := frontend.Compile(id, &baselineDocumentComplete)
 		assert.NoError(err)
 
-		// Correct sk, pf, sig, hash, preimage
+		fmt.Println(id)
+		// Correct sk, pk, sig, hash, preimage
 		{
 			// Generate eddsa sk, pk
 			src := rand.NewSource(0)
@@ -139,6 +143,9 @@ func TestBaselineDocumentComplete(t *testing.T) {
 			// Parse sk, pk
 			pubkeyAx, pubkeyAy := parsePoint(id, pubKey.Bytes())
 			privkeyScalar := parseSkScalar(id, privKey.Bytes())
+			privKeyScalarLength := len(privkeyScalar)
+			privKeyScalarUpper := privkeyScalar[:privKeyScalarLength/2]
+			privKeyScalarLower := privkeyScalar[privKeyScalarLength/2:]
 
 			// Generate signature for hash given pk, sk
 			hFunc := conf.h.New("seed")
@@ -146,6 +153,7 @@ func TestBaselineDocumentComplete(t *testing.T) {
 			preimage.SetString("35", 10)
 			hFunc.Write(preimage.Bytes())
 			hash := hFunc.Sum(nil)
+			fmt.Println(hash)
 
 			sig, err := privKey.Sign(hash, hFunc)
 			assert.NoError(err)
@@ -158,7 +166,8 @@ func TestBaselineDocumentComplete(t *testing.T) {
 			witness.Doc.Hash.Assign(hash)
 			witness.Pk.A.X.Assign(pubkeyAx)
 			witness.Pk.A.Y.Assign(pubkeyAy)
-			witness.Sk.Assign(privkeyScalar)
+			witness.Sk.Upper.Assign(privKeyScalarUpper)
+			witness.Sk.Lower.Assign(privKeyScalarLower)
 			witness.Sig.R.A.X.Assign(sigRx)
 			witness.Sig.R.A.Y.Assign(sigRy)
 			witness.Sig.S.Assign(sigS)

@@ -1,12 +1,20 @@
 package gnark
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
 	"github.com/consensys/gurvy"
 )
+
+// EddsaPrivateKey defines eddsa private key in two chunks (upper and lower)
+type EddsaPrivateKey struct {
+	Upper frontend.Variable
+	Lower frontend.Variable
+}
 
 // Document is similar to MimcCircuit
 type Document struct {
@@ -18,7 +26,7 @@ type Document struct {
 type BaselineDocumentCompleteCircuit struct {
 	Doc Document
 	Pk  eddsa.PublicKey `gnark:",public"`
-	Sk  frontend.Variable
+	Sk  EddsaPrivateKey
 	Sig eddsa.Signature `gnark:",public"`
 }
 
@@ -30,9 +38,26 @@ func (circuit *BaselineDocumentCompleteCircuit) Define(curveID gurvy.ID, cs *fro
 	}
 	circuit.Pk.Curve = params
 
+	// Reuse existing circuits, eg OwnershipSK?
+
 	// Check for ownership of sk
+	var i big.Int
+	if curveID == gurvy.BW761 {
+		// two chunks of 192bits each
+		i.SetString("6277101735386680763835789423207666416102355444464034512896", 10) // 2**192
+	} else {
+		// two chunks of 128bits each
+		i.SetString("340282366920938463463374607431768211456", 10) // 2**128
+	}
+	scalar := cs.Constant(i)
+
 	computedPk := twistededwards.Point{}
-	computedPk.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk, circuit.Pk.Curve)
+	computedPk.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk.Upper, circuit.Pk.Curve)
+	computedPk.ScalarMulNonFixedBase(cs, &computedPk, scalar, circuit.Pk.Curve)
+	lower := twistededwards.Point{}
+	lower.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk.Lower, circuit.Pk.Curve)
+
+	computedPk.AddGeneric(cs, &lower, &computedPk, circuit.Pk.Curve)
 	computedPk.MustBeOnCurve(cs, circuit.Pk.Curve)
 
 	cs.AssertIsEqual(circuit.Pk.A.X, computedPk.X)

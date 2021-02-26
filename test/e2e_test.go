@@ -365,7 +365,7 @@ func TestProcurement(t *testing.T) {
 
 	hFunc := mimc.NewMiMC("seed")
 
-	// var merkleBuf bytes.Buffer
+	var merkleBuf bytes.Buffer
 
 	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
 	soNumber := []byte("1234567890")
@@ -419,7 +419,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
 
 	// bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "sales_order")
 
@@ -476,7 +476,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("sales order proof/verification: %v / %v", proof.Proof, verification.Result)
 
 	// // bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "shipment_notification")
 
@@ -533,7 +533,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("shipment notification proof/verification: %v / %v", proof.Proof, verification.Result)
 
 	// // bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "goods_receipt")
 
@@ -590,7 +590,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("goods receipt proof/verification: %v / %v", proof.Proof, verification.Result)
 
 	// // bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	merkleBuf.Write(preImage)
 
 	src := rand.NewSource(0)
 	r := rand.New(src)
@@ -669,373 +669,6 @@ func TestProcurement(t *testing.T) {
 			"Sig.R.A.X":  xSigString,
 			"Sig.R.A.Y":  ySigString,
 			"Sig.S":      sigSString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("invoice proof/verification: %v / %v", proof.Proof, verification.Result)
-
-	// segmentSize := hFunc.Size()
-	// proofIndex := uint64(0)
-	// merkleRoot, proofSet, numLeaves, err := gnark_merkle.BuildReaderProof(&merkleBuf, hFunc, segmentSize, proofIndex)
-	// if err != nil {
-	// 	t.Errorf("failed to build merkle proof; %s", err.Error())
-	// 	return
-	// }
-
-	// proofVerified := gnark_merkle.VerifyProof(hFunc, merkleRoot, proofSet, proofIndex, numLeaves)
-	// if !proofVerified {
-	// 	t.Errorf("failed to verify merkle proof; %s", err.Error())
-	// 	return
-	// }
-
-	// var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
-
-	// // to compile the circuit, the witnesses must be allocated in the correct sizes
-	// baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
-	// baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	// r1cs, err = frontend.Compile(gurvy.BN256, &baselineCircuit)
-	// if err != nil {
-	// 	t.Errorf("failed to compile circuit; %s", err.Error())
-	// 	return
-	// }
-
-	// merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
-
-	// publicWitness.Proofs = make([]frontend.Variable, len(proofSet))
-	// publicWitness.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	// publicWitness.RootHash.Assign(merkleRoot)
-	// for i := 0; i < len(proofSet); i++ {
-	// 	publicWitness.Proofs[i].Assign(proofSet[i])
-
-	// 	if i < len(proofSet)-1 {
-	// 		publicWitness.Helpers[i].Assign(merkleProofHelper[i])
-	// 	}
-	// }
-	// // assert.ProverSucceeded(r1cs, &publicWitness)
-}
-
-func TestProcurementWithSubdividedWitnesses(t *testing.T) {
-	testUserID, _ := uuid.NewV4()
-	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "baseline_document")
-
-	circuit, err := privacy.CreateCircuit(*token, params)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created circuit %v", circuit)
-
-	hFunc := mimc.NewMiMC("seed")
-
-	var merkleBuf bytes.Buffer
-
-	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
-	soNumber := []byte("1234567890")
-	certificateNumber, err := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
-	if err != nil {
-		t.Error("failed to convert uuid to bytes")
-		return
-	}
-
-	// mimc Write never returns an error
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(soNumber)
-	hFunc.Write(certificateNumber.Bytes())
-	// preimage is itself a digest due to the field element size limitation of the curve
-	preImage := hFunc.Sum(nil)
-
-	var i big.Int
-	preImageString := i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ := mimc.Sum("seed", preImage)
-	hashString := i.SetBytes(hash).String()
-
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
-
-	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
-
-	// bytes.Buffer.Write() may panic, but never returns an error
-	merkleBuf.Write(preImage)
-
-	params = circuitParamsFactory("gnark", "baseline_document")
-
-	circuit, err = privacy.CreateCircuit(*token, params)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created circuit %v", circuit)
-
-	globalSalesOrderNumber := []byte("ENTITY-1234567890")
-	createdOn := []byte("01/02/2021 04:40 PM UTC")
-
-	hFunc.Reset()
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(globalSalesOrderNumber)
-	hFunc.Write(createdOn)
-	hFunc.Write([]byte(*proof.Proof))
-	preImage = hFunc.Sum(nil)
-
-	preImageString = i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ = mimc.Sum("seed", preImage)
-	hashString = i.SetBytes(hash).String()
-
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
-
-	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("sales order proof/verification: %v / %v", proof.Proof, verification.Result)
-
-	// bytes.Buffer.Write() may panic, but never returns an error
-	merkleBuf.Write(preImage)
-
-	params = circuitParamsFactory("gnark", "baseline_document")
-
-	circuit, err = privacy.CreateCircuit(*token, params)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created circuit %v", circuit)
-
-	globalShipmentNumber := []byte("ENTITY-0000123456")
-	soldTo := []byte("56785678")
-
-	hFunc.Reset()
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(globalShipmentNumber)
-	hFunc.Write(soldTo)
-	hFunc.Write([]byte(*proof.Proof))
-	preImage = hFunc.Sum(nil)
-
-	preImageString = i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ = mimc.Sum("seed", preImage)
-	hashString = i.SetBytes(hash).String()
-
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
-
-	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("shipment notification proof/verification: %v / %v", proof.Proof, verification.Result)
-
-	// bytes.Buffer.Write() may panic, but never returns an error
-	merkleBuf.Write(preImage)
-
-	params = circuitParamsFactory("gnark", "baseline_document")
-
-	circuit, err = privacy.CreateCircuit(*token, params)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created circuit %v", circuit)
-
-	globalGoodsReceiptNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001-GR")
-	createdOn = []byte("01/04/2021 01:40 PM UTC")
-
-	hFunc.Reset()
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(globalGoodsReceiptNumber)
-	hFunc.Write(createdOn)
-	hFunc.Write([]byte(*proof.Proof))
-	preImage = hFunc.Sum(nil)
-
-	preImageString = i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ = mimc.Sum("seed", preImage)
-	hashString = i.SetBytes(hash).String()
-
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
-
-	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"PreImage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("goods receipt proof/verification: %v / %v", proof.Proof, verification.Result)
-
-	// bytes.Buffer.Write() may panic, but never returns an error
-	merkleBuf.Write(preImage)
-
-	src := rand.NewSource(0)
-	r := rand.New(src)
-
-	privKey, _ := eddsa.GenerateKey(r)
-	pubKey := privKey.PublicKey
-
-	var invoiceData big.Int
-	invoiceIntStr := "123456789123456789123456789123456789"
-	invoiceData.SetString(invoiceIntStr, 10)
-	invoiceDataBytes := invoiceData.Bytes()
-
-	sigBytes, err := privKey.Sign(invoiceDataBytes, hFunc)
-	if err != nil {
-		t.Error("failed to sign invoice data")
-		return
-	}
-
-	verified, err := pubKey.Verify(sigBytes, invoiceDataBytes, hFunc)
-	if err != nil || !verified {
-		t.Error("failed to verify invoice data")
-		return
-	}
-
-	params = circuitParamsFactory("gnark", "invoice_sub")
-
-	circuit, err = privacy.CreateCircuit(*token, params)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created circuit %v", circuit)
-
-	var sig eddsa.Signature
-	sig.SetBytes(sigBytes)
-
-	var point twistededwards.PointAffine
-	point.SetBytes(pubKey.Bytes())
-	xKey := point.X.Bytes()
-	xKeyString := i.SetBytes(xKey[:]).String()
-	yKey := point.Y.Bytes()
-	yKeyString := i.SetBytes(yKey[:]).String()
-
-	point.SetBytes(sigBytes)
-	xSig := point.X.Bytes()
-	xSigString := i.SetBytes(xSig[:]).String()
-	ySig := point.Y.Bytes()
-	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[32:]).String()
-
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
-
-	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"Msg":      invoiceIntStr,
-			"PubKeyAX": xKeyString,
-			"PubKeyAY": yKeyString,
-			"SigRAX":   xSigString,
-			"SigRAY":   ySigString,
-			"SigS":     sigSString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"Msg":      invoiceIntStr,
-			"PubKeyAX": xKeyString,
-			"PubKeyAY": yKeyString,
-			"SigRAX":   xSigString,
-			"SigRAY":   ySigString,
-			"SigS":     sigSString,
 		},
 	})
 	if err != nil {

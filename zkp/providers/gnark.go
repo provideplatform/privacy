@@ -65,7 +65,11 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 	if witmap, witmapOk := inputs.(map[string]interface{}); witmapOk {
 		witval := reflect.Indirect(reflect.ValueOf(w))
 		for k := range witmap {
-			field := witval.FieldByName(k)
+			field := witval
+			// handle variables in nested structs
+			for _, f := range strings.Split(k, ".") {
+				field = field.FieldByName(f)
+			}
 			if !field.CanSet() {
 				return nil, fmt.Errorf("failed to serialize witness; field %s does not exist on %s circuit", k, identifier)
 			}

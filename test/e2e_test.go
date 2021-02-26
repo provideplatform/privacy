@@ -733,7 +733,7 @@ func TestProcurementWithSubdividedWitnesses(t *testing.T) {
 
 	hFunc := mimc.NewMiMC("seed")
 
-	// var merkleBuf bytes.Buffer
+	var merkleBuf bytes.Buffer
 
 	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
 	soNumber := []byte("1234567890")
@@ -786,7 +786,7 @@ func TestProcurementWithSubdividedWitnesses(t *testing.T) {
 	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
 
 	// bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "baseline_document")
 
@@ -842,8 +842,8 @@ func TestProcurementWithSubdividedWitnesses(t *testing.T) {
 
 	t.Logf("sales order proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// // bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	// bytes.Buffer.Write() may panic, but never returns an error
+	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "baseline_document")
 
@@ -899,8 +899,8 @@ func TestProcurementWithSubdividedWitnesses(t *testing.T) {
 
 	t.Logf("shipment notification proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// // bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	// bytes.Buffer.Write() may panic, but never returns an error
+	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "baseline_document")
 
@@ -956,8 +956,8 @@ func TestProcurementWithSubdividedWitnesses(t *testing.T) {
 
 	t.Logf("goods receipt proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// // bytes.Buffer.Write() may panic, but never returns an error
-	// merkleBuf.Write(preImage)
+	// bytes.Buffer.Write() may panic, but never returns an error
+	merkleBuf.Write(preImage)
 
 	src := rand.NewSource(0)
 	r := rand.New(src)
@@ -1045,42 +1045,82 @@ func TestProcurementWithSubdividedWitnesses(t *testing.T) {
 
 	t.Logf("invoice proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// segmentSize := hFunc.Size()
-	// proofIndex := uint64(0)
-	// merkleRoot, proofSet, numLeaves, err := gnark_merkle.BuildReaderProof(&merkleBuf, hFunc, segmentSize, proofIndex)
-	// if err != nil {
-	// 	t.Errorf("failed to build merkle proof; %s", err.Error())
-	// 	return
-	// }
+	segmentSize := hFunc.Size()
+	proofIndex := uint64(0)
+	merkleRoot, proofSet, numLeaves, err := gnark_merkle.BuildReaderProof(&merkleBuf, hFunc, segmentSize, proofIndex)
+	if err != nil {
+		t.Errorf("failed to build merkle proof; %s", err.Error())
+		return
+	}
 
-	// proofVerified := gnark_merkle.VerifyProof(hFunc, merkleRoot, proofSet, proofIndex, numLeaves)
-	// if !proofVerified {
-	// 	t.Errorf("failed to verify merkle proof; %s", err.Error())
-	// 	return
-	// }
+	proofVerified := gnark_merkle.VerifyProof(hFunc, merkleRoot, proofSet, proofIndex, numLeaves)
+	if !proofVerified {
+		t.Errorf("failed to verify merkle proof; %s", err.Error())
+		return
+	}
 
-	// var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
+	var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
 
-	// // to compile the circuit, the witnesses must be allocated in the correct sizes
-	// baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
-	// baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	// r1cs, err = frontend.Compile(gurvy.BN256, &baselineCircuit)
-	// if err != nil {
-	// 	t.Errorf("failed to compile circuit; %s", err.Error())
-	// 	return
-	// }
+	// to compile the circuit, the witnesses must be allocated in the correct sizes
+	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
+	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	r1cs, err := frontend.Compile(gurvy.BN256, &baselineCircuit)
+	if err != nil {
+		t.Errorf("failed to compile circuit; %s", err.Error())
+		return
+	}
 
-	// merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
+	merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
 
-	// publicWitness.Proofs = make([]frontend.Variable, len(proofSet))
-	// publicWitness.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	// publicWitness.RootHash.Assign(merkleRoot)
-	// for i := 0; i < len(proofSet); i++ {
-	// 	publicWitness.Proofs[i].Assign(proofSet[i])
+	publicWitness.Proofs = make([]frontend.Variable, len(proofSet))
+	publicWitness.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	publicWitness.RootHash.Assign(merkleRoot)
+	for i := 0; i < len(proofSet); i++ {
+		publicWitness.Proofs[i].Assign(proofSet[i])
 
-	// 	if i < len(proofSet)-1 {
-	// 		publicWitness.Helpers[i].Assign(merkleProofHelper[i])
-	// 	}
-	// }
-	// // assert.ProverSucceeded(r1cs, &publicWitness)
+		if i < len(proofSet)-1 {
+			publicWitness.Helpers[i].Assign(merkleProofHelper[i])
+		}
+	}
+
+	pk, vk, err := groth16.Setup(r1cs)
+	if err != nil {
+		t.Errorf("failed to setup circuit; %s", err.Error())
+		return
+	}
+
+	// log size of proving key to evaluate requirements of vault
+	// size of proving key grows roughly linearly with size of proof set
+	var provingKeyBuf *bytes.Buffer
+	provingKeyBuf = new(bytes.Buffer)
+	_, err = pk.(io.WriterTo).WriteTo(provingKeyBuf)
+	if err != nil {
+		t.Errorf("failed to write proving key to bytes buffer; %s", err.Error())
+		return
+	}
+
+	t.Logf("proving key size in bytes: %d", provingKeyBuf.Len())
+
+	merkleProof, err := groth16.Prove(r1cs, pk, &publicWitness)
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	err = groth16.Verify(merkleProof, vk, &publicWitness)
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("merkle circuit verified")
+
+	store, err := privacy.GetStoreValue(*token, circuit.ID.String(), 0)
+	if err != nil {
+		t.Errorf("failed to get store value; %s", err.Error())
+		return
+	}
+	t.Logf("store value: %s", *store.Value)
+
+	// get root hash from store and verify it matches our root
 }

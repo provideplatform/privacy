@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gurvy"
 )
 
-// BaselineRollupCircuit defines a pre-image knowledge proof
+// BaselineRollupCircuit defines a mrkle root verification proof
 type BaselineRollupCircuit struct {
 	Proofs, Helpers []frontend.Variable
 	RootHash        frontend.Variable `gnark:",public"`

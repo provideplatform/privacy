@@ -592,10 +592,7 @@ func TestProcurement(t *testing.T) {
 	// // bytes.Buffer.Write() may panic, but never returns an error
 	merkleBuf.Write(preImage)
 
-	src := rand.NewSource(0)
-	r := rand.New(src)
-
-	privKey, _ := eddsa.GenerateKey(r)
+	privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
 	pubKey := privKey.PublicKey
 
 	var invoiceData big.Int

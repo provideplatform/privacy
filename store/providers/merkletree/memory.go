@@ -315,11 +315,12 @@ func (tree *MemoryMerkleTree) ValidateExistence(original []byte, index int, inte
 }
 
 // Root returns the hash of the root of the tree
-func (tree *MemoryMerkleTree) Root() string {
+func (tree *MemoryMerkleTree) Root() (*string, error) {
 	if tree.RootNode == nil {
-		return ""
+		return nil, fmt.Errorf("nil root node")
 	}
-	return tree.RootNode.Hash()
+	root := tree.RootNode.Hash()
+	return &root, nil
 }
 
 // Length returns the count of the tree leafs
@@ -355,7 +356,11 @@ func (tree *MemoryMerkleTree) HashAt(index int) (string, error) {
 
 // MarshalJSON Creates JSON version of the needed fields of the tree
 func (tree *MemoryMerkleTree) MarshalJSON() ([]byte, error) {
-	res := fmt.Sprintf("{\"root\":\"%v\", \"length\":%v}", tree.Root(), tree.Length())
+	root, err := tree.Root()
+	if err != nil {
+		return nil, err
+	}
+	res := fmt.Sprintf("{\"root\":\"%v\", \"length\":%v}", *root, tree.Length())
 	return []byte(res), nil
 }
 

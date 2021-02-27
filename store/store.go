@@ -89,6 +89,19 @@ func (s *Store) Contains(proof string) bool {
 	return false
 }
 
+// ValueAt returns the store representation of value at the given index
+func (s *Store) ValueAt(index int) (*string, error) {
+	provider := s.storeProviderFactory()
+	if provider != nil {
+		val, err := provider.HashAt(index)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve value at index %d in store %s; %s", index, s.ID, err.Error())
+		}
+		return &val, nil
+	}
+	return nil, fmt.Errorf("failed to resolve value at index %d in store %s", index, s.ID)
+}
+
 // Insert a proof into the state of the configured storage provider
 func (s *Store) Insert(proof string) (*int, error) {
 	provider := s.storeProviderFactory()

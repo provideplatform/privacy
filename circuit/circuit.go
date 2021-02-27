@@ -156,6 +156,15 @@ func (c *Circuit) Create() bool {
 	return false
 }
 
+// StoreValueAt returns the underlying store representation
+func (c *Circuit) StoreValueAt(index int) (*string, error) {
+	if c.store == nil {
+		return nil, fmt.Errorf("failed to resolve store value at index %d for circuit %s", index, c.ID)
+	}
+
+	return c.store.ValueAt(index)
+}
+
 // Prove generates a proof for the given witness
 func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	c.enrich()

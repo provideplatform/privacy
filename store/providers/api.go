@@ -14,6 +14,7 @@ type StoreProvider interface {
 	Contains(proof string) bool
 	Add(data []byte) (index int, hash string)
 	RawAdd(data []byte) (index int, hash string)
+	HashAt(index int) (hash string, err error)
 	Insert(hash string) (index int)
 	Recalculate() (root string)
 }

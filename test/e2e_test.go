@@ -341,10 +341,10 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 		t.Logf("index/hash: %d / %s", index, hash)
 	}
 	tr.Recalculate()
-	root := tr.Root()
-	t.Logf("root: %s", root)
+	root, _ := tr.Root()
+	t.Logf("root: %s", *root)
 
-	if root != hex.EncodeToString(merkleRoot) {
+	if *root != hex.EncodeToString(merkleRoot) {
 		t.Error("calculated root for each implementation should match for proof counts which are powers of two")
 		return
 	}

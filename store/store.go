@@ -119,7 +119,7 @@ func (s *Store) Root() (*string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve root in store %s; %s", s.ID, err.Error())
 		}
-		return &root, nil
+		return root, nil
 	}
 	return nil, fmt.Errorf("failed to resolve root in store %s", s.ID)
 }

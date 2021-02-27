@@ -295,7 +295,14 @@ func circuitStoreValueHandler(c *gin.Context) {
 		return
 	}
 
+	root, err := circuit.StoreRoot()
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
 	provide.Render(map[string]interface{}{
+		"root":  root,
 		"value": value,
 	}, 200, c)
 }

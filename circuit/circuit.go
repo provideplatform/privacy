@@ -156,6 +156,15 @@ func (c *Circuit) Create() bool {
 	return false
 }
 
+// StoreRoot returns the underlying store root
+func (c *Circuit) StoreRoot() (*string, error) {
+	if c.store == nil {
+		return nil, fmt.Errorf("failed to resolve store root for circuit %s", c.ID)
+	}
+
+	return c.store.Root()
+}
+
 // StoreValueAt returns the underlying store representation
 func (c *Circuit) StoreValueAt(index int) (*string, error) {
 	if c.store == nil {

@@ -89,19 +89,6 @@ func (s *Store) Contains(proof string) bool {
 	return false
 }
 
-// ValueAt returns the store representation of value at the given index
-func (s *Store) ValueAt(index int) (*string, error) {
-	provider := s.storeProviderFactory()
-	if provider != nil {
-		val, err := provider.HashAt(index)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve value at index %d in store %s; %s", index, s.ID, err.Error())
-		}
-		return &val, nil
-	}
-	return nil, fmt.Errorf("failed to resolve value at index %d in store %s", index, s.ID)
-}
-
 // Insert a proof into the state of the configured storage provider
 func (s *Store) Insert(proof string) (*int, error) {
 	provider := s.storeProviderFactory()
@@ -122,6 +109,32 @@ func (s *Store) Recalculate() (*string, error) {
 
 	}
 	return nil, fmt.Errorf("failed to recalculate store %s", s.ID)
+}
+
+// Root returns the store root
+func (s *Store) Root() (*string, error) {
+	provider := s.storeProviderFactory()
+	if provider != nil {
+		root, err := provider.Root()
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve root in store %s; %s", s.ID, err.Error())
+		}
+		return &root, nil
+	}
+	return nil, fmt.Errorf("failed to resolve root in store %s", s.ID)
+}
+
+// ValueAt returns the store representation of value at the given index
+func (s *Store) ValueAt(index int) (*string, error) {
+	provider := s.storeProviderFactory()
+	if provider != nil {
+		val, err := provider.HashAt(index)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve value at index %d in store %s; %s", index, s.ID, err.Error())
+		}
+		return &val, nil
+	}
+	return nil, fmt.Errorf("failed to resolve value at index %d in store %s", index, s.ID)
 }
 
 // validate the store params

@@ -193,20 +193,20 @@ CREATE INDEX idx_stores_provider ON public.stores USING btree (provider);
 -- Name: stores; Type: TABLE; Schema: public; Owner: privacy
 --
 
-CREATE TABLE public.proofs (
+CREATE TABLE public.hashes (
     id SERIAL PRIMARY KEY,
     store_id uuid NOT NULL,
-    proof VARCHAR(66) NOT NULL
+    hash VARCHAR(66) NOT NULL
 );
 
 
-ALTER TABLE public.proofs OWNER TO current_user;
+ALTER TABLE public.hashes OWNER TO current_user;
 
 --
--- Name: idx_proofs_store_id; Type: INDEX; Schema: public; Owner: privacy
+-- Name: idx_hashes_store_id; Type: INDEX; Schema: public; Owner: privacy
 --
 
-CREATE INDEX idx_proofs_store_id ON public.proofs USING btree (store_id);
+CREATE INDEX idx_hashes_store_id_hash ON public.hashes USING btree (store_id, hash);
 
 --
 -- PostgreSQL database dump complete

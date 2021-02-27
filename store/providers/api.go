@@ -17,6 +17,7 @@ type StoreProvider interface {
 	HashAt(index int) (hash string, err error)
 	Insert(hash string) (index int)
 	Recalculate() (root string)
+	Root() (root string, err error)
 }
 
 // InitMerkleTreeStoreProvider initializes a durable merkle tree

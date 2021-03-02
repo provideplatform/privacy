@@ -54,16 +54,6 @@ type InvoiceCircuit struct {
 	Msg    frontend.Variable `gnark:",public"`
 }
 
-// InvoiceCircuitSubdivided defines a knowledge proof for invoices
-type InvoiceCircuitSubdivided struct {
-	PubKeyAX frontend.Variable `gnark:",public"`
-	PubKeyAY frontend.Variable `gnark:",public"`
-	SigRAX   frontend.Variable `gnark:",public"`
-	SigRAY   frontend.Variable `gnark:",public"`
-	SigS     frontend.Variable `gnark:",public"`
-	Msg      frontend.Variable `gnark:",public"`
-}
-
 // Define declares the PO circuit constraints
 func (circuit *PurchaseOrderCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
@@ -129,28 +119,6 @@ func (circuit *InvoiceCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintS
 	circuit.PubKey.Curve = curve
 
 	eddsa.Verify(cs, circuit.Sig, circuit.Msg, circuit.PubKey)
-
-	return nil
-}
-
-// Define declares the Invoice subdivided circuit constraints
-func (circuit *InvoiceCircuitSubdivided) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	curve, err := twistededwards.NewEdCurve(curveID)
-	if err != nil {
-		return err
-	}
-
-	var pubKey eddsa.PublicKey
-	pubKey.Curve = curve
-	pubKey.A.X = circuit.PubKeyAX
-	pubKey.A.Y = circuit.PubKeyAY
-
-	var sig eddsa.Signature
-	sig.R.A.X = circuit.SigRAX
-	sig.R.A.Y = circuit.SigRAY
-	sig.S = circuit.SigS
-
-	eddsa.Verify(cs, sig, circuit.Msg, pubKey)
 
 	return nil
 }

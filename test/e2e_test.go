@@ -27,6 +27,10 @@ import (
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 
+func waitForAsync() {
+	time.Sleep(time.Duration(2) * time.Second)
+}
+
 func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 	return map[string]interface{}{
 		"curve":          "BN256",
@@ -50,8 +54,7 @@ func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t
 
 	t.Logf("created circuit %v", circuit)
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	_, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
@@ -77,8 +80,7 @@ func TestBaselineDocumentProofGenerationFailureConstraintNotSatisfied(t *testing
 
 	t.Logf("created circuit %v", circuit)
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	_, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
@@ -104,8 +106,7 @@ func TestCreateCircuitGroth16Cubic(t *testing.T) {
 
 	t.Logf("created circuit %v", circuit)
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
@@ -146,8 +147,7 @@ func TestBaselineDocument(t *testing.T) {
 
 	t.Logf("created circuit %v", circuit)
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	var dv DocVars
 	dv.val = 1234.5678
@@ -390,8 +390,7 @@ func TestProcurement(t *testing.T) {
 	hash, _ := mimc.Sum("seed", preImage)
 	hashString := i.SetBytes(hash).String()
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
@@ -447,8 +446,7 @@ func TestProcurement(t *testing.T) {
 	hash, _ = mimc.Sum("seed", preImage)
 	hashString = i.SetBytes(hash).String()
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
@@ -475,7 +473,7 @@ func TestProcurement(t *testing.T) {
 
 	t.Logf("sales order proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// // bytes.Buffer.Write() may panic, but never returns an error
+	// bytes.Buffer.Write() may panic, but never returns an error
 	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "shipment_notification")
@@ -504,8 +502,7 @@ func TestProcurement(t *testing.T) {
 	hash, _ = mimc.Sum("seed", preImage)
 	hashString = i.SetBytes(hash).String()
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
@@ -532,7 +529,7 @@ func TestProcurement(t *testing.T) {
 
 	t.Logf("shipment notification proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// // bytes.Buffer.Write() may panic, but never returns an error
+	// bytes.Buffer.Write() may panic, but never returns an error
 	merkleBuf.Write(preImage)
 
 	params = circuitParamsFactory("gnark", "goods_receipt")
@@ -561,8 +558,7 @@ func TestProcurement(t *testing.T) {
 	hash, _ = mimc.Sum("seed", preImage)
 	hashString = i.SetBytes(hash).String()
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
@@ -589,7 +585,7 @@ func TestProcurement(t *testing.T) {
 
 	t.Logf("goods receipt proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// // bytes.Buffer.Write() may panic, but never returns an error
+	// bytes.Buffer.Write() may panic, but never returns an error
 	merkleBuf.Write(preImage)
 
 	privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
@@ -639,8 +635,7 @@ func TestProcurement(t *testing.T) {
 	ySigString := i.SetBytes(ySig[:]).String()
 	sigSString := i.SetBytes(sigBytes[32:]).String()
 
-	// timeout due to async calls
-	time.Sleep(time.Duration(2) * time.Second)
+	waitForAsync()
 
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{

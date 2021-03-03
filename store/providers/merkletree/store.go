@@ -85,7 +85,7 @@ func (tree *DurableMerkleTree) RawAdd(data []byte) (index int, hash string) {
 }
 
 func (tree *DurableMerkleTree) addHashToDB(hash string) error {
-	db := tree.db.Raw("INSERT INTO hashes (store_id, hash) VALUES (?, ?)", tree.id, hash)
+	db := tree.db.Exec("INSERT INTO hashes (store_id, hash) VALUES (?, ?)", tree.id, hash)
 	if db.RowsAffected == 0 {
 		return fmt.Errorf("failed to persist hash within merkle tree: %s", hash)
 	}

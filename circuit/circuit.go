@@ -220,7 +220,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 }
 
 // Verify a proof to be verifiable for the given witness
-func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, error) {
+func (c *Circuit) Verify(proof string, witness map[string]interface{}, store bool) (bool, error) {
 	c.enrich()
 
 	provider := c.circuitProviderFactory()
@@ -248,7 +248,7 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, er
 		return false, err
 	}
 
-	if c.store != nil {
+	if c.store != nil && store {
 		idx, err := c.store.Insert(proof)
 		if err != nil {
 			common.Log.Warningf("failed to insert proof; %s", err.Error())

@@ -244,7 +244,12 @@ func verifyCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	result, err := circuit.Verify(proof, witness)
+	store := false
+	if _store, storeOk := params["store"].(bool); storeOk {
+		store = _store
+	}
+
+	result, err := circuit.Verify(proof, witness, store)
 	if err != nil {
 		provide.Render(&privacy.VerificationResponse{
 			Errors: []*api.Error{{Message: common.StringOrNil(err.Error())}},

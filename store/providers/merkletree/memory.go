@@ -347,8 +347,8 @@ func (tree *MemoryMerkleTree) String() string {
 }
 
 // HashAt returns the hash at given index
-func (tree *MemoryMerkleTree) HashAt(index int) (string, error) {
-	if index >= len(tree.Nodes[0]) {
+func (tree *MemoryMerkleTree) HashAt(index uint64) (string, error) {
+	if index >= uint64(len(tree.Nodes[0])) {
 		return "", errors.New(outOfBounds)
 	}
 	return tree.Nodes[0][index].Hash(), nil

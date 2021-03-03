@@ -283,7 +283,7 @@ func circuitStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	index, err := strconv.Atoi(c.Param("index"))
+	index, err := strconv.ParseUint(c.Param("index"), 10, 64)
 	if err != nil {
 		provide.RenderError(err.Error(), 400, c)
 		return

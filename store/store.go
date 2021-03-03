@@ -125,7 +125,7 @@ func (s *Store) Root() (*string, error) {
 }
 
 // ValueAt returns the store representation of value at the given index
-func (s *Store) ValueAt(index int) (*string, error) {
+func (s *Store) ValueAt(index uint64) (*string, error) {
 	provider := s.storeProviderFactory()
 	if provider != nil {
 		val, err := provider.HashAt(index)

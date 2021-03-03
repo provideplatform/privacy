@@ -166,7 +166,7 @@ func (c *Circuit) StoreRoot() (*string, error) {
 }
 
 // StoreValueAt returns the underlying store representation
-func (c *Circuit) StoreValueAt(index int) (*string, error) {
+func (c *Circuit) StoreValueAt(index uint64) (*string, error) {
 	if c.store == nil {
 		return nil, fmt.Errorf("failed to resolve store value at index %d for circuit %s", index, c.ID)
 	}

@@ -41,7 +41,7 @@ func InstallAPI(r *gin.Engine) {
 	r.POST("/api/v1/circuits/:id/verify", verifyCircuitHandler)
 	// r.GET("/api/v1/circuits/:id/verify/:verifyId", proofDetailsHandler)
 
-	r.POST("/api/v1/circuits/:id/store/:index", circuitStoreValueHandler)
+	r.GET("/api/v1/circuits/:id/store/:index", circuitStoreValueHandler)
 }
 
 // list/query available circuits in the registry

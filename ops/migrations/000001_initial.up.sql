@@ -196,7 +196,7 @@ CREATE INDEX idx_stores_provider ON public.stores USING btree (provider);
 CREATE TABLE public.hashes (
     id SERIAL PRIMARY KEY,
     store_id uuid NOT NULL,
-    hash VARCHAR(66) NOT NULL
+    hash VARCHAR(256) NOT NULL
 );
 
 

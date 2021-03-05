@@ -671,17 +671,235 @@ func TestProcurement(t *testing.T) {
 	// t.Logf("added invoice proof to merkle tree, index/hash: %v / %v", index, h)
 
 	root := tr.Recalculate()
-	t.Logf("root: %s", root)
+	t.Logf("calculated root: %s", root)
 
-	store, err := privacy.GetStoreValue(*token, circuit.ID.String(), 0)
+	hashIndex := uint64(0)
+	store, err := privacy.GetStoreValue(*token, circuit.ID.String(), hashIndex)
 	if err != nil {
 		t.Errorf("failed to get store value; %s", err.Error())
 		return
 	}
 	t.Logf("store value index 0: %s, store root: %s", *store.Value, *store.Root)
 
-	// if root != *store.Root {
-	// 	t.Error("root mismatch with merkle store")
-	// 	return
-	// }
+	if root != *store.Root {
+		t.Error("root mismatch with merkle store")
+		return
+	}
+}
+
+func TestProofVerifyMerkle(t *testing.T) {
+	testUserID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(testUserID)
+	params := circuitParamsFactory("gnark", "purchase_order")
+
+	circuit, err := privacy.CreateCircuit(*token, params)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created circuit %v", circuit)
+
+	hFunc := mimc.NewMiMC("seed")
+
+	tr := merkletree.NewMerkleTree(hFunc)
+
+	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
+	soNumber := []byte("1234567890")
+	certificateNumber, err := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
+	if err != nil {
+		t.Error("failed to convert uuid to bytes")
+		return
+	}
+
+	// mimc Write never returns an error
+	hFunc.Write(globalPurchaseOrderNumber)
+	hFunc.Write(soNumber)
+	hFunc.Write(certificateNumber.Bytes())
+
+	// preimage is itself a digest due to the field element size limitation of the curve
+	preImage := hFunc.Sum(nil)
+	var i big.Int
+
+	preImageString := i.SetBytes(preImage).String()
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ := mimc.Sum("seed", preImage)
+	hashString := i.SetBytes(hash).String()
+
+	waitForAsync()
+
+	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"Document.PreImage": preImageString,
+			"Document.Hash":     hashString,
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"Document.PreImage": preImageString,
+			"Document.Hash":     hashString,
+		},
+		"store": false,
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
+
+	index, h := tr.RawAdd([]byte(*proof.Proof))
+	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
+
+	root := tr.Recalculate()
+	t.Logf("calculated root: %s", root)
+
+	hashIndex := uint64(0)
+	store, err := privacy.GetStoreValue(*token, circuit.ID.String(), hashIndex)
+	if err != nil {
+		t.Errorf("failed to get store value; %s", err.Error())
+		return
+	}
+	t.Logf("store value index 0: %s, store root: %s", *store.Value, *store.Root)
+
+	hashFromTree, err := tr.HashAt(hashIndex)
+	if err != nil {
+		t.Errorf("failed to get hash 0 from merkle tree")
+		return
+	}
+
+	if hashFromTree != *store.Value {
+		t.Errorf("hash mismatch with merkle store")
+		return
+	}
+
+	if root != *store.Root {
+		t.Error("root mismatch with merkle store")
+		return
+	}
+}
+
+func TestDuplicateProofVerifyMerkle(t *testing.T) {
+	testUserID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(testUserID)
+	params := circuitParamsFactory("gnark", "purchase_order")
+
+	circuit, err := privacy.CreateCircuit(*token, params)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created circuit %v", circuit)
+
+	hFunc := mimc.NewMiMC("seed")
+
+	tr := merkletree.NewMerkleTree(hFunc)
+
+	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
+	soNumber := []byte("1234567890")
+	certificateNumber, err := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
+	if err != nil {
+		t.Error("failed to convert uuid to bytes")
+		return
+	}
+
+	// mimc Write never returns an error
+	hFunc.Write(globalPurchaseOrderNumber)
+	hFunc.Write(soNumber)
+	hFunc.Write(certificateNumber.Bytes())
+
+	// preimage is itself a digest due to the field element size limitation of the curve
+	preImage := hFunc.Sum(nil)
+	var i big.Int
+
+	preImageString := i.SetBytes(preImage).String()
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ := mimc.Sum("seed", preImage)
+	hashString := i.SetBytes(hash).String()
+
+	waitForAsync()
+
+	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"Document.PreImage": preImageString,
+			"Document.Hash":     hashString,
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"Document.PreImage": preImageString,
+			"Document.Hash":     hashString,
+		},
+		"store": true,
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
+
+	index, h := tr.RawAdd([]byte(*proof.Proof))
+	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
+	index, h = tr.RawAdd([]byte(*proof.Proof))
+	t.Logf("added duplicate purchase order proof to merkle tree, index/hash: %v / %v", index, h)
+
+	root := tr.Recalculate()
+	t.Logf("calculated root: %s", root)
+
+	hashIndex := uint64(0)
+	store, err := privacy.GetStoreValue(*token, circuit.ID.String(), hashIndex)
+	if err != nil {
+		t.Errorf("failed to get store value; %s", err.Error())
+		return
+	}
+	t.Logf("store value index 0: %s, store root: %s", *store.Value, *store.Root)
+
+	hashFromTree, err := tr.HashAt(hashIndex)
+	if err != nil {
+		t.Errorf("failed to get hash 0 from merkle tree")
+		return
+	}
+
+	if hashFromTree != *store.Value {
+		t.Errorf("hash mismatch with merkle store")
+		return
+	}
+
+	if root != *store.Root {
+		t.Error("root mismatch with merkle store")
+		return
+	}
+
+	store, err = privacy.GetStoreValue(*token, circuit.ID.String(), hashIndex)
+	if err != nil {
+		t.Errorf("failed to get store value; %s", err.Error())
+		return
+	}
+	t.Logf("duplicate store value index 0: %s, store root: %s", *store.Value, *store.Root)
+
+	if hashFromTree != *store.Value {
+		t.Errorf("hash mismatch with merkle store")
+		return
+	}
+
+	if root != *store.Root {
+		t.Error("root mismatch with merkle store")
+		return
+	}
 }

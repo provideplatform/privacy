@@ -2,8 +2,12 @@ package merkletree
 
 import (
 	"fmt"
+	"hash"
+	"strings"
 	"sync"
 
+	mimc "github.com/consensys/gnark/crypto/hash"
+	"github.com/consensys/gurvy"
 	"github.com/jinzhu/gorm"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
@@ -20,9 +24,27 @@ type DurableMerkleTree struct {
 	mutex sync.Mutex
 }
 
+func hashFactory(hash *string) hash.Hash {
+	switch strings.ToLower(*hash) {
+	case gurvy.BLS377.String():
+		return mimc.MIMC_BLS377.New("seed")
+	case gurvy.BLS381.String():
+		return mimc.MIMC_BLS381.New("seed")
+	case gurvy.BN256.String():
+		return mimc.MIMC_BN256.New("seed")
+	case gurvy.BW761.String():
+		return mimc.MIMC_BW761.New("seed")
+	default:
+		common.Log.Warningf("failed to resolve hash type string; unknown or unsupported hash: %s", *hash)
+	}
+
+	return nil
+}
+
 // LoadMerkleTree loads a MerkleTree by id and enables persistence using the given db connection
-func LoadMerkleTree(db *gorm.DB, id uuid.UUID) (*DurableMerkleTree, error) {
-	tree := NewMerkleTree(nil)
+func LoadMerkleTree(db *gorm.DB, id uuid.UUID, hash *string) (*DurableMerkleTree, error) {
+	h := hashFactory(hash)
+	tree := NewMerkleTree(h)
 	err := getAndInsertStoredHashes(db, id, tree)
 	if err != nil {
 		common.Log.Warningf("failed to load merkle tree store %s; %s", id, err.Error())

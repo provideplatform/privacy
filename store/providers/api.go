@@ -21,7 +21,7 @@ type StoreProvider interface {
 }
 
 // InitMerkleTreeStoreProvider initializes a durable merkle tree
-func InitMerkleTreeStoreProvider(id uuid.UUID) *merkletree.DurableMerkleTree {
-	tree, _ := merkletree.LoadMerkleTree(dbconf.DatabaseConnection(), id)
+func InitMerkleTreeStoreProvider(id uuid.UUID, hash *string) *merkletree.DurableMerkleTree {
+	tree, _ := merkletree.LoadMerkleTree(dbconf.DatabaseConnection(), id, hash)
 	return tree // FIXME-- check err
 }

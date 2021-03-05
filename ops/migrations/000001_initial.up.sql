@@ -164,6 +164,7 @@ CREATE TABLE public.stores (
     circuit_id uuid NOT NULL,
     name text NOT NULL,
     description text,
+    curve character varying(16) NOT NULL,
     provider character varying(255) NOT NULL
 );
 

@@ -19,6 +19,7 @@ type Store struct {
 	Name        *string `json:"name"`
 	Description *string `json:"description"`
 	Provider    *string `json:"provider"`
+	Curve       *string `json:"curve"`
 }
 
 func (s *Store) storeProviderFactory() proofstorage.StoreProvider {
@@ -29,7 +30,7 @@ func (s *Store) storeProviderFactory() proofstorage.StoreProvider {
 
 	switch *s.Provider {
 	case proofstorage.StoreProviderMerkleTree:
-		return proofstorage.InitMerkleTreeStoreProvider(s.ID)
+		return proofstorage.InitMerkleTreeStoreProvider(s.ID, s.Curve)
 	default:
 		common.Log.Warningf("failed to initialize store provider; unknown provider: %s", *s.Provider)
 	}

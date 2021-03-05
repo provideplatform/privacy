@@ -456,6 +456,7 @@ func (c *Circuit) initStore() error {
 		CircuitID: &c.ID,
 		Name:      common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
 		Provider:  common.StringOrNil(storeprovider.StoreProviderMerkleTree),
+		Curve:     common.StringOrNil(*c.Curve),
 	}
 
 	if store.Create() {

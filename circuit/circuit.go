@@ -158,6 +158,10 @@ func (c *Circuit) Create() bool {
 
 // StoreRoot returns the underlying store root
 func (c *Circuit) StoreRoot() (*string, error) {
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
 	if c.store == nil {
 		return nil, fmt.Errorf("failed to resolve store root for circuit %s", c.ID)
 	}
@@ -167,6 +171,10 @@ func (c *Circuit) StoreRoot() (*string, error) {
 
 // StoreValueAt returns the underlying store representation
 func (c *Circuit) StoreValueAt(index uint64) (*string, error) {
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
 	if c.store == nil {
 		return nil, fmt.Errorf("failed to resolve store value at index %d for circuit %s", index, c.ID)
 	}
@@ -594,6 +602,12 @@ func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) 
 // validate the circuit params
 func (c *Circuit) validate() bool {
 	c.Errors = make([]*provide.Error, 0)
+
+	if c.Curve == nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil("circuit curve id required"),
+		})
+	}
 
 	if c.Provider == nil {
 		c.Errors = append(c.Errors, &provide.Error{

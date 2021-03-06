@@ -8,15 +8,18 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/consensys/gnark/backend/groth16"
 	gnark_merkle "github.com/consensys/gnark/crypto/accumulator/merkletree"
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
+	eddsa "github.com/consensys/gnark/crypto/signature/eddsa/bn256"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gurvy"
+	"github.com/consensys/gurvy/bn256/twistededwards"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/store/providers/merkletree"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
@@ -584,91 +587,92 @@ func TestProcurement(t *testing.T) {
 	index, h = tr.RawAdd([]byte(*proof.Proof))
 	t.Logf("added goods receipt proof to merkle tree, index/hash: %v / %v", index, h)
 
-	// FIXME-- this circuit needs large proving key support in the vault
-	// privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
-	// pubKey := privKey.PublicKey
+	privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
+	pubKey := privKey.PublicKey
 
-	// var invoiceData big.Int
-	// invoiceIntStr := "123456789123456789123456789123456789"
-	// invoiceData.SetString(invoiceIntStr, 10)
-	// invoiceDataBytes := invoiceData.Bytes()
+	var invoiceData big.Int
+	invoiceIntStr := "123456789123456789123456789123456789"
+	invoiceData.SetString(invoiceIntStr, 10)
+	invoiceDataBytes := invoiceData.Bytes()
 
-	// sigBytes, err := privKey.Sign(invoiceDataBytes, hFunc)
-	// if err != nil {
-	// 	t.Error("failed to sign invoice data")
-	// 	return
-	// }
+	sigBytes, err := privKey.Sign(invoiceDataBytes, hFunc)
+	if err != nil {
+		t.Error("failed to sign invoice data")
+		return
+	}
 
-	// verified, err := pubKey.Verify(sigBytes, invoiceDataBytes, hFunc)
-	// if err != nil || !verified {
-	// 	t.Error("failed to verify invoice data")
-	// 	return
-	// }
+	verified, err := pubKey.Verify(sigBytes, invoiceDataBytes, hFunc)
+	if err != nil || !verified {
+		t.Error("failed to verify invoice data")
+		return
+	}
 
-	// params = circuitParamsFactory("gnark", "invoice")
+	params = circuitParamsFactory("gnark", "invoice")
 
-	// circuit, err = privacy.CreateCircuit(*token, params)
-	// if err != nil {
-	// 	t.Errorf("failed to create circuit; %s", err.Error())
-	// 	return
-	// }
+	circuit, err = privacy.CreateCircuit(*token, params)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
 
-	// t.Logf("created circuit %v", circuit)
+	t.Logf("created circuit %v", circuit)
 
-	// var sig eddsa.Signature
-	// sig.SetBytes(sigBytes)
+	var sig eddsa.Signature
+	sig.SetBytes(sigBytes)
 
-	// var point twistededwards.PointAffine
-	// point.SetBytes(pubKey.Bytes())
-	// xKey := point.X.Bytes()
-	// xKeyString := i.SetBytes(xKey[:]).String()
-	// yKey := point.Y.Bytes()
-	// yKeyString := i.SetBytes(yKey[:]).String()
+	var point twistededwards.PointAffine
+	point.SetBytes(pubKey.Bytes())
+	xKey := point.X.Bytes()
+	xKeyString := i.SetBytes(xKey[:]).String()
+	yKey := point.Y.Bytes()
+	yKeyString := i.SetBytes(yKey[:]).String()
 
-	// point.SetBytes(sigBytes)
-	// xSig := point.X.Bytes()
-	// xSigString := i.SetBytes(xSig[:]).String()
-	// ySig := point.Y.Bytes()
-	// ySigString := i.SetBytes(ySig[:]).String()
-	// sigSString := i.SetBytes(sigBytes[32:]).String()
+	point.SetBytes(sigBytes)
+	xSig := point.X.Bytes()
+	xSigString := i.SetBytes(xSig[:]).String()
+	ySig := point.Y.Bytes()
+	ySigString := i.SetBytes(ySig[:]).String()
+	sigSString := i.SetBytes(sigBytes[32:]).String()
 
-	// waitForAsync()
+	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
+	waitForAsync()
+	waitForAsync()
 
-	// proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-	// 	"witness": map[string]interface{}{
-	// 		"Msg":        invoiceIntStr,
-	// 		"PubKey.A.X": xKeyString,
-	// 		"PubKey.A.Y": yKeyString,
-	// 		"Sig.R.A.X":  xSigString,
-	// 		"Sig.R.A.Y":  ySigString,
-	// 		"Sig.S":      sigSString,
-	// 	},
-	// })
-	// if err != nil {
-	// 	t.Errorf("failed to generate proof; %s", err.Error())
-	// 	return
-	// }
+	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"Msg":        invoiceIntStr,
+			"PubKey.A.X": xKeyString,
+			"PubKey.A.Y": yKeyString,
+			"Sig.R.A.X":  xSigString,
+			"Sig.R.A.Y":  ySigString,
+			"Sig.S":      sigSString,
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
 
-	// verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-	// 	"proof": proof.Proof,
-	// 	"witness": map[string]interface{}{
-	// 		"Msg":        invoiceIntStr,
-	// 		"PubKey.A.X": xKeyString,
-	// 		"PubKey.A.Y": yKeyString,
-	// 		"Sig.R.A.X":  xSigString,
-	// 		"Sig.R.A.Y":  ySigString,
-	// 		"Sig.S":      sigSString,
-	// 	},
-	// })
-	// if err != nil {
-	// 	t.Errorf("failed to verify proof; %s", err.Error())
-	// 	return
-	// }
+	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"Msg":        invoiceIntStr,
+			"PubKey.A.X": xKeyString,
+			"PubKey.A.Y": yKeyString,
+			"Sig.R.A.X":  xSigString,
+			"Sig.R.A.Y":  ySigString,
+			"Sig.S":      sigSString,
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
 
-	// t.Logf("invoice proof/verification: %v / %v", proof.Proof, verification.Result)
+	t.Logf("invoice proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	// index, h = tr.RawAdd([]byte(*proof.Proof))
-	// t.Logf("added invoice proof to merkle tree, index/hash: %v / %v", index, h)
+	index, h = tr.RawAdd([]byte(*proof.Proof))
+	t.Logf("added invoice proof to merkle tree, index/hash: %v / %v", index, h)
 
 	root := tr.Recalculate()
 	t.Logf("calculated root: %s", root)

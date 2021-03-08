@@ -476,7 +476,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: privacy
+    hostname: privacy1-privacy
     networks:
       - privacy1
     ports:

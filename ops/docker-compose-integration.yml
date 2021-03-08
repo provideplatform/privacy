@@ -500,7 +500,7 @@ services:
       - DATABASE_PASSWORD=privacy
       - DATABASE_SUPERUSER=prvd
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
-      - IDENT_API_HOST=ident:8080
+      - IDENT_API_HOST=privacy1-ident:8080
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
       - NATS_CLIENT_PREFIX=privacy-consumer

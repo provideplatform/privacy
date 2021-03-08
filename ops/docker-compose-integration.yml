@@ -343,7 +343,7 @@ services:
       start_period: 10s
     hostname: privacy1-nats
     networks:
-      - privacy0~
+      - privacy0
       - privacy1
     ports:
       - 4223:4221

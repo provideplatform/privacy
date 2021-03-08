@@ -5,7 +5,7 @@ services:
   # Alice
   privacy0-postgres:
     image: postgres
-    container_name: postgres
+    container_name: privacy0-postgres
     environment:
       - POSTGRES_DB=prvd
       - POSTGRES_USER=prvd
@@ -16,7 +16,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: postgres
+    hostname: privacy0-postgres
     volumes:
       - privacy0-db:/var/lib/postgresql/data
     networks:
@@ -27,14 +27,14 @@ services:
 
   privacy0-redis:
     image: redis
-    container_name: redis
+    container_name: privacy0-redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 1m
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: redis
+    hostname: privacy0-redis
     networks:
       - privacy0
     ports:
@@ -43,7 +43,7 @@ services:
 
   privacy0-nats:
     image: provide/nats-server
-    container_name: provide-nats
+    container_name: privacy0-provide-nats
     command: ["-auth", "testtoken", "-p", "4222", "-D", "-V"]
     environment:
       JWT_SIGNER_PUBLIC_KEY: |-
@@ -67,7 +67,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: nats
+    hostname: privacy0-nats
     networks:
       - privacy0
     ports:
@@ -80,16 +80,16 @@ services:
   privacy0-nats-streaming:
     image: provide/nats-streaming
     command: ["-cid", "provide", "--auth", "testtoken", "-SDV"]
-    container_name: nats-streaming
+    container_name: privacy0-nats-streaming
     depends_on:
-      - nats
+      - privacy0-nats
     healthcheck:
       test: ["CMD", "/usr/local/bin/await_tcp.sh", "localhost:4222"]
       interval: 1m
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: nats-streaming
+    hostname: privacy0-nats-streaming
     networks:
       - privacy0
     ports:
@@ -100,11 +100,11 @@ services:
 
   privacy0-ident:
     image: provide/ident
-    container_name: ident
+    container_name: privacy0-ident
     depends_on:
-      - nats-streaming
-      - postgres
-      - redis
+      - privacy0-nats-streaming
+      - privacy0-postgres
+      - privacy0-redis
     environment:
       - DATABASE_HOST=postgres
       - DATABASE_NAME=ident_dev
@@ -126,7 +126,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: ident
+    hostname: privacy0-ident
     networks:
       - privacy0
     ports:
@@ -136,11 +136,11 @@ services:
   privacy0-ident-consumer:
     image: provide/ident
     entrypoint: ./ops/run_consumer.sh
-    container_name: ident-consumer
+    container_name: privacy0-ident-consumer
     depends_on:
-      - nats-streaming
-      - postgres
-      - redis
+      - privacy0-nats-streaming
+      - privacy0-postgres
+      - privacy0-redis
     environment:
       - CONSUME_NATS_STREAMING_SUBSCRIPTIONS=true
       - DATABASE_HOST=postgres
@@ -162,20 +162,20 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: ident-consumer
+    hostname: privacy0-ident-consumer
     networks:
       - privacy0
     restart: always
 
   privacy0-privacy:
     build: ../
-    container_name: privacy
+    container_name: privacy0-privacy
     depends_on:
-      - nats-streaming
-      - postgres
+      - privacy0-nats-streaming
+      - privacy0-postgres
       - privacy0-consumer
-      - redis
-      - vault
+      - privacy0-redis
+      - privacy0-vault
     environment:
       - DATABASE_HOST=postgres
       - DATABASE_NAME=privacy_dev
@@ -200,7 +200,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: privacy
+    hostname: privacy0-privacy
     networks:
       - privacy0
     ports:
@@ -210,12 +210,12 @@ services:
   privacy0-consumer:
     build: ../
     entrypoint: ./ops/run_consumer.sh
-    container_name: privacy-consumer
+    container_name: privacy0-privacy-consumer
     depends_on:
-      - nats-streaming
-      - postgres
-      - redis
-      - vault
+      - privacy0-nats-streaming
+      - privacy0-postgres
+      - privacy0-redis
+      - privacy0-vault
     environment:
       - CONSUME_NATS_STREAMING_SUBSCRIPTIONS=true
       - DATABASE_HOST=postgres
@@ -240,17 +240,17 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: privacy-consumer
+    hostname: privacy0-privacy-consumer
     networks:
       - privacy0
     restart: always
 
   privacy0-vault:
     image: provide/vault:privacy-dev
-    container_name: vault
+    container_name: privacy0-vault
     depends_on:
-      - ident
-      - postgres
+      - privacy0-ident
+      - privacy0-postgres
     environment:
       - DATABASE_HOST=postgres
       - DATABASE_NAME=vault_dev
@@ -267,7 +267,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: vault
+    hostname: privacy0-vault
     networks:
       - privacy0
     ports:
@@ -277,7 +277,7 @@ services:
   # Bob
   privacy1-postgres:
     image: postgres
-    container_name: postgres
+    container_name: privacy1-postgres
     environment:
       - POSTGRES_DB=prvd
       - POSTGRES_USER=prvd
@@ -288,25 +288,25 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: postgres
+    hostname: privacy1-postgres
     volumes:
       - privacy1-db:/var/lib/postgresql/data
     networks:
       - privacy1
     ports:
-      - 5432:5432
+      - 5433:5432
     restart: always
 
-  privacy-1redis:
+  privacy1-redis:
     image: redis
-    container_name: redis
+    container_name: privacy1-redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 1m
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: redis
+    hostname: privacy1-redis
     networks:
       - privacy1
     ports:
@@ -315,7 +315,7 @@ services:
 
   privacy1-nats:
     image: provide/nats-server
-    container_name: provide-nats
+    container_name: privacy1-provide-nats
     command: ["-auth", "testtoken", "-p", "4222", "-D", "-V"]
     environment:
       JWT_SIGNER_PUBLIC_KEY: |-
@@ -339,7 +339,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: nats
+    hostname: privacy1-nats
     networks:
       - privacy1
     ports:
@@ -352,16 +352,16 @@ services:
   privacy1-nats-streaming:
     image: provide/nats-streaming
     command: ["-cid", "provide", "--auth", "testtoken", "-SDV"]
-    container_name: nats-streaming
+    container_name: privacy1-nats-streaming
     depends_on:
-      - nats
+      - privacy1-nats
     healthcheck:
       test: ["CMD", "/usr/local/bin/await_tcp.sh", "localhost:4222"]
       interval: 1m
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: nats-streaming
+    hostname: privacy1-nats-streaming
     networks:
       - privacy1
     ports:
@@ -372,11 +372,11 @@ services:
 
   privacy1-ident:
     image: provide/ident
-    container_name: ident
+    container_name: privacy1-ident
     depends_on:
-      - nats-streaming
-      - postgres
-      - redis
+      - privacy1-nats-streaming
+      - privacy1-postgres
+      - privacy1-redis
     environment:
       - DATABASE_HOST=postgres
       - DATABASE_NAME=ident_dev
@@ -398,7 +398,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: ident
+    hostname: privacy1-ident
     networks:
       - privacy1
     ports:
@@ -408,11 +408,11 @@ services:
   privacy1-ident-consumer:
     image: provide/ident
     entrypoint: ./ops/run_consumer.sh
-    container_name: ident-consumer
+    container_name: privacy1-ident-consumer
     depends_on:
-      - nats-streaming
-      - postgres
-      - redis
+      - privacy1-nats-streaming
+      - privacy1-postgres
+      - privacy1-redis
     environment:
       - CONSUME_NATS_STREAMING_SUBSCRIPTIONS=true
       - DATABASE_HOST=postgres
@@ -434,20 +434,20 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: ident-consumer
+    hostname: privacy1-ident-consumer
     networks:
       - privacy1
     restart: always
 
   privacy1-privacy:
     build: ../
-    container_name: privacy
+    container_name: privacy1-privacy
     depends_on:
-      - nats-streaming
-      - postgres
-      - privacy1-consumer
-      - redis
-      - vault
+      - privacy1-nats-streaming
+      - privacy1-postgres
+      - privacy1-privacy-consumer
+      - privacy1-redis
+      - privacy1-vault
     environment:
       - DATABASE_HOST=postgres
       - DATABASE_NAME=privacy_dev
@@ -482,12 +482,12 @@ services:
   privacy1-privacy-consumer:
     build: ../
     entrypoint: ./ops/run_consumer.sh
-    container_name: privacy-consumer
+    container_name: privacy1-privacy-consumer
     depends_on:
-      - nats-streaming
-      - postgres
-      - redis
-      - vault
+      - privacy1-nats-streaming
+      - privacy1-postgres
+      - privacy1-redis
+      - privacy1-vault
     environment:
       - CONSUME_NATS_STREAMING_SUBSCRIPTIONS=true
       - DATABASE_HOST=postgres
@@ -512,17 +512,17 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: privacy-consumer
+    hostname: privacy1-privacy-consumer
     networks:
       - privacy1
     restart: always
 
   privacy1-vault:
     image: provide/vault:privacy-dev
-    container_name: vault
+    container_name: privacy1-vault
     depends_on:
-      - ident
-      - postgres
+      - privacy1-ident
+      - privacy1-postgres
     environment:
       - DATABASE_HOST=postgres
       - DATABASE_NAME=vault_dev
@@ -539,7 +539,7 @@ services:
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: vault
+    hostname: privacy1-vault
     networks:
       - privacy1
     ports:

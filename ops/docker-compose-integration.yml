@@ -555,12 +555,12 @@ networks:
     driver: bridge
     ipam:
       config:
-      - subnet: 172.50.0.0/24
+        - subnet: 172.50.0.0/24
   privacy1:
     driver: bridge
     ipam:
       config:
-      - subnet: 172.60.0.0/24
+        - subnet: 172.60.0.0/24
 
 volumes:
   privacy0-db:

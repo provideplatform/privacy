@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -39,6 +40,16 @@ func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 		"provider":       provider,
 		"proving_scheme": "groth16",
 	}
+}
+
+func setBobEnv() {
+	os.Setenv("IDENT_API_HOST", "localhost:8084")
+	os.Setenv("PRIVACY_API_HOST", "localhost:8083")
+}
+
+func setAliceEnv() {
+	os.Setenv("IDENT_API_HOST", "localhost:8081")
+	os.Setenv("PRIVACY_API_HOST", "localhost:8080")
 }
 
 func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t *testing.T) {
@@ -906,4 +917,92 @@ func TestDuplicateProofVerifyMerkle(t *testing.T) {
 		t.Error("root mismatch with merkle store")
 		return
 	}
+}
+
+func TestTwoPartyProofVerification(t *testing.T) {
+	setAliceEnv()
+	aliceUserID, _ := uuid.NewV4()
+	aliceToken, _ := userTokenFactory(aliceUserID)
+	params := circuitParamsFactory("gnark", "purchase_order")
+
+	aliceCircuit, err := privacy.CreateCircuit(*aliceToken, params)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created alice's circuit %v", aliceCircuit)
+
+	hFunc := mimc.NewMiMC("seed")
+
+	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
+	soNumber := []byte("1234567890")
+	certificateNumber, err := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
+	if err != nil {
+		t.Error("failed to convert uuid to bytes")
+		return
+	}
+
+	// mimc Write never returns an error
+	hFunc.Write(globalPurchaseOrderNumber)
+	hFunc.Write(soNumber)
+	hFunc.Write(certificateNumber.Bytes())
+
+	// preimage is itself a digest due to the field element size limitation of the curve
+	preImage := hFunc.Sum(nil)
+	var i big.Int
+
+	preImageString := i.SetBytes(preImage).String()
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ := mimc.Sum("seed", preImage)
+	hashString := i.SetBytes(hash).String()
+
+	waitForAsync()
+
+	proof, err := privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"Document.PreImage": preImageString,
+			"Document.Hash":     hashString,
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("alice's proof: %v", proof.Proof)
+
+	setBobEnv()
+	bobUserID, _ := uuid.NewV4()
+	bobToken, _ := userTokenFactory(bobUserID)
+
+	bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
+	bobParams["artifacts"] = aliceCircuit.Artifacts
+	bobParams["verifier_contract"] = aliceCircuit.VerifierContract
+
+	bobCircuit, err := privacy.CreateCircuit(*bobToken, bobParams)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created bob's circuit %v", bobCircuit)
+
+	waitForAsync()
+
+	verification, err := privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"Document.PreImage": preImageString,
+			"Document.Hash":     hashString,
+		},
+		"store": true,
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("bob's verification: %v", verification.Result)
 }

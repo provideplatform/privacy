@@ -933,6 +933,14 @@ func TestTwoPartyProofVerification(t *testing.T) {
 
 	t.Logf("created alice's circuit %v", aliceCircuit)
 
+	waitForAsync()
+
+	aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
+	if err != nil {
+		t.Errorf("failed to get circuit details; %s", err.Error())
+		return
+	}
+
 	hFunc := mimc.NewMiMC("seed")
 
 	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
@@ -987,7 +995,7 @@ func TestTwoPartyProofVerification(t *testing.T) {
 		return
 	}
 
-	t.Logf("created bob's circuit %v", bobCircuit)
+	t.Logf("created bob's circuit")
 
 	waitForAsync()
 

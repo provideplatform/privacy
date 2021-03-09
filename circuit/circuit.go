@@ -60,7 +60,7 @@ type Circuit struct {
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
 	// proof storage
-	StoreID *uuid.UUID `sql:"type:uuid" json:"-"`
+	StoreID *uuid.UUID `sql:"type:uuid" json:"store_id"`
 	store   *proofstorage.Store
 
 	// ephemeral fields

@@ -127,14 +127,18 @@ func (c *Circuit) Create() bool {
 			if success {
 				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
 
-				err := c.initStore()
-				if err != nil {
-					common.Log.Warning(err.Error())
-					c.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
-					c.Errors = append(c.Errors, &provide.Error{
-						Message: common.StringOrNil(err.Error()),
-					})
-					return false
+				if c.StoreID == nil {
+					err := c.initStore()
+					if err != nil {
+						common.Log.Warning(err.Error())
+						c.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
+						c.Errors = append(c.Errors, &provide.Error{
+							Message: common.StringOrNil(err.Error()),
+						})
+						return false
+					}
+				} else {
+					c.store = proofstorage.Find(*c.StoreID)
 				}
 
 				if c.setupRequired() {
@@ -453,10 +457,9 @@ func (c *Circuit) initStore() error {
 	common.Log.Debugf("attempting to initialize proof storage for circuit %s", c.ID)
 
 	store := &proofstorage.Store{
-		CircuitID: &c.ID,
-		Name:      common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
-		Provider:  common.StringOrNil(storeprovider.StoreProviderMerkleTree),
-		Curve:     common.StringOrNil(*c.Curve),
+		Name:     common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
+		Provider: common.StringOrNil(storeprovider.StoreProviderMerkleTree),
+		Curve:    common.StringOrNil(*c.Curve),
 	}
 
 	if store.Create() {

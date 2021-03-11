@@ -161,7 +161,6 @@ CREATE INDEX idx_circuits_status ON public.circuits USING btree (status);
 CREATE TABLE public.stores (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
-    circuit_id uuid NOT NULL,
     name text NOT NULL,
     description text,
     curve character varying(16) NOT NULL,
@@ -177,12 +176,6 @@ ALTER TABLE public.stores OWNER TO current_user;
 
 ALTER TABLE ONLY public.stores
     ADD CONSTRAINT stores_pkey PRIMARY KEY (id);
-
---
--- Name: idx_stores_circuit_id; Type: INDEX; Schema: public; Owner: privacy
---
-
-CREATE INDEX idx_stores_circuit_id ON public.stores USING btree (circuit_id);
 
 --
 -- Name: idx_stores_provider; Type: INDEX; Schema: public; Owner: privacy

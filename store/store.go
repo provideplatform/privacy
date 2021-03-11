@@ -14,12 +14,13 @@ import (
 type Store struct {
 	provide.Model
 
-	CircuitID *uuid.UUID `sql:"not null" json:"circuit_id"`
-
 	Name        *string `json:"name"`
 	Description *string `json:"description"`
 	Provider    *string `json:"provider"`
 	Curve       *string `json:"curve"`
+
+	// FIXME -- this is not locked down yet from a permissions perspective...
+	// Circuits []interface{} `gorm:"many2many:circuits_stores" json:"-"`
 }
 
 func (s *Store) storeProviderFactory() proofstorage.StoreProvider {

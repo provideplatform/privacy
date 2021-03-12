@@ -430,7 +430,9 @@ func TestProcurement(t *testing.T) {
 	index, h := tr.RawAdd([]byte(*proof.Proof))
 	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
 
+	storeID := circuit.StoreID
 	params = circuitParamsFactory("gnark", "sales_order")
+	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -487,6 +489,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("added sales order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	params = circuitParamsFactory("gnark", "shipment_notification")
+	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -543,6 +546,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("added shipment notification proof to merkle tree, index/hash: %v / %v", index, h)
 
 	params = circuitParamsFactory("gnark", "goods_receipt")
+	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -619,6 +623,7 @@ func TestProcurement(t *testing.T) {
 	}
 
 	params = circuitParamsFactory("gnark", "invoice")
+	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {

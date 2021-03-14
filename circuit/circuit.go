@@ -160,6 +160,20 @@ func (c *Circuit) Create() bool {
 	return false
 }
 
+// StoreLength returns the underlying store length
+func (c *Circuit) StoreLength() (*int, error) {
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
+	if c.store == nil {
+		return nil, fmt.Errorf("failed to resolve store length for circuit %s", c.ID)
+	}
+
+	length := c.store.Length()
+	return &length, nil
+}
+
 // StoreRoot returns the underlying store root
 func (c *Circuit) StoreRoot() (*string, error) {
 	if c.store == nil && c.StoreID != nil {

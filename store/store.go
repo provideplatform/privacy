@@ -101,6 +101,15 @@ func (s *Store) Insert(proof string) (*int, error) {
 	return nil, fmt.Errorf("failed to insert proof in store %s", s.ID)
 }
 
+// Length returns the number of stored nodes
+func (s *Store) Length() int {
+	provider := s.storeProviderFactory()
+	if provider != nil {
+		return provider.Length()
+	}
+	return 0
+}
+
 // Recalculate the underlying state of the configured storage provider
 // (i.e., the root in the case of a merkle tree provider)
 func (s *Store) Recalculate() (*string, error) {

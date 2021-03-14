@@ -294,6 +294,12 @@ func circuitStoreValueHandler(c *gin.Context) {
 		return
 	}
 
+	length, err := circuit.StoreLength()
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
 	value, err := circuit.StoreValueAt(index)
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
@@ -307,7 +313,8 @@ func circuitStoreValueHandler(c *gin.Context) {
 	}
 
 	provide.Render(map[string]interface{}{
-		"root":  root,
-		"value": value,
+		"length": length,
+		"root":   root,
+		"value":  value,
 	}, 200, c)
 }

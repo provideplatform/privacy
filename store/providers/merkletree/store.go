@@ -77,24 +77,27 @@ func (tree *DurableMerkleTree) Contains(hash string) bool {
 
 	common.Log.Debugf("hashes: %s", hashes)
 	return false
+}
 
-	// rows, err := tree.db.Raw("SELECT hash from hashes WHERE store_id = ? ORDER BY id", tree.id).Rows()
-	// if err != nil {
-	// 	common.Log.Warningf("failed to resolve merkle tree from store: %s; %s", tree.id, err.Error())
-	// 	return false
-	// }
+// Length returns the count of hashes in the store
+func (tree *DurableMerkleTree) Length() int {
+	rows, err := tree.db.Raw("SELECT count(hash) FROM hashes WHERE store_id = ?", tree.id).Rows()
+	if err != nil {
+		common.Log.Warningf("failed to resolve merkle tree from store: %s; %s", tree.id, err.Error())
+		return 0
+	}
 
-	// for rows.Next() {
-	// 	var _hash string
-	// 	err = rows.Scan(&_hash)
-	// 	if err != nil {
-	// 		common.Log.Warningf("failed to scan store for merkle tree hashes; %s", err.Error())
-	// 		return false
-	// 	}
-	// 	return err == nil
-	// }
+	var len int
+	for rows.Next() {
+		err = rows.Scan(&len)
+		if err != nil {
+			common.Log.Warningf("failed to scan the store for merkle tree hashes; %s", err.Error())
+			return 0
+		}
+		break
+	}
 
-	// return false
+	return len
 }
 
 // RawAdd hashes the given data and adds it to the tree but does not trigger recalculation

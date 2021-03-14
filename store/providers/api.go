@@ -16,6 +16,7 @@ type StoreProvider interface {
 	RawAdd(data []byte) (index int, hash string)
 	HashAt(index uint64) (hash string, err error)
 	Insert(hash string) (index int)
+	Length() int
 	Recalculate() (root string)
 	Root() (root *string, err error)
 }

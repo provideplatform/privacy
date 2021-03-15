@@ -59,9 +59,6 @@ func listCircuitsHandler(c *gin.Context) {
 
 	var circuits []*Circuit
 	provide.Paginate(c, query, &Circuit{}).Find(&circuits)
-	// for _, circuit := range circuits {
-	// circuit.Enrich(db)
-	// }
 	provide.Render(circuits, 200, c)
 }
 
@@ -127,9 +124,21 @@ func circuitDetailsHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, appID, orgID).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
 
 	if circuit == nil || circuit.ID == uuid.Nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if appID != nil && circuit.ApplicationID == nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if orgID != nil && circuit.OrganizationID == nil {
 		provide.RenderError("circuit not found", 404, c)
 		return
 	}
@@ -169,8 +178,20 @@ func proveCircuitHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, appID, orgID).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
 	if circuit == nil || circuit.ID == uuid.Nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if appID != nil && circuit.ApplicationID == nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if orgID != nil && circuit.OrganizationID == nil {
 		provide.RenderError("circuit not found", 404, c)
 		return
 	}
@@ -226,8 +247,20 @@ func verifyCircuitHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, appID, orgID).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
 	if circuit == nil || circuit.ID == uuid.Nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if appID != nil && circuit.ApplicationID == nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if orgID != nil && circuit.OrganizationID == nil {
 		provide.RenderError("circuit not found", 404, c)
 		return
 	}
@@ -281,9 +314,21 @@ func circuitStoreValueHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, appID, orgID).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
 
 	if circuit == nil || circuit.ID == uuid.Nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if appID != nil && circuit.ApplicationID == nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if orgID != nil && circuit.OrganizationID == nil {
 		provide.RenderError("circuit not found", 404, c)
 		return
 	}

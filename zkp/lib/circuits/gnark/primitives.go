@@ -2,31 +2,37 @@ package gnark
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/algebra/twistededwards"
+	"github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/gnark/std/signature/eddsa"
 	"github.com/consensys/gurvy"
 )
 
+type RelationCircuit struct {
+	Val    frontend.Variable `gnark:",public"`
+	RelVal frontend.Variable
+}
+
 // EqualCircuit defines an equality verification circuit
 type EqualCircuit struct {
-	Val   frontend.Variable `gnark:",public"`
-	EqVal frontend.Variable
+	Vals RelationCircuit
 }
 
 // Define declares the circuit constraints
 func (circuit *EqualCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(circuit.Val, circuit.EqVal)
-	cs.AssertIsLessOrEqual(circuit.EqVal, circuit.Val) // AssertIsEqual having trouble with this circuit, this is a workaround
+	cs.AssertIsLessOrEqual(circuit.Vals.Val, circuit.Vals.RelVal)
+	cs.AssertIsLessOrEqual(circuit.Vals.RelVal, circuit.Vals.Val) // AssertIsEqual having trouble with this circuit, this is a workaround
 	return nil
 }
 
 // NotEqualCircuit defines an inequality verification circuit
 type NotEqualCircuit struct {
-	Val      frontend.Variable `gnark:",public"`
-	NotEqVal frontend.Variable
+	Vals RelationCircuit
 }
 
 // Define declares the circuit constraints
 func (circuit *NotEqualCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	diff := cs.Sub(circuit.Val, circuit.NotEqVal)
+	diff := cs.Sub(circuit.Vals.Val, circuit.Vals.RelVal)
 	diffIsZero := cs.IsZero(diff, curveID)
 	cs.AssertIsEqual(diffIsZero, cs.Constant(0))
 	return nil
@@ -34,48 +40,86 @@ func (circuit *NotEqualCircuit) Define(curveID gurvy.ID, cs *frontend.Constraint
 
 // LessOrEqualCircuit defines a <= verification circuit
 type LessOrEqualCircuit struct {
-	Val         frontend.Variable `gnark:",public"`
-	LessOrEqVal frontend.Variable
+	Vals RelationCircuit
 }
 
 // Define declares the circuit constraints
 func (circuit *LessOrEqualCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(circuit.Val, circuit.LessOrEqVal)
+	cs.AssertIsLessOrEqual(circuit.Vals.Val, circuit.Vals.RelVal)
 	return nil
 }
 
 // GreaterOrEqualCircuit defines a >= verification circuit
 type GreaterOrEqualCircuit struct {
-	Val            frontend.Variable `gnark:",public"`
-	GreaterOrEqVal frontend.Variable
+	Vals RelationCircuit
 }
 
 // Define declares the circuit constraints
 func (circuit *GreaterOrEqualCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(circuit.GreaterOrEqVal, circuit.Val)
+	cs.AssertIsLessOrEqual(circuit.Vals.RelVal, circuit.Vals.Val)
 	return nil
 }
 
 // LessOrEqualCircuit defines a < verification circuit
 type LessCircuit struct {
-	Val     frontend.Variable `gnark:",public"`
-	LessVal frontend.Variable
+	Vals RelationCircuit
 }
 
 // Define declares the circuit constraints
 func (circuit *LessCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(circuit.Val, cs.Sub(circuit.LessVal, 1))
+	cs.AssertIsLessOrEqual(circuit.Vals.Val, cs.Sub(circuit.Vals.RelVal, 1))
 	return nil
 }
 
 // GreaterCircuit defines a > verification circuit
 type GreaterCircuit struct {
-	Val        frontend.Variable `gnark:",public"`
-	GreaterVal frontend.Variable
+	Vals RelationCircuit
 }
 
 // Define declares the circuit constraints
 func (circuit *GreaterCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(circuit.GreaterVal, cs.Sub(circuit.Val, 1))
+	cs.AssertIsLessOrEqual(circuit.Vals.RelVal, cs.Sub(circuit.Vals.Val, 1))
+	return nil
+}
+
+type ProofHashCircuit struct {
+	Proof [16]frontend.Variable
+	Hash  frontend.Variable `gnark:",public"`
+}
+
+func (circuit *ProofHashCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+	hFunc, err := mimc.NewMiMC("seed", curveID)
+	if err != nil {
+		return err
+	}
+
+	hash := hFunc.Hash(cs, circuit.Proof[0], circuit.Proof[1], circuit.Proof[2], circuit.Proof[3], circuit.Proof[4], circuit.Proof[5], circuit.Proof[6], circuit.Proof[7], circuit.Proof[8], circuit.Proof[9], circuit.Proof[10], circuit.Proof[11], circuit.Proof[12], circuit.Proof[13], circuit.Proof[14], circuit.Proof[15])
+	cs.AssertIsEqual(hash, circuit.Hash)
+
+	return nil
+}
+
+type ProofEddsaCircuit struct {
+	Msg    [16]frontend.Variable
+	PubKey eddsa.PublicKey `gnark:",public"`
+	Sig    eddsa.Signature `gnark:",public"`
+}
+
+// Define declares the ProofEddsaCircuit circuit constraints
+func (circuit *ProofEddsaCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+	curve, err := twistededwards.NewEdCurve(curveID)
+	if err != nil {
+		return err
+	}
+	circuit.PubKey.Curve = curve
+
+	hFunc, err := mimc.NewMiMC("seed", curveID)
+	if err != nil {
+		return err
+	}
+
+	hash := hFunc.Hash(cs, circuit.Msg[0], circuit.Msg[1], circuit.Msg[2], circuit.Msg[3], circuit.Msg[4], circuit.Msg[5], circuit.Msg[6], circuit.Msg[7], circuit.Msg[8], circuit.Msg[9], circuit.Msg[10], circuit.Msg[11], circuit.Msg[12], circuit.Msg[13], circuit.Msg[14], circuit.Msg[15])
+	eddsa.Verify(cs, circuit.Sig, hash, circuit.PubKey)
+
 	return nil
 }

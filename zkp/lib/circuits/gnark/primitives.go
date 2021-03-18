@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gurvy"
 )
 
+// RelationCircuit defines generic relation R between Val and RelVal
 type RelationCircuit struct {
 	Val    frontend.Variable `gnark:",public"`
 	RelVal frontend.Variable
@@ -22,6 +23,9 @@ type EqualCircuit struct {
 func (circuit *EqualCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
 	cs.AssertIsLessOrEqual(circuit.Vals.Val, circuit.Vals.RelVal)
 	cs.AssertIsLessOrEqual(circuit.Vals.RelVal, circuit.Vals.Val) // AssertIsEqual having trouble with this circuit, this is a workaround
+	//diff := cs.Sub(circuit.Vals.Val, circuit.Vals.RelVal)
+	//diffIsZero := cs.IsZero(diff, curveID)
+	//cs.AssertIsEqual(diffIsZero, cs.Constant(1))
 	return nil
 }
 
@@ -60,7 +64,7 @@ func (circuit *GreaterOrEqualCircuit) Define(curveID gurvy.ID, cs *frontend.Cons
 	return nil
 }
 
-// LessOrEqualCircuit defines a < verification circuit
+// LessCircuit defines a < verification circuit
 type LessCircuit struct {
 	Vals RelationCircuit
 }
@@ -82,11 +86,13 @@ func (circuit *GreaterCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintS
 	return nil
 }
 
+// ProofHashCircuit defines hash(Proof[]) == Hash
 type ProofHashCircuit struct {
 	Proof [16]frontend.Variable
 	Hash  frontend.Variable `gnark:",public"`
 }
 
+// Define declares the circuit constraints
 func (circuit *ProofHashCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
 	hFunc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
@@ -99,6 +105,7 @@ func (circuit *ProofHashCircuit) Define(curveID gurvy.ID, cs *frontend.Constrain
 	return nil
 }
 
+// ProofEddsaCircuit defines eddsa.Verify(hash(Msg[])) of PubKey and Sig
 type ProofEddsaCircuit struct {
 	Msg    [16]frontend.Variable
 	PubKey eddsa.PublicKey `gnark:",public"`

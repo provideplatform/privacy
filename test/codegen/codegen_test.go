@@ -30,6 +30,7 @@ type ConstraintTest struct {
 	CurveID        string
 	PackageName    string
 	ProvingScheme  string
+	TestName       string
 	Witness        map[string]bool // map of witness values and bool for assert succeed
 }
 
@@ -53,7 +54,11 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 	}
 
 	// Compile circuit
-	fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.CircuitName)
+	if t.TestName == "" {
+		fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.CircuitName)
+	} else {
+		fmt.Fprintf(&test, "func %s(t *testing.T) {\n", t.TestName)
+	}
 	fmt.Fprintf(&test, "\tassert := %s.NewAssert(t)\n\n", t.ProvingScheme)
 	fmt.Fprintf(&test, "\tvar circuit %s\n", t.CircuitName)
 	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(gurvy.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
@@ -72,7 +77,7 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 		}
 		fmt.Fprintf(&test, "\t}\n")
 	}
-	fmt.Fprintln(&test, "}")
+	fmt.Fprintf(&test, "}\n\n")
 
 	return test.String()
 }
@@ -90,12 +95,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: "==",
-				Value:    "250",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: "==",
+					Value:    "250",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(true)
@@ -128,12 +134,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: "!=",
-				Value:    "250",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: "!=",
+					Value:    "250",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(false)
@@ -167,12 +174,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: "<=",
-				Value:    "250",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: "<=",
+					Value:    "250",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(false)
@@ -206,12 +214,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: ">=",
-				Value:    "250",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: ">=",
+					Value:    "250",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(false)
@@ -245,12 +254,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: "<",
-				Value:    "250",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: "<",
+					Value:    "250",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(false)
@@ -285,12 +295,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: ">",
-				Value:    "250",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: ">",
+					Value:    "250",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(false)
@@ -325,12 +336,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: "==",
-				Value:    "250.123",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: "==",
+					Value:    "250.123",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(false)
@@ -365,12 +377,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: ">",
-				Value:    "250.123",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: ">",
+					Value:    "250.123",
+					Public:   true,
+				}},
 		}
 
 		_, err := circuit.Make(false)
@@ -385,12 +398,13 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: "==",
-				Value:    "false",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: "==",
+					Value:    "false",
+					Public:   true,
+				}},
 		}
 
 		circuitStr, err := circuit.Make(false)
@@ -425,15 +439,47 @@ func TestCodegen(t *testing.T) {
 		circuit := Circuit{
 			Name:        circuitName,
 			PackageName: packageName,
-			Con: Constraint{
-				Name:     conName,
-				Operator: ">",
-				Value:    "false",
-				Public:   true,
-			},
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: ">",
+					Value:    "false",
+					Public:   true,
+				}},
 		}
 
 		_, err := circuit.Make(false)
 		assert.Error(t, err)
+	}
+
+	{
+		circuitName := "GenMultiConstraintCircuit"
+		packageName := "test"
+		conName := "Val"
+
+		circuit := Circuit{
+			Name:        circuitName,
+			PackageName: packageName,
+			Con: []Constraint{
+				{
+					Name:     conName,
+					Operator: "<",
+					Value:    "250",
+					Public:   true,
+				},
+				{
+					Name:     "OtherVal",
+					Operator: ">",
+					Value:    "123",
+					Public:   false,
+				}},
+		}
+
+		circuitStr, err := circuit.Make(false)
+		if err != nil {
+			t.Fatalf("failed to make circuit: %s", err)
+		}
+
+		writeToFile(circuitFilePath, circuitStr)
 	}
 }

@@ -36,7 +36,7 @@ func (c *Constraint) operatorIsRestricted() bool {
 }
 
 type Circuit struct {
-	Con         Constraint
+	Con         []Constraint
 	Name        string
 	PackageName string // for creating the circuit file
 }
@@ -106,34 +106,36 @@ func sanitizeValue(val interface{}) (interface{}, error) {
 func (c *Circuit) makeCircuitLogic() (string, error) {
 	var logic strings.Builder
 
-	isRestricted := c.Con.operatorIsRestricted()
-	if isRestricted && (c.Con.Operator != "==" && c.Con.Operator != "!=") {
-		return "", fmt.Errorf("invalid operator for constraint type")
-	}
+	for _, con := range c.Con {
+		if con.operatorIsRestricted() && (con.Operator != "==" && con.Operator != "!=") {
+			return "", fmt.Errorf("invalid operator for constraint type")
+		}
 
-	val, err := sanitizeValue(c.Con.Value)
-	if err != nil {
-		return "", fmt.Errorf("invalid constraint value")
-	}
+		val, err := sanitizeValue(con.Value)
+		if err != nil {
+			return "", fmt.Errorf("invalid constraint value")
+		}
 
-	switch c.Con.Operator {
-	case "==":
-		fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(circuit.%s, cs.Constant(%v))\n", c.Con.Name, val)
-		fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(cs.Constant(%v), circuit.%s)\n", val, c.Con.Name)
-	case "!=":
-		fmt.Fprintf(&logic, "\tdiff := cs.Sub(circuit.%s, cs.Constant(%v))\n", c.Con.Name, val)
-		fmt.Fprintf(&logic, "\tdiffIsZero := cs.IsZero(diff, curveID)\n")
-		fmt.Fprintf(&logic, "\tcs.AssertIsEqual(diffIsZero, cs.Constant(0))\n")
-	case "<=":
-		fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(circuit.%s, cs.Constant(%v))\n", c.Con.Name, val)
-	case "<":
-		fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(circuit.%s, cs.Sub(cs.Constant(%v), 1))\n", c.Con.Name, val)
-	case ">=":
-		fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(cs.Constant(%v), circuit.%s)\n", val, c.Con.Name)
-	case ">":
-		fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(cs.Constant(%v), cs.Sub(circuit.%s, 1))\n", val, c.Con.Name)
-	default:
-		return "", fmt.Errorf("invalid operator type")
+		switch con.Operator {
+		case "==":
+			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(circuit.%s, cs.Constant(%v))\n", con.Name, val)
+			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(cs.Constant(%v), circuit.%s)\n", val, con.Name)
+		case "!=":
+			fmt.Fprintf(&logic, "\tdiff := cs.Sub(circuit.%s, cs.Constant(%v))\n", con.Name, val)
+			fmt.Fprintf(&logic, "\tdiffIsZero := cs.IsZero(diff, curveID)\n")
+			fmt.Fprintf(&logic, "\tcs.AssertIsEqual(diffIsZero, cs.Constant(0))\n")
+		case "<=":
+			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(circuit.%s, cs.Constant(%v))\n", con.Name, val)
+		case "<":
+			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(circuit.%s, cs.Sub(cs.Constant(%v), 1))\n", con.Name, val)
+		case ">=":
+			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(cs.Constant(%v), circuit.%s)\n", val, con.Name)
+		case ">":
+			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(cs.Constant(%v), cs.Sub(circuit.%s, 1))\n", val, con.Name)
+		default:
+			return "", fmt.Errorf("invalid operator type")
+		}
+		fmt.Fprintln(&logic)
 	}
 
 	logic.WriteString("\treturn nil\n")
@@ -158,9 +160,13 @@ func (c *Circuit) Make(includeImportHeader bool) (string, error) {
 
 	// Circuit variable
 	fmt.Fprintf(&circuit, "type %s struct {\n", c.Name)
-	fmt.Fprintf(&circuit, "\t%s frontend.Variable", c.Con.Name)
-	if c.Con.Public {
-		fmt.Fprintf(&circuit, " `gnark:\",public\"`\n")
+	for _, con := range c.Con {
+		fmt.Fprintf(&circuit, "\t%s frontend.Variable", con.Name)
+		if con.Public {
+			fmt.Fprintf(&circuit, " `gnark:\",public\"`\n")
+		} else {
+			fmt.Fprintf(&circuit, "\n")
+		}
 	}
 	fmt.Fprintf(&circuit, "}\n\n")
 

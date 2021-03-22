@@ -25,7 +25,9 @@ func writeToFile(logPath string, s string) {
 type ConstraintTest struct {
 	CircuitName    string
 	ConstraintName string
+	CurveID        string
 	PackageName    string
+	ProvingScheme  string
 	Witness        map[string]bool // map of witness values and bool for assert succeed
 }
 
@@ -40,18 +42,18 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 		importList := []string{
 			"testing",
 			"",
-			"github.com/consensys/gnark/backend/groth16",
 			"github.com/consensys/gnark/frontend",
 			"github.com/consensys/gurvy",
 		}
+		importList = append(importList, fmt.Sprintf("github.com/consensys/gnark/backend/%s", t.ProvingScheme))
 		fmt.Fprintf(&test, "%s\n", makeImportList(importList))
 	}
 
 	// Compile circuit
 	fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.CircuitName)
-	fmt.Fprintf(&test, "\tassert := groth16.NewAssert(t)\n\n")
+	fmt.Fprintf(&test, "\tassert := %s.NewAssert(t)\n\n", t.ProvingScheme)
 	fmt.Fprintf(&test, "\tvar circuit %s\n", t.CircuitName)
-	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(gurvy.BN256, &circuit)\n")
+	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(gurvy.%s, &circuit)\n", t.CurveID)
 	fmt.Fprintf(&test, "\tassert.NoError(err)\n")
 
 	// Tests
@@ -75,6 +77,8 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 func TestCodegen(t *testing.T) {
 	circuitFilePath := "./generated_code.go"
 	testFilePath := "./generated_code_test.go"
+	curveIDString := "BN256"
+	provingScheme := "groth16"
 	{
 		circuitName := "GenEqual250Circuit"
 		packageName := "test"
@@ -99,7 +103,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250": true,
 				"254": false,
@@ -135,7 +141,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250": false,
 				"254": true,
@@ -172,7 +180,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250": true,
 				"120": true,
@@ -209,7 +219,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250": true,
 				"120": false,
@@ -246,7 +258,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250": false,
 				"120": true,
@@ -284,7 +298,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250": false,
 				"120": false,
@@ -322,7 +338,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250.123":  true,
 				"250.1234": false,
@@ -380,7 +398,9 @@ func TestCodegen(t *testing.T) {
 		test := ConstraintTest{
 			CircuitName:    circuitName,
 			ConstraintName: conName,
+			CurveID:        curveIDString,
 			PackageName:    packageName,
+			ProvingScheme:  provingScheme,
 			Witness: map[string]bool{
 				"250.123": false,
 				"false":   true,

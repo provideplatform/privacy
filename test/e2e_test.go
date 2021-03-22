@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	gnark_merkle "github.com/consensys/gnark/crypto/accumulator/merkletree"
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
@@ -240,7 +241,7 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 	// to compile the circuit, the witnesses must be allocated in the correct sizes
 	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
 	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	r1cs, err := frontend.Compile(gurvy.BN256, &baselineCircuit)
+	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &baselineCircuit)
 	if err != nil {
 		t.Errorf("failed to compile circuit; %s", err.Error())
 		return

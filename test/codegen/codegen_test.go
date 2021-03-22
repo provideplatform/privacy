@@ -1,3 +1,5 @@
+// +build unit
+
 package test
 
 import (
@@ -53,7 +55,7 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 	fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.CircuitName)
 	fmt.Fprintf(&test, "\tassert := %s.NewAssert(t)\n\n", t.ProvingScheme)
 	fmt.Fprintf(&test, "\tvar circuit %s\n", t.CircuitName)
-	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(gurvy.%s, &circuit)\n", t.CurveID)
+	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(gurvy.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
 	fmt.Fprintf(&test, "\tassert.NoError(err)\n")
 
 	// Tests

@@ -49,7 +49,7 @@ github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9Pq
 github.com/aristanetworks/fsnotify v1.4.2/go.mod h1:D/rtu7LpjYM8tRJphJ0hUBYpjai8SfX+aSNsWDTq/Ks=
 github.com/aristanetworks/glog v0.0.0-20191112221043-67e8567f59f3/go.mod h1:KASm+qXFKs/xjSoWn30NrWBBvdTTQq+UjkhjEJHfSFA=
 github.com/aristanetworks/goarista v0.0.0-20170210015632-ea17b1a17847/go.mod h1:D/tb0zPVXnP7fmsLZjtdUhSsumbK/ij54UXjjVgMGxQ=
-github.com/aristanetworks/goarista v0.0.0-20210202004444-0a6464941b7b/go.mod h1:Q4lsGfepQE823ePrSNr2CjCz1oeeMECJ6k1yBVujrZg=
+github.com/aristanetworks/goarista v0.0.0-20210204223745-64c208b2a430/go.mod h1:Q4lsGfepQE823ePrSNr2CjCz1oeeMECJ6k1yBVujrZg=
 github.com/aristanetworks/splunk-hec-go v0.3.3/go.mod h1:1VHO9r17b0K7WmOlLb9nTk/2YanvOEnLMUgsFrxBROc=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
@@ -90,8 +90,8 @@ github.com/cloudflare/cloudflare-go v0.10.2-0.20190916151808-a80f83b9add9/go.mod
 github.com/cmars/basen v0.0.0-20150613233007-fe3947df716e/go.mod h1:P13beTBKr5Q18lJe1rIoLUqjM+CB1zYrRg44ZqGuQSA=
 github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=
 github.com/consensys/bavard v0.1.8-0.20210105233146-c16790d2aa8b/go.mod h1:Bpd0/3mZuaj6Sj+PqrmIquiOKy397AKGThQPaGzNXAQ=
-github.com/consensys/gnark v0.3.9-0.20210209002645-110d32683f59 h1:sCpdsH1Ct7IH9/CVFZR7aIYz5yfYTMwxGMNsPsqUCCo=
-github.com/consensys/gnark v0.3.9-0.20210209002645-110d32683f59/go.mod h1:DzxFVu1zL8lm5ZyumG8CeleYgD56EgGk/0TGd6BB52c=
+github.com/consensys/gnark v0.3.9-0.20210319171140-b6c9330c31e0 h1:06x1ER2MLnwoYm197Z6uXffZe5sPU1OlgfpNqL3NLvk=
+github.com/consensys/gnark v0.3.9-0.20210319171140-b6c9330c31e0/go.mod h1:UfEWClmrFUiuvHPaGkhX8sIjpK03lZlH2RXOanZvUf0=
 github.com/consensys/goff v0.3.10/go.mod h1:xTldOBEHmFiYS0gPXd3NsaEqZWlnmeWcRLWgD3ba3xc=
 github.com/consensys/gurvy v0.3.8 h1:H2hvjvT2OFMgdMn5ZbhXqHt+F8DJ2clZW7Vmc0kFFxc=
 github.com/consensys/gurvy v0.3.8/go.mod h1:sN75xnsiD593XnhbhvG2PkOy194pZBzqShWF/kwuW/g=
@@ -762,7 +762,7 @@ google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55/go.mod h1:DMBHOl98
 google.golang.org/genproto v0.0.0-20190911173649-1774047e7e51/go.mod h1:IbNlFCBrqXvoKpeg0TB2l7cyZUmoaFKYIwrEpbDKLA8=
 google.golang.org/genproto v0.0.0-20191108220845-16a3f7862a1a/go.mod h1:n3cpQtvxv34hfy77yVDNjmbRyujviMdxYliBSkLhpCc=
 google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013/go.mod h1:NbSheEEYHJ7i3ixzK3sjbqSGDJWnxyFXZblF3eUsNvo=
-google.golang.org/genproto v0.0.0-20210201184850-646a494a81ea/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
+google.golang.org/genproto v0.0.0-20210207032614-bba0dbe2a9ea/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
 google.golang.org/grpc v1.20.1/go.mod h1:10oTOabMzJvdu6/UiuZezV6QK5dSlG84ov/aaiqXj38=
 google.golang.org/grpc v1.21.1/go.mod h1:oYelfM1adQP15Ek0mdvEgi9Df8B9CZIaU1084ijfRaM=

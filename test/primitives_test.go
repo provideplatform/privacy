@@ -9,7 +9,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/consensys/gnark/backend/"
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 	eddsa "github.com/consensys/gnark/crypto/signature/eddsa/bn256"

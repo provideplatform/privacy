@@ -46,6 +46,7 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 			"",
 			"github.com/consensys/gnark/frontend",
 			"github.com/consensys/gurvy",
+			"github.com/consensys/gnark/backend",
 		}
 		importList = append(importList, fmt.Sprintf("github.com/consensys/gnark/backend/%s", t.ProvingScheme))
 		fmt.Fprintf(&test, "%s\n", makeImportList(importList))

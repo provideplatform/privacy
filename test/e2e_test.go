@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,9 +34,11 @@ func waitForAsync() {
 	time.Sleep(time.Duration(2) * time.Second)
 }
 
+var curveID = gurvy.BN256
+
 func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 	return map[string]interface{}{
-		"curve":          "BN256",
+		"curve":          strings.ToUpper(curveID.String()),
 		"identifier":     identifier,
 		"name":           "my 1337 circuit",
 		"provider":       provider,
@@ -166,12 +169,17 @@ func TestBaselineDocument(t *testing.T) {
 	dv.text = "test"
 	var i big.Int
 
-	preImage := i.SetBytes(dv.Digest()).String()
+	preImage := dv.Digest()
+	preImageString := i.SetBytes(preImage).String()
+
+	// mimc Sum merely calls Write which never returns an error
+	hash, _ := mimc.Sum("seed", preImage)
+	hashString := i.SetBytes(hash).String()
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"PreImage": preImage,
-			"Hash":     "4511120069326357802246315184921336344580039746739647562931138731310930627466",
+			"PreImage": preImageString,
+			"Hash":     hashString,
 		},
 	})
 	if err != nil {
@@ -182,8 +190,8 @@ func TestBaselineDocument(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"PreImage": preImage,
-			"Hash":     "4511120069326357802246315184921336344580039746739647562931138731310930627466",
+			"PreImage": preImageString,
+			"Hash":     hashString,
 		},
 	})
 	if err != nil {
@@ -241,7 +249,7 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 	// to compile the circuit, the witnesses must be allocated in the correct sizes
 	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
 	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &baselineCircuit)
+	r1cs, err := frontend.Compile(curveID, backend.GROTH16, &baselineCircuit)
 	if err != nil {
 		t.Errorf("failed to compile circuit; %s", err.Error())
 		return
@@ -638,7 +646,8 @@ func TestProcurement(t *testing.T) {
 	sig.SetBytes(sigBytes)
 
 	var point twistededwards.PointAffine
-	point.SetBytes(pubKey.Bytes())
+	pubKeyBytes := pubKey.Bytes()
+	point.SetBytes(pubKeyBytes)
 	xKey := point.X.Bytes()
 	xKeyString := i.SetBytes(xKey[:]).String()
 	yKey := point.Y.Bytes()
@@ -649,7 +658,7 @@ func TestProcurement(t *testing.T) {
 	xSigString := i.SetBytes(xSig[:]).String()
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[32:]).String()
+	sigSString := i.SetBytes(sigBytes[len(pubKeyBytes):]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()
@@ -1534,7 +1543,8 @@ func TestTwoPartyProcurement(t *testing.T) {
 	sig.SetBytes(sigBytes)
 
 	var point twistededwards.PointAffine
-	point.SetBytes(pubKey.Bytes())
+	pubKeyBytes := pubKey.Bytes()
+	point.SetBytes(pubKeyBytes)
 	xKey := point.X.Bytes()
 	xKeyString := i.SetBytes(xKey[:]).String()
 	yKey := point.Y.Bytes()
@@ -1545,7 +1555,7 @@ func TestTwoPartyProcurement(t *testing.T) {
 	xSigString := i.SetBytes(xSig[:]).String()
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[32:]).String()
+	sigSString := i.SetBytes(sigBytes[len(pubKeyBytes):]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()

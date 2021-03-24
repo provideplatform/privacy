@@ -658,7 +658,7 @@ func TestProcurement(t *testing.T) {
 	xSigString := i.SetBytes(xSig[:]).String()
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[len(pubKeyBytes):]).String()
+	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()
@@ -678,6 +678,11 @@ func TestProcurement(t *testing.T) {
 		t.Errorf("failed to generate proof; %s", err.Error())
 		return
 	}
+
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
 
 	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
@@ -1555,7 +1560,7 @@ func TestTwoPartyProcurement(t *testing.T) {
 	xSigString := i.SetBytes(xSig[:]).String()
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[len(pubKeyBytes):]).String()
+	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()
@@ -1567,6 +1572,8 @@ func TestTwoPartyProcurement(t *testing.T) {
 		return
 	}
 
+	waitForAsync()
+	waitForAsync()
 	waitForAsync()
 	waitForAsync()
 
@@ -1610,6 +1617,8 @@ func TestTwoPartyProcurement(t *testing.T) {
 
 	t.Logf("created bob's invoice circuit")
 
+	waitForAsync()
+	waitForAsync()
 	waitForAsync()
 	waitForAsync()
 

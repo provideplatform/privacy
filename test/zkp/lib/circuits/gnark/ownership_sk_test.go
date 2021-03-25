@@ -1,9 +1,12 @@
+// +build unit
+
 package gnark
 
 import (
 	"math/rand"
 	"testing"
 
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/crypto/signature"
 
@@ -73,7 +76,7 @@ func TestOwnershipSk(t *testing.T) {
 
 	for id, ss := range confs {
 		var ownershipSkCircuit libgnark.OwnershipSkCircuit
-		r1cs, err := frontend.Compile(id, &ownershipSkCircuit)
+		r1cs, err := frontend.Compile(id, backend.GROTH16, &ownershipSkCircuit)
 		assert.NoError(err)
 
 		// Correct sk, pk

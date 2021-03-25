@@ -1,8 +1,11 @@
+// +build unit
+
 package gnark
 
 import (
 	"testing"
 
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy"
@@ -15,7 +18,7 @@ func TestCubicEquation(t *testing.T) {
 	var cubicCircuit libgnark.CubicCircuit
 
 	// compiles our circuit into a R1CS
-	r1cs, err := frontend.Compile(gurvy.BN256, &cubicCircuit)
+	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &cubicCircuit)
 	assert.NoError(err)
 
 	{

@@ -9,12 +9,6 @@ import (
 	"github.com/consensys/gurvy"
 )
 
-// EddsaPrivateKey defines eddsa private key in two chunks (upper and lower)
-type EddsaPrivateKey struct {
-	Upper frontend.Variable
-	Lower frontend.Variable
-}
-
 // OwnershipSkCircuit defines circuit for prove of ownership of sk
 type OwnershipSkCircuit struct {
 	Pk eddsa.PublicKey `gnark:",public"`

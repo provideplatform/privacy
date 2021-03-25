@@ -3,6 +3,12 @@ package providers
 // GnarkCircuitIdentifierCubic gnark cubic circuit
 const GnarkCircuitIdentifierCubic = "cubic"
 
+// GnarkCircuitIdentifierMimc gnark mimc circuit
+const GnarkCircuitIdentifierMimc = "mimc"
+
+// GnarkCircuitIdentifierBaselineDocumentComplete baseline document complete circuit
+const GnarkCircuitIdentifierBaselineDocumentComplete = "baseline_document_complete"
+
 // GnarkCircuitIdentifierBaselineDocument gnark circuit
 const GnarkCircuitIdentifierBaselineDocument = "baseline_document"
 

@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
+	proofstorage "github.com/provideapp/privacy/store"
+	storeprovider "github.com/provideapp/privacy/store/providers"
 	zkp "github.com/provideapp/privacy/zkp/providers"
 	provide "github.com/provideservices/provide-go/api"
 	vault "github.com/provideservices/provide-go/api/vault"
@@ -56,6 +59,10 @@ type Circuit struct {
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
+	// proof storage
+	StoreID *uuid.UUID `sql:"type:uuid" json:"store_id"`
+	store   *proofstorage.Store
+
 	// ephemeral fields
 	provingKey   []byte
 	verifyingKey []byte
@@ -68,6 +75,9 @@ type Circuit struct {
 	verifierContractABI      []byte
 	verifierContractArtifact []byte
 	verifierContractSource   []byte
+
+	// mutex
+	mutex sync.Mutex
 }
 
 func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
@@ -117,6 +127,20 @@ func (c *Circuit) Create() bool {
 			if success {
 				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
 
+				if c.StoreID == nil {
+					err := c.initStore()
+					if err != nil {
+						common.Log.Warning(err.Error())
+						c.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
+						c.Errors = append(c.Errors, &provide.Error{
+							Message: common.StringOrNil(err.Error()),
+						})
+						return false
+					}
+				} else {
+					c.store = proofstorage.Find(*c.StoreID)
+				}
+
 				if c.setupRequired() {
 					c.updateStatus(db, circuitStatusPendingSetup, nil)
 
@@ -134,6 +158,46 @@ func (c *Circuit) Create() bool {
 	}
 
 	return false
+}
+
+// StoreLength returns the underlying store length
+func (c *Circuit) StoreLength() (*int, error) {
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
+	if c.store == nil {
+		return nil, fmt.Errorf("failed to resolve store length for circuit %s", c.ID)
+	}
+
+	length := c.store.Length()
+	return &length, nil
+}
+
+// StoreRoot returns the underlying store root
+func (c *Circuit) StoreRoot() (*string, error) {
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
+	if c.store == nil {
+		return nil, fmt.Errorf("failed to resolve store root for circuit %s", c.ID)
+	}
+
+	return c.store.Root()
+}
+
+// StoreValueAt returns the underlying store representation
+func (c *Circuit) StoreValueAt(index uint64) (*string, error) {
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
+	if c.store == nil {
+		return nil, fmt.Errorf("failed to resolve store value at index %d for circuit %s", index, c.ID)
+	}
+
+	return c.store.ValueAt(index)
 }
 
 // Prove generates a proof for the given witness
@@ -168,11 +232,21 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 
 	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
 	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
+
+	if c.store != nil {
+		idx, err := c.store.Insert(*_proof)
+		if err != nil {
+			common.Log.Warningf("failed to insert proof; %s", err.Error())
+		} else {
+			common.Log.Debugf("inserted proof at location %d for circuit %s: %s", *idx, c.ID, *_proof)
+		}
+	}
+
 	return _proof, nil
 }
 
 // Verify a proof to be verifiable for the given witness
-func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, error) {
+func (c *Circuit) Verify(proof string, witness map[string]interface{}, store bool) (bool, error) {
 	c.enrich()
 
 	provider := c.circuitProviderFactory()
@@ -198,6 +272,15 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}) (bool, er
 	err = provider.Verify(_proof, c.verifyingKey, witval)
 	if err != nil {
 		return false, err
+	}
+
+	if c.store != nil && store {
+		idx, err := c.store.Insert(proof)
+		if err != nil {
+			common.Log.Warningf("failed to insert proof; %s", err.Error())
+		} else {
+			common.Log.Debugf("inserted proof at location %d for circuit %s: %s", *idx, c.ID, proof)
+		}
 	}
 
 	common.Log.Debugf("circuit witness %s verified for proof: %s", witness, proof)
@@ -297,6 +380,10 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
+	if c.store == nil && c.StoreID != nil {
+		c.store = proofstorage.Find(*c.StoreID)
+	}
+
 	if c.VerifierContract == nil {
 		err := c.exportVerifier()
 		if err != nil {
@@ -329,7 +416,7 @@ func (c *Circuit) exportVerifier() error {
 // importArtifacts attempts to import the circuit from existing artifacts
 func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 	if c.Artifacts == nil {
-		common.Log.Debugf("short-circuiting the creation of circuit %s from binary artifacts", *c.Identifier)
+		common.Log.Tracef("short-circuiting the creation of circuit %s from binary artifacts", *c.Identifier)
 		return false
 	}
 
@@ -370,6 +457,34 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 	}
 
 	return len(c.Errors) == 0
+}
+
+// initStore attempts to initialize proof storage for the circuit instance
+func (c *Circuit) initStore() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.StoreID != nil {
+		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store has already been initialized", c.ID)
+	}
+
+	common.Log.Debugf("attempting to initialize proof storage for circuit %s", c.ID)
+
+	store := &proofstorage.Store{
+		Name:     common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
+		Provider: common.StringOrNil(storeprovider.StoreProviderMerkleTree),
+		Curve:    common.StringOrNil(*c.Curve),
+	}
+
+	if store.Create() {
+		common.Log.Debugf("initialized proof storage for circuit with identifier %s", c.ID)
+		c.StoreID = &store.ID
+		c.store = store
+	} else {
+		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store not persisted", c.ID)
+	}
+
+	return nil
 }
 
 // persistKeys attempts to persist the proving and verifying keys
@@ -505,6 +620,12 @@ func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) 
 // validate the circuit params
 func (c *Circuit) validate() bool {
 	c.Errors = make([]*provide.Error, 0)
+
+	if c.Curve == nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil("circuit curve id required"),
+		})
+	}
 
 	if c.Provider == nil {
 		c.Errors = append(c.Errors, &provide.Error{

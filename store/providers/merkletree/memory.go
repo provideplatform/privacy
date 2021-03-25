@@ -1,10 +1,10 @@
 package merkletree
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"math"
 	"math/big"
 	"strings"
@@ -46,16 +46,18 @@ func (node Node) String() string {
 
 // MemoryMerkleTree is the most basic implementation of a MerkleTree
 type MemoryMerkleTree struct {
-	Hash     func(data ...[]byte) []byte
+	HashFunc func(data ...[]byte) []byte
 	Mutex    sync.RWMutex
 	Nodes    [][]*Node
 	RootNode *Node
+	Digest   hash.Hash
 }
 
 func (tree *MemoryMerkleTree) init() {
-	if tree.Hash == nil {
-		tree.Hash = func(data ...[]byte) []byte {
-			digest := sha256.New()
+	if tree.HashFunc == nil {
+		tree.HashFunc = func(data ...[]byte) []byte {
+			digest := tree.Digest
+			digest.Reset()
 			for i := range data {
 				_, err := digest.Write(data[i])
 				if err != nil {
@@ -84,7 +86,7 @@ func (tree *MemoryMerkleTree) resizeVertically() {
 
 func (tree *MemoryMerkleTree) createParent(left, right *Node) *Node {
 	parentNode := &Node{
-		hash:   tree.Hash(left.hash[:], right.hash[:]),
+		hash:   tree.HashFunc(left.hash[:], right.hash[:]),
 		Parent: nil,
 		index:  right.index / 2, // Parent index is always the current node index divided by two
 	}
@@ -178,7 +180,7 @@ func (tree *MemoryMerkleTree) getIntermediaryHashesByIndex(index int) (intermedi
 // Also recalculates and recalibrates the tree.
 // Returns the index it was inserted and the hash of the new data
 func (tree *MemoryMerkleTree) Add(data []byte) (index int, hash string) {
-	h := tree.Hash(data)
+	h := tree.HashFunc(data)
 	val := hex.EncodeToString(h)
 	index = tree.Insert(val)
 	return index, val
@@ -187,7 +189,7 @@ func (tree *MemoryMerkleTree) Add(data []byte) (index int, hash string) {
 // RawAdd adds data to the tree without recalculating the tree
 // Returns the index of the leaf and the node
 func (tree *MemoryMerkleTree) RawAdd(data []byte) (index int, hash string) {
-	h := tree.Hash(data)
+	h := tree.HashFunc(data)
 	val := hex.EncodeToString(h)
 	index, _ = tree.RawInsert(val)
 	return index, val
@@ -199,8 +201,10 @@ func (tree *MemoryMerkleTree) RawInsert(hash string) (index int, insertedLeaf Me
 	tree.Mutex.RLock()
 	index = len(tree.Nodes[0])
 
+	dec, _ := hex.DecodeString(hash)
+
 	leaf := &Node{
-		[]byte(hash),
+		dec,
 		index,
 		nil,
 	}
@@ -279,7 +283,7 @@ func (tree *MemoryMerkleTree) ValidateExistence(original []byte, index int, inte
 	var i *big.Int
 
 	treeLeaf := tree.Nodes[0][index]
-	leafHash := tree.Hash(original)
+	leafHash := tree.HashFunc(original)
 
 	i = new(big.Int)
 	i.SetString(string(leafHash), 16)
@@ -294,9 +298,9 @@ func (tree *MemoryMerkleTree) ValidateExistence(original []byte, index int, inte
 		oppositeHash, _ := hex.DecodeString(h)
 
 		if index%2 == 0 {
-			tempBHash = tree.Hash(tempBHash[:], oppositeHash[:])
+			tempBHash = tree.HashFunc(tempBHash[:], oppositeHash[:])
 		} else {
-			tempBHash = tree.Hash(oppositeHash[:], tempBHash[:])
+			tempBHash = tree.HashFunc(oppositeHash[:], tempBHash[:])
 		}
 
 		index /= 2
@@ -310,11 +314,12 @@ func (tree *MemoryMerkleTree) ValidateExistence(original []byte, index int, inte
 }
 
 // Root returns the hash of the root of the tree
-func (tree *MemoryMerkleTree) Root() string {
+func (tree *MemoryMerkleTree) Root() (*string, error) {
 	if tree.RootNode == nil {
-		return ""
+		return nil, fmt.Errorf("nil root node")
 	}
-	return tree.RootNode.Hash()
+	root := tree.RootNode.Hash()
+	return &root, nil
 }
 
 // Length returns the count of the tree leafs
@@ -341,8 +346,8 @@ func (tree *MemoryMerkleTree) String() string {
 }
 
 // HashAt returns the hash at given index
-func (tree *MemoryMerkleTree) HashAt(index int) (string, error) {
-	if index >= len(tree.Nodes[0]) {
+func (tree *MemoryMerkleTree) HashAt(index uint64) (string, error) {
+	if index >= uint64(len(tree.Nodes[0])) {
 		return "", errors.New(outOfBounds)
 	}
 	return tree.Nodes[0][index].Hash(), nil
@@ -350,13 +355,18 @@ func (tree *MemoryMerkleTree) HashAt(index int) (string, error) {
 
 // MarshalJSON Creates JSON version of the needed fields of the tree
 func (tree *MemoryMerkleTree) MarshalJSON() ([]byte, error) {
-	res := fmt.Sprintf("{\"root\":\"%v\", \"length\":%v}", tree.Root(), tree.Length())
+	root, err := tree.Root()
+	if err != nil {
+		return nil, err
+	}
+	res := fmt.Sprintf("{\"root\":\"%v\", \"length\":%v}", *root, tree.Length())
 	return []byte(res), nil
 }
 
-// NewMerkleTree returns a pointer to an initialized MemoryMerkleTree
-func NewMerkleTree() *MemoryMerkleTree {
+// NewMerkleTree returns a pointer to an initialized MemoryMerkleTree.
+func NewMerkleTree(h hash.Hash) *MemoryMerkleTree {
 	var tree MemoryMerkleTree
+	tree.Digest = h
 	tree.init()
 	return &tree
 }

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/backend/r1cs"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy"
@@ -32,6 +32,20 @@ func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
 	switch identifier {
 	case GnarkCircuitIdentifierCubic:
 		return &gnark.CubicCircuit{}
+	case GnarkCircuitIdentifierBaselineDocument:
+		return &gnark.BaselineDocumentCircuit{}
+	case GnarkCircuitIdentifierBaselineRollup:
+		return &gnark.BaselineRollupCircuit{}
+	case GnarkCircuitIdentifierPurchaseOrderCircuit:
+		return &gnark.PurchaseOrderCircuit{}
+	case GnarkCircuitIdentifierSalesOrderCircuit:
+		return &gnark.SalesOrderCircuit{}
+	case GnarkCircuitIdentifierShipmentNotificationCircuit:
+		return &gnark.ShipmentNotificationCircuit{}
+	case GnarkCircuitIdentifierGoodsReceiptCircuit:
+		return &gnark.GoodsReceiptCircuit{}
+	case GnarkCircuitIdentifierInvoiceCircuit:
+		return &gnark.InvoiceCircuit{}
 	default:
 		return nil
 	}
@@ -49,7 +63,11 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 	if witmap, witmapOk := inputs.(map[string]interface{}); witmapOk {
 		witval := reflect.Indirect(reflect.ValueOf(w))
 		for k := range witmap {
-			field := witval.FieldByName(k)
+			field := witval
+			// handle variables in nested structs
+			for _, f := range strings.Split(k, ".") {
+				field = field.FieldByName(f)
+			}
 			if !field.CanSet() {
 				return nil, fmt.Errorf("failed to serialize witness; field %s does not exist on %s circuit", k, identifier)
 			}
@@ -60,7 +78,7 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 		}
 
 		buf = new(bytes.Buffer)
-		err := witness.WriteFull(buf, w.(frontend.Witness), curveIDFactory(&curve))
+		_, err := witness.WriteFullTo(buf, curveIDFactory(&curve), w.(frontend.Circuit))
 		if err != nil {
 			common.Log.Warningf("failed to serialize witness for %s circuit; %s", identifier, err.Error())
 			return nil, err
@@ -95,8 +113,8 @@ func curveIDFactory(curveID *string) gurvy.ID {
 	return gurvy.UNKNOWN
 }
 
-func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (r1cs.R1CS, error) {
-	decodedR1CS := r1cs.New(p.curveID)
+func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {
+	decodedR1CS := groth16.NewCS(p.curveID)
 	_, err := decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
 	if err != nil {
 		common.Log.Warningf("unable to decode R1CS; %s", err.Error())
@@ -142,7 +160,7 @@ func (p *GnarkCircuitProvider) decodeProof(proof []byte) (groth16.Proof, error) 
 // Compile the circuit...
 func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error) {
 	circuit := argv[0].(frontend.Circuit)
-	r1cs, err := frontend.Compile(p.curveID, circuit)
+	r1cs, err := frontend.Compile(p.curveID, backend.GROTH16, circuit)
 	if err != nil {
 		common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
 		return nil, err
@@ -202,7 +220,7 @@ func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interfa
 		return nil, err
 	}
 
-	return groth16.Prove(r1cs, pk, witness.(frontend.Witness))
+	return groth16.Prove(r1cs, pk, witness.(frontend.Circuit))
 }
 
 // Verify the given proof and witness
@@ -219,5 +237,5 @@ func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interf
 		return err
 	}
 
-	return groth16.Verify(prf, vk, witness.(frontend.Witness))
+	return groth16.Verify(prf, vk, witness.(frontend.Circuit))
 }

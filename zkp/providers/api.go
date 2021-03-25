@@ -9,6 +9,30 @@ const GnarkCircuitIdentifierMimc = "mimc"
 // GnarkCircuitIdentifierBaselineDocumentComplete baseline document complete circuit
 const GnarkCircuitIdentifierBaselineDocumentComplete = "baseline_document_complete"
 
+// GnarkCircuitIdentifierBaselineDocument gnark circuit
+const GnarkCircuitIdentifierBaselineDocument = "baseline_document"
+
+// GnarkCircuitIdentifierBaselineRollup gnark circuit
+const GnarkCircuitIdentifierBaselineRollup = "baseline_rollup"
+
+// GnarkCircuitIdentifierPurchaseOrderCircuit gnark circuit
+const GnarkCircuitIdentifierPurchaseOrderCircuit = "purchase_order"
+
+// GnarkCircuitIdentifierSalesOrderCircuit gnark circuit
+const GnarkCircuitIdentifierSalesOrderCircuit = "sales_order"
+
+// GnarkCircuitIdentifierShipmentNotificationCircuit gnark circuit
+const GnarkCircuitIdentifierShipmentNotificationCircuit = "shipment_notification"
+
+// GnarkCircuitIdentifierGoodsReceiptCircuit gnark circuit
+const GnarkCircuitIdentifierGoodsReceiptCircuit = "goods_receipt"
+
+// GnarkCircuitIdentifierInvoiceCircuit gnark circuit
+const GnarkCircuitIdentifierInvoiceCircuit = "invoice"
+
+// GnarkCircuitIdentifierInvoiceSubdividedCircuit gnark circuit
+const GnarkCircuitIdentifierInvoiceSubdividedCircuit = "invoice_sub"
+
 // ZKSnarkCircuitProviderGnark gnark zksnark circuit provider
 const ZKSnarkCircuitProviderGnark = "gnark"
 

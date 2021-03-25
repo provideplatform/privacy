@@ -12,8 +12,8 @@ type MerkleTree interface {
 	RawAdd(data []byte) (index int, hash string)
 	IntermediaryHashesByIndex(index int) (intermediaryHashes []string, err error)
 	ValidateExistence(original []byte, index int, intermediaryHashes []string) (bool, error)
-	HashAt(index int) (string, error)
-	Root() string
+	HashAt(index uint64) (string, error)
+	Root() (*string, error)
 	Length() int
 }
 

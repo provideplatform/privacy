@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/crypto/hash"
 	"github.com/consensys/gnark/frontend"
@@ -23,7 +24,7 @@ func TestPreimage(t *testing.T) {
 
 	for id, h := range confs {
 		var mimcCircuit libgnark.MimcCircuit
-		r1cs, err := frontend.Compile(id, &mimcCircuit)
+		r1cs, err := frontend.Compile(id, backend.GROTH16, &mimcCircuit)
 		assert.NoError(err)
 
 		{

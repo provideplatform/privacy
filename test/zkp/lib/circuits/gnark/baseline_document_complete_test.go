@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/crypto/hash"
 	"github.com/consensys/gnark/crypto/signature"
@@ -127,7 +128,7 @@ func TestBaselineDocumentComplete(t *testing.T) {
 
 	for id, conf := range confs {
 		var baselineDocumentComplete libgnark.BaselineDocumentCompleteCircuit
-		r1cs, err := frontend.Compile(id, &baselineDocumentComplete)
+		r1cs, err := frontend.Compile(id, backend.GROTH16, &baselineDocumentComplete)
 		assert.NoError(err)
 
 		fmt.Println(id)

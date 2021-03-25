@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	gnark_merkle "github.com/consensys/gnark/crypto/accumulator/merkletree"
+	"github.com/consensys/gnark/crypto/hash"
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 	eddsa "github.com/consensys/gnark/crypto/signature/eddsa/bn256"
 	"github.com/consensys/gnark/frontend"
@@ -167,6 +168,7 @@ func TestBaselineDocument(t *testing.T) {
 	var dv DocVars
 	dv.val = 1234.5678
 	dv.text = "test"
+	dv.h = hash.MIMC_BN256
 	var i big.Int
 
 	preImage := dv.Digest()
@@ -210,6 +212,7 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 
 	// write different vars into the bytes buffer, using the digest to ensure they are of uniform length
 	// for gnark's merkle tree reader
+	dv.h = hash.MIMC_BN256
 	dv.val = 1234.5678
 	dv.text = "test1"
 	digest, _ := mimc.Sum("seed", dv.Digest())

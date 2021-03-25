@@ -4,15 +4,14 @@ import (
 	"encoding/binary"
 	"math"
 
-	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
+	mimc "github.com/consensys/gnark/crypto/hash"
 )
-
-var hFunc = mimc.NewMiMC("seed")
 
 // DocVars describes private identifying variables taken from a document intended for validation
 type DocVars struct {
 	val  float64
 	text string
+	h    mimc.Hash
 }
 
 // Reset resets DocVars
@@ -23,12 +22,14 @@ func (dv *DocVars) Reset() {
 
 // Size returns the size of the digested data
 func (dv *DocVars) Size() int {
-	return hFunc.Size()
+	return dv.h.Size()
 }
 
 // Digest hashes the document variables to produce a unique transaction signature of uniform length
 func (dv *DocVars) Digest() []byte {
 	var floatBytes [8]byte
+
+	hFunc := dv.h.New("seed")
 
 	binary.BigEndian.PutUint64(floatBytes[:], math.Float64bits(dv.val))
 	_, err := hFunc.Write(floatBytes[:])

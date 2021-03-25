@@ -85,7 +85,7 @@ func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t
 func TestBaselineDocumentProofGenerationFailureConstraintNotSatisfied(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "baseline_document")
+	params := circuitParamsFactory("gnark", "mimc")
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -152,7 +152,7 @@ func TestCreateCircuitGroth16Cubic(t *testing.T) {
 func TestBaselineDocument(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "baseline_document")
+	params := circuitParamsFactory("gnark", "mimc")
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {

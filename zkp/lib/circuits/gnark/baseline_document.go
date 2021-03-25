@@ -8,43 +8,24 @@ import (
 	"github.com/consensys/gurvy"
 )
 
-// BaselineDocumentCircuit defines a pre-image knowledge proof
-// mimc(secret PreImage) = public hash
-type BaselineDocumentCircuit struct {
-	PreImage frontend.Variable
-	Hash     frontend.Variable `gnark:",public"`
-}
-
-// Define declares the circuit constraints
-// Hash = mimc(PreImage)
-func (circuit *BaselineDocumentCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
-	// hash function
-	mimc, _ := mimc.NewMiMC("seed", curveID)
-
-	hash := mimc.Hash(cs, circuit.PreImage)
-	cs.AssertIsEqual(circuit.Hash, hash)
-
-	return nil
-}
-
 // PurchaseOrderCircuit defines a knowledge proof for purchase orders
 type PurchaseOrderCircuit struct {
-	Document BaselineDocumentCircuit
+	Document MimcCircuit
 }
 
 // SalesOrderCircuit defines a knowledge proof for sales orders
 type SalesOrderCircuit struct {
-	Document BaselineDocumentCircuit
+	Document MimcCircuit
 }
 
 // ShipmentNotificationCircuit defines a knowledge proof for shipment notifications
 type ShipmentNotificationCircuit struct {
-	Document BaselineDocumentCircuit
+	Document MimcCircuit
 }
 
 // GoodsReceiptCircuit defines a knowledge proof for goods receipts
 type GoodsReceiptCircuit struct {
-	Document BaselineDocumentCircuit
+	Document MimcCircuit
 }
 
 // InvoiceCircuit defines a knowledge proof for invoices

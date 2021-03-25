@@ -32,8 +32,8 @@ func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
 	switch identifier {
 	case GnarkCircuitIdentifierCubic:
 		return &gnark.CubicCircuit{}
-	case GnarkCircuitIdentifierBaselineDocument:
-		return &gnark.BaselineDocumentCircuit{}
+	case GnarkCircuitIdentifierMimc:
+		return &gnark.MimcCircuit{}
 	case GnarkCircuitIdentifierBaselineRollup:
 		return &gnark.BaselineRollupCircuit{}
 	case GnarkCircuitIdentifierPurchaseOrderCircuit:

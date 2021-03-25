@@ -3,6 +3,9 @@ package providers
 // GnarkCircuitIdentifierCubic gnark cubic circuit
 const GnarkCircuitIdentifierCubic = "cubic"
 
+// GnarkCircuitIdentifierOwnershipSk gnark ownership sk circuit
+const GnarkCircuitIdentifierOwnershipSk = "ownership_sk"
+
 // GnarkCircuitIdentifierMimc gnark mimc circuit
 const GnarkCircuitIdentifierMimc = "mimc"
 

@@ -36,9 +36,10 @@ func (c *Constraint) operatorIsRestricted() bool {
 }
 
 type Circuit struct {
-	Con         []Constraint
-	Name        string
-	PackageName string // for creating the circuit file
+	Con              []Constraint
+	Name             string
+	PackageName      string // for creating the circuit file
+	RollupProofCount int
 }
 
 func makeImportList(list []string) string {
@@ -106,6 +107,13 @@ func sanitizeValue(val interface{}) (interface{}, error) {
 func (c *Circuit) makeCircuitLogic() (string, error) {
 	var logic strings.Builder
 
+	if c.RollupProofCount > 0 {
+		fmt.Fprintf(&logic, "\tmimc, err := mimc.NewMiMC(\"seed\", curveID)\n")
+		fmt.Fprintf(&logic, "\tif err != nil {\n")
+		fmt.Fprintf(&logic, "\t\treturn err\n\t}\n")
+		fmt.Fprintf(&logic, "\tmerkle.VerifyProof(cs, mimc, circuit.RootHash, circuit.Proofs[:], circuit.Helpers[:])\n")
+	}
+
 	for _, con := range c.Con {
 		if con.operatorIsRestricted() && (con.Operator != "==" && con.Operator != "!=") {
 			return "", fmt.Errorf("invalid operator for constraint type")
@@ -155,11 +163,19 @@ func (c *Circuit) Make(includeImportHeader bool) (string, error) {
 			"github.com/consensys/gnark/frontend",
 			"github.com/consensys/gurvy",
 		}
+		if c.RollupProofCount > 0 {
+			importList = append(importList, "github.com/consensys/gnark/std/accumulator/merkle", "github.com/consensys/gnark/std/hash/mimc")
+		}
 		fmt.Fprintf(&circuit, "%s\n", makeImportList(importList))
 	}
 
 	// Circuit variable
 	fmt.Fprintf(&circuit, "type %s struct {\n", c.Name)
+	if c.RollupProofCount > 0 {
+		fmt.Fprintf(&circuit, "\tProofs [%d]frontend.Variable\n", c.RollupProofCount)
+		fmt.Fprintf(&circuit, "\tHelpers [%d]frontend.Variable\n", c.RollupProofCount-1)
+		fmt.Fprintf(&circuit, "\tRootHash frontend.Variable `gnark:\",public\"`\n")
+	}
 	for _, con := range c.Con {
 		fmt.Fprintf(&circuit, "\t%s frontend.Variable", con.Name)
 		if con.Public {

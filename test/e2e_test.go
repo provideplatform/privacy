@@ -5,6 +5,7 @@ package test
 import (
 	"bytes"
 	"encoding/hex"
+	"hash"
 	"io"
 	"math"
 	"math/big"
@@ -17,7 +18,7 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	gnark_merkle "github.com/consensys/gnark/crypto/accumulator/merkletree"
-	"github.com/consensys/gnark/crypto/hash"
+	gnark_hash "github.com/consensys/gnark/crypto/hash"
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 	eddsa "github.com/consensys/gnark/crypto/signature/eddsa/bn256"
 	"github.com/consensys/gnark/frontend"
@@ -168,7 +169,7 @@ func TestBaselineDocument(t *testing.T) {
 	var dv DocVars
 	dv.val = 1234.5678
 	dv.text = "test"
-	dv.h = hash.MIMC_BN256
+	dv.h = gnark_hash.MIMC_BN256
 	var i big.Int
 
 	preImage := dv.Digest()
@@ -212,7 +213,7 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 
 	// write different vars into the bytes buffer, using the digest to ensure they are of uniform length
 	// for gnark's merkle tree reader
-	dv.h = hash.MIMC_BN256
+	dv.h = gnark_hash.MIMC_BN256
 	dv.val = 1234.5678
 	dv.text = "test1"
 	digest, _ := mimc.Sum("seed", dv.Digest())
@@ -1063,606 +1064,240 @@ func TestTwoPartyProofVerification(t *testing.T) {
 	}
 }
 
-func TestTwoPartyProcurement(t *testing.T) {
-	setAliceEnv()
-	aliceUserID, _ := uuid.NewV4()
-	aliceToken, _ := userTokenFactory(aliceUserID)
-	aliceParams := circuitParamsFactory("gnark", "purchase_order")
+type STAGE uint16
 
-	aliceCircuit, err := privacy.CreateCircuit(*aliceToken, aliceParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
+const (
+	PURCHASE STAGE = iota
+	SALES
+	SHIPMENT
+	GOODS
+	INVOICE
+)
 
-	t.Logf("created alice's purchase order circuit %v", aliceCircuit)
-
-	hFunc := mimc.NewMiMC("seed")
-
-	tr := merkletree.NewMerkleTree(hFunc)
-
-	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
-	soNumber := []byte("1234567890")
-	certificateNumber, err := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
-	if err != nil {
-		t.Error("failed to convert uuid to bytes")
-		return
-	}
-
-	// mimc Write never returns an error
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(soNumber)
-	hFunc.Write(certificateNumber.Bytes())
-
-	// preimage is itself a digest due to the field element size limitation of the curve
-	preImage := hFunc.Sum(nil)
+func getProcurementWitness(stage STAGE, hFunc hash.Hash, proofString string) (string, map[string]interface{}) {
 	var i big.Int
 
+	certificateNumber, _ := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
+	createdOn := []byte("01/02/2021 04:40 PM UTC")
+	globalGoodsReceiptNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001-GR")
+	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
+	globalSalesOrderNumber := []byte("ENTITY-1234567890")
+	globalShipmentNumber := []byte("ENTITY-0000123456")
+	goodsReceiptCreatedOn := []byte("01/04/2021 01:40 PM UTC")
+	soldTo := []byte("56785678")
+	soNumber := []byte("1234567890")
+
+	identifier := ""
+	hFunc.Reset()
+
+	switch stage {
+	case PURCHASE:
+		// mimc Write never returns an error
+		hFunc.Write(globalPurchaseOrderNumber)
+		hFunc.Write(soNumber)
+		hFunc.Write(certificateNumber.Bytes())
+		identifier = "purchase_order"
+	case SALES:
+		hFunc.Write(globalPurchaseOrderNumber)
+		hFunc.Write(globalSalesOrderNumber)
+		hFunc.Write(createdOn)
+		hFunc.Write([]byte(proofString))
+		identifier = "sales_order"
+	case SHIPMENT:
+		hFunc.Write(globalPurchaseOrderNumber)
+		hFunc.Write(globalShipmentNumber)
+		hFunc.Write(soldTo)
+		hFunc.Write([]byte(proofString))
+		identifier = "shipment_notification"
+	case GOODS:
+		hFunc.Write(globalPurchaseOrderNumber)
+		hFunc.Write(globalGoodsReceiptNumber)
+		hFunc.Write(goodsReceiptCreatedOn)
+		hFunc.Write([]byte(proofString))
+		identifier = "goods_receipt"
+	case INVOICE:
+		privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
+		pubKey := privKey.PublicKey
+
+		var invoiceData big.Int
+		invoiceIntStr := "123456789123456789123456789123456789"
+		invoiceData.SetString(invoiceIntStr, 10)
+		invoiceDataBytes := invoiceData.Bytes()
+
+		sigBytes, err := privKey.Sign(invoiceDataBytes, hFunc)
+		if err != nil {
+			return "", nil
+		}
+
+		verified, err := pubKey.Verify(sigBytes, invoiceDataBytes, hFunc)
+		if err != nil || !verified {
+			return "", nil
+		}
+
+		var sig eddsa.Signature
+		sig.SetBytes(sigBytes)
+
+		var point twistededwards.PointAffine
+		pubKeyBytes := pubKey.Bytes()
+		point.SetBytes(pubKeyBytes)
+		xKey := point.X.Bytes()
+		xKeyString := i.SetBytes(xKey[:]).String()
+		yKey := point.Y.Bytes()
+		yKeyString := i.SetBytes(yKey[:]).String()
+
+		point.SetBytes(sigBytes)
+		xSig := point.X.Bytes()
+		xSigString := i.SetBytes(xSig[:]).String()
+		ySig := point.Y.Bytes()
+		ySigString := i.SetBytes(ySig[:]).String()
+		sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
+
+		return "invoice", map[string]interface{}{
+			"Msg":        invoiceIntStr,
+			"PubKey.A.X": xKeyString,
+			"PubKey.A.Y": yKeyString,
+			"Sig.R.A.X":  xSigString,
+			"Sig.R.A.Y":  ySigString,
+			"Sig.S":      sigSString,
+		}
+	}
+	preImage := hFunc.Sum(nil)
 	preImageString := i.SetBytes(preImage).String()
 
 	// mimc Sum merely calls Write which never returns an error
 	hash, _ := mimc.Sum("seed", preImage)
 	hashString := i.SetBytes(hash).String()
 
-	waitForAsync()
-
-	aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
-	if err != nil {
-		t.Errorf("failed to get circuit details; %s", err.Error())
-		return
+	return identifier, map[string]interface{}{
+		"Document.PreImage": preImageString,
+		"Document.Hash":     hashString,
 	}
+}
 
-	proof, err := privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("alice's proof: %v", proof.Proof)
-
-	hashIndex := uint64(0)
-	aliceStore, err := privacy.GetStoreValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("alice's store value index %v: %s, store root: %s", hashIndex, *aliceStore.Value, *aliceStore.Root)
-
-	setBobEnv()
+func TestTwoPartyProcurement(t *testing.T) {
+	aliceUserID, _ := uuid.NewV4()
+	aliceToken, _ := userTokenFactory(aliceUserID)
 	bobUserID, _ := uuid.NewV4()
 	bobToken, _ := userTokenFactory(bobUserID)
 
-	bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
-	bobParams["artifacts"] = aliceCircuit.Artifacts
-	bobParams["verifier_contract"] = aliceCircuit.VerifierContract
+	hFunc := mimc.NewMiMC("seed")
+	tr := merkletree.NewMerkleTree(hFunc)
+	var aliceCircuit, bobCircuit *privacy.Circuit
+	var aliceStore *privacy.StoreValueResponse
+	var err error
 
-	bobCircuit, err := privacy.CreateCircuit(*bobToken, bobParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
+	proofString := ""
+	hashIndex := uint64(0)
+
+	for stage := PURCHASE; stage <= INVOICE; stage++ {
+		setAliceEnv()
+
+		identifier, witness := getProcurementWitness(stage, hFunc, proofString)
+		aliceParams := circuitParamsFactory("gnark", identifier)
+		if aliceCircuit != nil && aliceCircuit.StoreID != nil {
+			aliceParams["store_id"] = aliceCircuit.StoreID
+		}
+		aliceCircuit, err = privacy.CreateCircuit(*aliceToken, aliceParams)
+		if err != nil {
+			t.Errorf("failed to create alice's %s circuit; %s", identifier, err.Error())
+			return
+		}
+
+		t.Logf("created alice's %s circuit %v", identifier, aliceCircuit)
+
+		waitForAsync()
+		if stage == INVOICE {
+			waitForAsync()
+		}
+
+		aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
+		if err != nil {
+			t.Errorf("failed to get circuit details; %s", err.Error())
+			return
+		}
+
+		if stage == INVOICE {
+			waitForAsync()
+			waitForAsync()
+			waitForAsync()
+			waitForAsync()
+		}
+
+		proof, err := privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
+			"witness": witness,
+		})
+		if err != nil {
+			t.Errorf("failed to generate proof; %s", err.Error())
+			return
+		}
+
+		t.Logf("alice's proof: %v", proof.Proof)
+
+		aliceStore, err = privacy.GetStoreValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
+		if err != nil {
+			t.Errorf("failed to get store value; %s", err.Error())
+			return
+		}
+		t.Logf("alice's store value index %v: %s, store root: %s", hashIndex, *aliceStore.Value, *aliceStore.Root)
+
+		setBobEnv()
+
+		bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
+		if bobCircuit != nil && bobCircuit.StoreID != nil {
+			bobParams["store_id"] = bobCircuit.StoreID
+		}
+		bobParams["artifacts"] = aliceCircuit.Artifacts
+		bobParams["verifier_contract"] = aliceCircuit.VerifierContract
+
+		bobCircuit, err = privacy.CreateCircuit(*bobToken, bobParams)
+		if err != nil {
+			t.Errorf("failed to create circuit; %s", err.Error())
+			return
+		}
+
+		t.Logf("created bob's %s circuit", identifier)
+
+		waitForAsync()
+		if stage == INVOICE {
+			waitForAsync()
+			waitForAsync()
+			waitForAsync()
+		}
+
+		verification, err := privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
+			"proof":   proof.Proof,
+			"witness": witness,
+			"store":   true,
+		})
+		if err != nil {
+			t.Errorf("failed to verify proof; %s", err.Error())
+			return
+		}
+
+		t.Logf("bob's verification: %v", verification.Result)
+
+		bobStore, err := privacy.GetStoreValue(*bobToken, bobCircuit.ID.String(), hashIndex)
+		if err != nil {
+			t.Errorf("failed to get store value; %s", err.Error())
+			return
+		}
+		t.Logf("bob's store value index %v: %s, store root: %s", hashIndex, *bobStore.Value, *bobStore.Root)
+		hashIndex++
+
+		if *bobStore.Value != *aliceStore.Value {
+			t.Errorf("hash mismatch")
+			return
+		}
+
+		if *bobStore.Root != *aliceStore.Root {
+			t.Error("root mismatch")
+			return
+		}
+
+		proofString = *proof.Proof
+		index, h := tr.RawAdd([]byte(proofString))
+		t.Logf("added %s proof to merkle tree, index/hash: %v / %v", identifier, index, h)
 	}
-
-	t.Logf("created bob's purchase order circuit")
-
-	waitForAsync()
-
-	verification, err := privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-		"store": true,
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("bob's verification: %v", verification.Result)
-
-	bobStore, err := privacy.GetStoreValue(*bobToken, bobCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("bob's store value index %v: %s, store root: %s", hashIndex, *bobStore.Value, *bobStore.Root)
-
-	if *bobStore.Value != *aliceStore.Value {
-		t.Errorf("hash mismatch")
-		return
-	}
-
-	if *bobStore.Root != *aliceStore.Root {
-		t.Error("root mismatch")
-		return
-	}
-
-	index, h := tr.RawAdd([]byte(*proof.Proof))
-	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
-
-	aliceStoreID := aliceCircuit.StoreID
-	aliceParams = circuitParamsFactory("gnark", "sales_order")
-	aliceParams["store_id"] = aliceStoreID
-
-	setAliceEnv()
-	aliceCircuit, err = privacy.CreateCircuit(*aliceToken, aliceParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created alice's sales order circuit %v", aliceCircuit)
-
-	globalSalesOrderNumber := []byte("ENTITY-1234567890")
-	createdOn := []byte("01/02/2021 04:40 PM UTC")
-
-	hFunc.Reset()
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(globalSalesOrderNumber)
-	hFunc.Write(createdOn)
-	hFunc.Write([]byte(*proof.Proof))
-	preImage = hFunc.Sum(nil)
-
-	preImageString = i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ = mimc.Sum("seed", preImage)
-	hashString = i.SetBytes(hash).String()
-
-	waitForAsync()
-
-	aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
-	if err != nil {
-		t.Errorf("failed to get circuit details; %s", err.Error())
-		return
-	}
-
-	proof, err = privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("alice's proof: %v", proof.Proof)
-
-	hashIndex++
-	aliceStore, err = privacy.GetStoreValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("alice's store value index %v: %s, store root: %s", hashIndex, *aliceStore.Value, *aliceStore.Root)
-
-	setBobEnv()
-
-	bobStoreID := bobCircuit.StoreID
-	bobParams = circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
-	bobParams["artifacts"] = aliceCircuit.Artifacts
-	bobParams["verifier_contract"] = aliceCircuit.VerifierContract
-	bobParams["store_id"] = bobStoreID
-
-	bobCircuit, err = privacy.CreateCircuit(*bobToken, bobParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created bob's sales order circuit")
-
-	waitForAsync()
-
-	verification, err = privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-		"store": true,
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("bob's verification: %v", verification.Result)
-
-	bobStore, err = privacy.GetStoreValue(*bobToken, bobCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("bob's store value index %v: %s, store root: %s", hashIndex, *bobStore.Value, *bobStore.Root)
-
-	if *bobStore.Value != *aliceStore.Value {
-		t.Errorf("hash mismatch")
-		return
-	}
-
-	if *bobStore.Root != *aliceStore.Root {
-		t.Error("root mismatch")
-		return
-	}
-
-	index, h = tr.RawAdd([]byte(*proof.Proof))
-	t.Logf("added sales order proof to merkle tree, index/hash: %v / %v", index, h)
-
-	aliceParams = circuitParamsFactory("gnark", "shipment_notification")
-	aliceParams["store_id"] = aliceStoreID
-
-	setAliceEnv()
-	aliceCircuit, err = privacy.CreateCircuit(*aliceToken, aliceParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created alice's shipment notification circuit %v", aliceCircuit)
-
-	globalShipmentNumber := []byte("ENTITY-0000123456")
-	soldTo := []byte("56785678")
-
-	hFunc.Reset()
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(globalShipmentNumber)
-	hFunc.Write(soldTo)
-	hFunc.Write([]byte(*proof.Proof))
-	preImage = hFunc.Sum(nil)
-
-	preImageString = i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ = mimc.Sum("seed", preImage)
-	hashString = i.SetBytes(hash).String()
-
-	waitForAsync()
-
-	aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
-	if err != nil {
-		t.Errorf("failed to get circuit details; %s", err.Error())
-		return
-	}
-
-	proof, err = privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("alice's proof: %v", proof.Proof)
-
-	hashIndex++
-	aliceStore, err = privacy.GetStoreValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("alice's store value index %v: %s, store root: %s", hashIndex, *aliceStore.Value, *aliceStore.Root)
-
-	setBobEnv()
-
-	bobParams = circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
-	bobParams["artifacts"] = aliceCircuit.Artifacts
-	bobParams["verifier_contract"] = aliceCircuit.VerifierContract
-	bobParams["store_id"] = bobStoreID
-
-	bobCircuit, err = privacy.CreateCircuit(*bobToken, bobParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created bob's shipment notification circuit")
-
-	waitForAsync()
-
-	verification, err = privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-		"store": true,
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("bob's verification: %v", verification.Result)
-
-	bobStore, err = privacy.GetStoreValue(*bobToken, bobCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("bob's store value index %v: %s, store root: %s", hashIndex, *bobStore.Value, *bobStore.Root)
-
-	if *bobStore.Value != *aliceStore.Value {
-		t.Errorf("hash mismatch")
-		return
-	}
-
-	if *bobStore.Root != *aliceStore.Root {
-		t.Error("root mismatch")
-		return
-	}
-
-	index, h = tr.RawAdd([]byte(*proof.Proof))
-	t.Logf("added shipment notification proof to merkle tree, index/hash: %v / %v", index, h)
-
-	aliceParams = circuitParamsFactory("gnark", "goods_receipt")
-	aliceParams["store_id"] = aliceStoreID
-
-	setAliceEnv()
-	aliceCircuit, err = privacy.CreateCircuit(*aliceToken, aliceParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created alice's goods receipt circuit %v", aliceCircuit)
-
-	globalGoodsReceiptNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001-GR")
-	createdOn = []byte("01/04/2021 01:40 PM UTC")
-
-	hFunc.Reset()
-	hFunc.Write(globalPurchaseOrderNumber)
-	hFunc.Write(globalGoodsReceiptNumber)
-	hFunc.Write(createdOn)
-	hFunc.Write([]byte(*proof.Proof))
-	preImage = hFunc.Sum(nil)
-
-	preImageString = i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ = mimc.Sum("seed", preImage)
-	hashString = i.SetBytes(hash).String()
-
-	waitForAsync()
-
-	aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
-	if err != nil {
-		t.Errorf("failed to get circuit details; %s", err.Error())
-		return
-	}
-
-	proof, err = privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("alice's proof: %v", proof.Proof)
-
-	hashIndex++
-	aliceStore, err = privacy.GetStoreValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("alice's store value index %v: %s, store root: %s", hashIndex, *aliceStore.Value, *aliceStore.Root)
-
-	setBobEnv()
-
-	bobParams = circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
-	bobParams["artifacts"] = aliceCircuit.Artifacts
-	bobParams["verifier_contract"] = aliceCircuit.VerifierContract
-	bobParams["store_id"] = bobStoreID
-
-	bobCircuit, err = privacy.CreateCircuit(*bobToken, bobParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created bob's goods receipt circuit")
-
-	waitForAsync()
-
-	verification, err = privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
-			"Document.Hash":     hashString,
-		},
-		"store": true,
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("bob's verification: %v", verification.Result)
-
-	bobStore, err = privacy.GetStoreValue(*bobToken, bobCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("bob's store value index %v: %s, store root: %s", hashIndex, *bobStore.Value, *bobStore.Root)
-
-	if *bobStore.Value != *aliceStore.Value {
-		t.Errorf("hash mismatch")
-		return
-	}
-
-	if *bobStore.Root != *aliceStore.Root {
-		t.Error("root mismatch")
-		return
-	}
-
-	index, h = tr.RawAdd([]byte(*proof.Proof))
-	t.Logf("added goods receipt proof to merkle tree, index/hash: %v / %v", index, h)
-
-	privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
-	pubKey := privKey.PublicKey
-
-	var invoiceData big.Int
-	invoiceIntStr := "123456789123456789123456789123456789"
-	invoiceData.SetString(invoiceIntStr, 10)
-	invoiceDataBytes := invoiceData.Bytes()
-
-	sigBytes, err := privKey.Sign(invoiceDataBytes, hFunc)
-	if err != nil {
-		t.Error("failed to sign invoice data")
-		return
-	}
-
-	verified, err := pubKey.Verify(sigBytes, invoiceDataBytes, hFunc)
-	if err != nil || !verified {
-		t.Error("failed to verify invoice data")
-		return
-	}
-
-	aliceParams = circuitParamsFactory("gnark", "invoice")
-	aliceParams["store_id"] = aliceStoreID
-
-	setAliceEnv()
-	aliceCircuit, err = privacy.CreateCircuit(*aliceToken, aliceParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created alice's invoice circuit %v", aliceCircuit)
-
-	var sig eddsa.Signature
-	sig.SetBytes(sigBytes)
-
-	var point twistededwards.PointAffine
-	pubKeyBytes := pubKey.Bytes()
-	point.SetBytes(pubKeyBytes)
-	xKey := point.X.Bytes()
-	xKeyString := i.SetBytes(xKey[:]).String()
-	yKey := point.Y.Bytes()
-	yKeyString := i.SetBytes(yKey[:]).String()
-
-	point.SetBytes(sigBytes)
-	xSig := point.X.Bytes()
-	xSigString := i.SetBytes(xSig[:]).String()
-	ySig := point.Y.Bytes()
-	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
-
-	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
-	waitForAsync()
-	waitForAsync()
-
-	aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
-	if err != nil {
-		t.Errorf("failed to get circuit details; %s", err.Error())
-		return
-	}
-
-	waitForAsync()
-	waitForAsync()
-	waitForAsync()
-	waitForAsync()
-
-	proof, err = privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"Msg":        invoiceIntStr,
-			"PubKey.A.X": xKeyString,
-			"PubKey.A.Y": yKeyString,
-			"Sig.R.A.X":  xSigString,
-			"Sig.R.A.Y":  ySigString,
-			"Sig.S":      sigSString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("alice's proof: %v", proof.Proof)
-
-	hashIndex++
-	aliceStore, err = privacy.GetStoreValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("alice's store value index %v: %s, store root: %s", hashIndex, *aliceStore.Value, *aliceStore.Root)
-
-	setBobEnv()
-
-	bobParams = circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
-	bobParams["artifacts"] = aliceCircuit.Artifacts
-	bobParams["verifier_contract"] = aliceCircuit.VerifierContract
-	bobParams["store_id"] = bobStoreID
-
-	bobCircuit, err = privacy.CreateCircuit(*bobToken, bobParams)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created bob's invoice circuit")
-
-	waitForAsync()
-	waitForAsync()
-	waitForAsync()
-	waitForAsync()
-
-	verification, err = privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"Msg":        invoiceIntStr,
-			"PubKey.A.X": xKeyString,
-			"PubKey.A.Y": yKeyString,
-			"Sig.R.A.X":  xSigString,
-			"Sig.R.A.Y":  ySigString,
-			"Sig.S":      sigSString,
-		},
-		"store": true,
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("bob's verification: %v", verification.Result)
-
-	bobStore, err = privacy.GetStoreValue(*bobToken, bobCircuit.ID.String(), hashIndex)
-	if err != nil {
-		t.Errorf("failed to get store value; %s", err.Error())
-		return
-	}
-	t.Logf("bob's store value index %v: %s, store root: %s", hashIndex, *bobStore.Value, *bobStore.Root)
-
-	if *bobStore.Value != *aliceStore.Value {
-		t.Errorf("hash mismatch")
-		return
-	}
-
-	if *bobStore.Root != *aliceStore.Root {
-		t.Error("root mismatch")
-		return
-	}
-
-	index, h = tr.RawAdd([]byte(*proof.Proof))
-	t.Logf("added invoice proof to merkle tree, index/hash: %v / %v", index, h)
 
 	root := tr.Recalculate()
 	t.Logf("calculated root: %s", root)

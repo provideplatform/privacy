@@ -80,7 +80,7 @@ if [ "$RUN_INTEGRATION_SUITE" = "true" ]; then
 fi
 
 make build
-make ecs_deploy
+./ops/ecs_deploy.sh
 
 popd &>/dev/null
 echo '....CI process completed....'

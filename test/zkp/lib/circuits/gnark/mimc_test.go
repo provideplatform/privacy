@@ -6,22 +6,22 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/crypto/hash"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gurvy"
 	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
 func TestPreimage(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	confs := map[gurvy.ID]hash.Hash{
-		gurvy.BN256:  hash.MIMC_BN256,
-		gurvy.BLS381: hash.MIMC_BLS381,
-		gurvy.BLS377: hash.MIMC_BLS377,
-		gurvy.BW761:  hash.MIMC_BW761,
+	confs := map[ecc.ID]hash.Hash{
+		ecc.BN254:     hash.MIMC_BN254,
+		ecc.BLS12_381: hash.MIMC_BLS12_381,
+		ecc.BLS12_377: hash.MIMC_BLS12_377,
+		ecc.BW6_761:   hash.MIMC_BW6_761,
 	}
 
 	for id, h := range confs {

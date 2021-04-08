@@ -6,18 +6,18 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gurvy"
 	"github.com/provideapp/privacy/common"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
 // GnarkCircuitProvider interacts with the go-native gnark package
 type GnarkCircuitProvider struct {
-	curveID gurvy.ID
+	curveID ecc.ID
 }
 
 // InitGnarkCircuitProvider initializes and configures a new GnarkCircuitProvider instance
@@ -90,27 +90,27 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 	return nil, fmt.Errorf("failed to serialize witness for %s circuit", identifier)
 }
 
-func curveIDFactory(curveID *string) gurvy.ID {
+func curveIDFactory(curveID *string) ecc.ID {
 	if curveID == nil {
 		common.Log.Warning("no curve id provided")
-		return gurvy.UNKNOWN
+		return ecc.UNKNOWN
 	}
 
 	switch strings.ToLower(*curveID) {
-	case gurvy.BLS377.String():
-		return gurvy.BLS377
-	case gurvy.BLS381.String():
-		return gurvy.BLS381
-	case gurvy.BN256.String():
-		return gurvy.BN256
-	case gurvy.BW761.String():
-		return gurvy.BW761
+	case ecc.BLS12_377.String():
+		return ecc.BLS12_377
+	case ecc.BLS12_381.String():
+		return ecc.BLS12_381
+	case ecc.BN254.String():
+		return ecc.BN254
+	case ecc.BW6_761.String():
+		return ecc.BW6_761
 	default:
 		common.Log.Warningf("failed to resolve elliptic curve; unknown curve: %s", *curveID)
 
 	}
 
-	return gurvy.UNKNOWN
+	return ecc.UNKNOWN
 }
 
 func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {

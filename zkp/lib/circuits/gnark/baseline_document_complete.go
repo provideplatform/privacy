@@ -3,11 +3,11 @@ package gnark
 import (
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
-	"github.com/consensys/gurvy"
 )
 
 // EddsaPrivateKey defines eddsa private key in two chunks (upper and lower)
@@ -31,7 +31,7 @@ type BaselineDocumentCompleteCircuit struct {
 }
 
 // Define declares the circuit's contraints
-func (circuit *BaselineDocumentCompleteCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *BaselineDocumentCompleteCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	params, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (circuit *BaselineDocumentCompleteCircuit) Define(curveID gurvy.ID, cs *fro
 
 	// Check for ownership of sk
 	var i big.Int
-	if curveID == gurvy.BW761 {
+	if curveID == ecc.BW6_761 {
 		// two chunks of 192bits each
 		i.SetString("6277101735386680763835789423207666416102355444464034512896", 10) // 2**192
 	} else {

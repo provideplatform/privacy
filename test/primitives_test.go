@@ -9,14 +9,14 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
+	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
-	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
-	eddsa "github.com/consensys/gnark/crypto/signature/eddsa/bn256"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gurvy"
-	"github.com/consensys/gurvy/bn256/fr"
-	"github.com/consensys/gurvy/bn256/twistededwards"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
@@ -24,7 +24,7 @@ func TestEq(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var eqCircuit gnark.EqualCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &eqCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &eqCircuit)
 	assert.NoError(err)
 
 	{
@@ -48,7 +48,7 @@ func TestNotEq(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var eqCircuit gnark.NotEqualCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &eqCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &eqCircuit)
 	assert.NoError(err)
 
 	{
@@ -80,7 +80,7 @@ func TestLessOrEqual(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var ltEqCircuit gnark.LessOrEqualCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &ltEqCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltEqCircuit)
 	assert.NoError(err)
 
 	{
@@ -109,7 +109,7 @@ func TestGreaterOrEqual(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var ltCircuit gnark.GreaterOrEqualCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &ltCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltCircuit)
 	assert.NoError(err)
 	{
 		var witness gnark.GreaterOrEqualCircuit
@@ -137,7 +137,7 @@ func TestLess(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var ltCircuit gnark.LessCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &ltCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltCircuit)
 	assert.NoError(err)
 
 	{
@@ -173,7 +173,7 @@ func TestGreater(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var ltCircuit gnark.GreaterCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &ltCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltCircuit)
 	assert.NoError(err)
 
 	{
@@ -209,7 +209,7 @@ func TestProofHash(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var pfHashCircuit gnark.ProofHashCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &pfHashCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pfHashCircuit)
 	assert.NoError(err)
 
 	{
@@ -243,7 +243,7 @@ func TestProofEddsa(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var pfEddsaCircuit gnark.ProofEddsaCircuit
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &pfEddsaCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pfEddsaCircuit)
 	assert.NoError(err)
 
 	{

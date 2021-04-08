@@ -1,10 +1,10 @@
 package gnark
 
 import (
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/accumulator/merkle"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/gurvy"
 )
 
 // BaselineRollupCircuit defines a mrkle root verification proof
@@ -14,7 +14,7 @@ type BaselineRollupCircuit struct {
 }
 
 // Define declares the circuit constraints
-func (circuit *BaselineRollupCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *BaselineRollupCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {

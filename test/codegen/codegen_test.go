@@ -47,7 +47,7 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 			"testing",
 			"",
 			"github.com/consensys/gnark/frontend",
-			"github.com/consensys/gurvy",
+			"github.com/consensys/gnark-crypto/ecc",
 			"github.com/consensys/gnark/backend",
 		}
 		importList = append(importList, fmt.Sprintf("github.com/consensys/gnark/backend/%s", t.ProvingScheme))
@@ -62,7 +62,7 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 	}
 	fmt.Fprintf(&test, "\tassert := %s.NewAssert(t)\n\n", t.ProvingScheme)
 	fmt.Fprintf(&test, "\tvar circuit %s\n", t.CircuitName)
-	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(gurvy.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
+	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(ecc.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
 	fmt.Fprintf(&test, "\tassert.NoError(err)\n")
 
 	// Tests
@@ -96,10 +96,10 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 			"testing",
 			"",
 			"github.com/consensys/gnark/frontend",
-			"github.com/consensys/gurvy",
+			"github.com/consensys/gnark-crypto/ecc",
 			"github.com/consensys/gnark/backend",
-			"github.com/consensys/gnark/crypto/accumulator/merkletree",
-			"github.com/consensys/gnark/crypto/hash/mimc/bn256",
+			"github.com/consensys/gnark-crypto/accumulator/merkletree",
+			"github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc",
 			"github.com/consensys/gnark/std/accumulator/merkle",
 		}
 		importList = append(importList, fmt.Sprintf("github.com/consensys/gnark/backend/%s", t.ProvingScheme))
@@ -114,7 +114,7 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 	}
 	fmt.Fprintf(&test, "\tassert := %s.NewAssert(t)\n\n", t.ProvingScheme)
 	fmt.Fprintf(&test, "\tvar circuit %s\n", t.CircuitName)
-	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(gurvy.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
+	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(ecc.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
 	fmt.Fprintf(&test, "\tassert.NoError(err)\n")
 
 	// Tests
@@ -127,12 +127,12 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 
 	fmt.Fprintf(&test, "\t\tvar buf bytes.Buffer\n")
 	fmt.Fprintf(&test, "\t\tfor i := 0; i < len(proofs); i++ {\n")
-	fmt.Fprintf(&test, "\t\t\tdigest, _ := bn256.Sum(\"seed\", []byte(proofs[i]))\n")
+	fmt.Fprintf(&test, "\t\t\tdigest, _ := mimc.Sum(\"seed\", []byte(proofs[i]))\n")
 	fmt.Fprintf(&test, "\t\t\tbuf.Write(digest)\n")
 	fmt.Fprintf(&test, "\t\t}\n\n")
 
 	fmt.Fprintf(&test, "\t\tproofIndex := uint64(0)\n")
-	fmt.Fprintf(&test, "\t\thFunc := bn256.NewMiMC(\"seed\")\n")
+	fmt.Fprintf(&test, "\t\thFunc := mimc.NewMiMC(\"seed\")\n")
 	fmt.Fprintf(&test, "\t\tsegmentSize := hFunc.Size()\n")
 	fmt.Fprintf(&test, "\t\tmerkleRoot, proofSet, numLeaves, err := merkletree.BuildReaderProof(&buf, hFunc, segmentSize, proofIndex)\n")
 	fmt.Fprintf(&test, "\t\tassert.NoError(err)\n\n")
@@ -160,7 +160,7 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 func TestCodegen(t *testing.T) {
 	circuitFilePath := "./generated_code.go"
 	testFilePath := "./generated_code_test.go"
-	curveIDString := "BN256"
+	curveIDString := "BN254"
 	provingScheme := "groth16"
 	{
 		circuitName := "GenEqual250Circuit"
@@ -562,7 +562,7 @@ func TestCodegen(t *testing.T) {
 func TestRollupCodegen(t *testing.T) {
 	circuitFilePath := "./generated_code.go"
 	testFilePath := "./generated_code_test.go"
-	curveIDString := "BN256"
+	curveIDString := "BN254"
 	provingScheme := "groth16"
 	{
 		circuitName := "GenRollupCircuit"

@@ -489,6 +489,8 @@ github.com/prometheus/tsdb v0.10.0/go.mod h1:oi49uRhEe9dPUTlS3JRZOwJuVi6tmh10QSg
 github.com/provideservices/provide-go v0.0.0-20210329075149-12d05caa751c/go.mod h1:zMvfECorm5+hb9aewWEVpxkaFGko3r5Qk3/N/aIuLeY=
 github.com/provideservices/provide-go v0.0.0-20210408030116-aa4aaecde81e h1:p2AQhHXVNvmKHzPnSdtmK9Yy4PfVwgGOHGYC/uVjt30=
 github.com/provideservices/provide-go v0.0.0-20210408030116-aa4aaecde81e/go.mod h1:zMvfECorm5+hb9aewWEVpxkaFGko3r5Qk3/N/aIuLeY=
+github.com/provideservices/provide-go v0.0.0-20210408055521-b4f0d6ded781 h1:s/8OxGAw9yasF7/nCPBqUXzBBLs2kGq/zlYIHdES9iY=
+github.com/provideservices/provide-go v0.0.0-20210408055521-b4f0d6ded781/go.mod h1:zMvfECorm5+hb9aewWEVpxkaFGko3r5Qk3/N/aIuLeY=
 github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=

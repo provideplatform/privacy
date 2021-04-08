@@ -20,7 +20,7 @@ require (
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.3
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210408030116-aa4aaecde81e
+	github.com/provideservices/provide-go v0.0.0-20210408055521-b4f0d6ded781
 	github.com/stretchr/testify v1.7.0
 )
 

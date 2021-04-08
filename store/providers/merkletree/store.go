@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	mimc "github.com/consensys/gnark/crypto/hash"
-	"github.com/consensys/gurvy"
+	"github.com/consensys/gnark-crypto/ecc"
+	mimc "github.com/consensys/gnark-crypto/hash"
 	"github.com/jinzhu/gorm"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
@@ -26,14 +26,14 @@ type DurableMerkleTree struct {
 
 func hashFactory(hash *string) hash.Hash {
 	switch strings.ToLower(*hash) {
-	case gurvy.BLS377.String():
-		return mimc.MIMC_BLS377.New("seed")
-	case gurvy.BLS381.String():
-		return mimc.MIMC_BLS381.New("seed")
-	case gurvy.BN256.String():
-		return mimc.MIMC_BN256.New("seed")
-	case gurvy.BW761.String():
-		return mimc.MIMC_BW761.New("seed")
+	case ecc.BLS12_377.String():
+		return mimc.MIMC_BLS12_377.New("seed")
+	case ecc.BLS12_381.String():
+		return mimc.MIMC_BLS12_381.New("seed")
+	case ecc.BN254.String():
+		return mimc.MIMC_BN254.New("seed")
+	case ecc.BW6_761.String():
+		return mimc.MIMC_BW6_761.New("seed")
 	default:
 		common.Log.Warningf("failed to resolve hash type string; unknown or unsupported hash: %s", *hash)
 	}

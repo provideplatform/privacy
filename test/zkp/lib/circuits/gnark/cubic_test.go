@@ -5,10 +5,10 @@ package gnark
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gurvy"
 	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
@@ -18,7 +18,7 @@ func TestCubicEquation(t *testing.T) {
 	var cubicCircuit libgnark.CubicCircuit
 
 	// compiles our circuit into a R1CS
-	r1cs, err := frontend.Compile(gurvy.BN256, backend.GROTH16, &cubicCircuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &cubicCircuit)
 	assert.NoError(err)
 
 	{

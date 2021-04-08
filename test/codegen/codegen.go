@@ -161,7 +161,7 @@ func (c *Circuit) Make(includeImportHeader bool) (string, error) {
 		// Import list
 		importList := []string{
 			"github.com/consensys/gnark/frontend",
-			"github.com/consensys/gurvy",
+			"github.com/consensys/gnark-crypto/ecc",
 		}
 		if c.RollupProofCount > 0 {
 			importList = append(importList, "github.com/consensys/gnark/std/accumulator/merkle", "github.com/consensys/gnark/std/hash/mimc")
@@ -187,7 +187,7 @@ func (c *Circuit) Make(includeImportHeader bool) (string, error) {
 	fmt.Fprintf(&circuit, "}\n\n")
 
 	// Define function
-	fmt.Fprintf(&circuit, "func (circuit *%s) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {\n", c.Name)
+	fmt.Fprintf(&circuit, "func (circuit *%s) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {\n", c.Name)
 	logic, err := c.makeCircuitLogic()
 	if err != nil {
 		return "", fmt.Errorf("invalid operator type")

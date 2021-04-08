@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"math"
 
-	mimc "github.com/consensys/gnark/crypto/hash"
+	mimc "github.com/consensys/gnark-crypto/hash"
 )
 
 // DocVars describes private identifying variables taken from a document intended for validation

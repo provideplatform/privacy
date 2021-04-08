@@ -1,11 +1,11 @@
 package gnark
 
 import (
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
-	"github.com/consensys/gurvy"
 )
 
 // PurchaseOrderCircuit defines a knowledge proof for purchase orders
@@ -36,7 +36,7 @@ type InvoiceCircuit struct {
 }
 
 // Define declares the PO circuit constraints
-func (circuit *PurchaseOrderCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *PurchaseOrderCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
@@ -50,7 +50,7 @@ func (circuit *PurchaseOrderCircuit) Define(curveID gurvy.ID, cs *frontend.Const
 }
 
 // Define declares the SO circuit constraints
-func (circuit *SalesOrderCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *SalesOrderCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
@@ -64,7 +64,7 @@ func (circuit *SalesOrderCircuit) Define(curveID gurvy.ID, cs *frontend.Constrai
 }
 
 // Define declares the SN circuit constraints
-func (circuit *ShipmentNotificationCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *ShipmentNotificationCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
@@ -78,7 +78,7 @@ func (circuit *ShipmentNotificationCircuit) Define(curveID gurvy.ID, cs *fronten
 }
 
 // Define declares the GR circuit constraints
-func (circuit *GoodsReceiptCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *GoodsReceiptCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
@@ -92,7 +92,7 @@ func (circuit *GoodsReceiptCircuit) Define(curveID gurvy.ID, cs *frontend.Constr
 }
 
 // Define declares the Invoice circuit constraints
-func (circuit *InvoiceCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *InvoiceCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	curve, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {
 		return err

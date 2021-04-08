@@ -3,10 +3,10 @@ package gnark
 import (
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/signature/eddsa"
-	"github.com/consensys/gurvy"
 )
 
 // OwnershipSkCircuit defines circuit for prove of ownership of sk
@@ -16,7 +16,7 @@ type OwnershipSkCircuit struct {
 }
 
 // Define declares the circuit's constraints
-func (circuit *OwnershipSkCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *OwnershipSkCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	params, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {
 		return err
@@ -24,7 +24,7 @@ func (circuit *OwnershipSkCircuit) Define(curveID gurvy.ID, cs *frontend.Constra
 	circuit.Pk.Curve = params
 
 	var i big.Int
-	if curveID == gurvy.BW761 {
+	if curveID == ecc.BW6_761 {
 		// two chunks of 192bits each
 		i.SetString("6277101735386680763835789423207666416102355444464034512896", 10) // 2**192
 	} else {

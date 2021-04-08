@@ -1,9 +1,9 @@
 package gnark
 
 import (
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/gurvy"
 )
 
 // MimcCircuit defines a pre-image knowledge proof
@@ -17,7 +17,7 @@ type MimcCircuit struct {
 
 // Define declares the circuit's constraints
 // Hash = mimc(PreImage)
-func (circuit *MimcCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *MimcCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, _ := mimc.NewMiMC("seed", curveID)
 

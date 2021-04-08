@@ -15,16 +15,16 @@ import (
 	"testing"
 	"time"
 
+	gnark_merkle "github.com/consensys/gnark-crypto/accumulator/merkletree"
+	"github.com/consensys/gnark-crypto/ecc"
+	mimc "github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
+	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
+	gnark_hash "github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
-	gnark_merkle "github.com/consensys/gnark/crypto/accumulator/merkletree"
-	gnark_hash "github.com/consensys/gnark/crypto/hash"
-	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
-	eddsa "github.com/consensys/gnark/crypto/signature/eddsa/bn256"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/accumulator/merkle"
-	"github.com/consensys/gurvy"
-	"github.com/consensys/gurvy/bn256/twistededwards"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/store/providers/merkletree"
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
@@ -36,7 +36,7 @@ func waitForAsync() {
 	time.Sleep(time.Duration(2) * time.Second)
 }
 
-var curveID = gurvy.BN256
+var curveID = ecc.BN254
 
 func circuitParamsFactory(provider, identifier string) map[string]interface{} {
 	return map[string]interface{}{
@@ -169,7 +169,7 @@ func TestBaselineDocument(t *testing.T) {
 	var dv DocVars
 	dv.val = 1234.5678
 	dv.text = "test"
-	dv.h = gnark_hash.MIMC_BN256
+	dv.h = gnark_hash.MIMC_BN254
 	var i big.Int
 
 	preImage := dv.Digest()
@@ -213,7 +213,7 @@ func TestBaselineRollupMerkleCircuitWithoutPrivacyApi(t *testing.T) {
 
 	// write different vars into the bytes buffer, using the digest to ensure they are of uniform length
 	// for gnark's merkle tree reader
-	dv.h = gnark_hash.MIMC_BN256
+	dv.h = gnark_hash.MIMC_BN254
 	dv.val = 1234.5678
 	dv.text = "test1"
 	digest, _ := mimc.Sum("seed", dv.Digest())

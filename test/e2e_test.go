@@ -1309,15 +1309,15 @@ func TestTwoPartyProcurement(t *testing.T) {
 }
 
 func TestTwoPartyProcurementIterated(t *testing.T) {
-	aliceUserID, _ := uuid.NewV4()
-	aliceToken, _ := userTokenFactory(aliceUserID)
-	bobUserID, _ := uuid.NewV4()
-	bobToken, _ := userTokenFactory(bobUserID)
+	provideUserID, _ := uuid.NewV4()
+	provideToken, _ := userTokenFactory(provideUserID)
+	financierUserID, _ := uuid.NewV4()
+	financierToken, _ := userTokenFactory(financierUserID)
 
 	hFunc := mimc.NewMiMC("seed")
 	tr := merkletree.NewMerkleTree(hFunc)
-	var aliceCircuit, bobCircuit *privacy.Circuit
-	var aliceStore *privacy.StoreValueResponse
+	var provideCircuit, financierCircuit *privacy.Circuit
+	var provideStore, financierStore *privacy.StoreValueResponse
 	var err error
 
 	proofString := ""
@@ -1331,24 +1331,24 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			setAliceEnv()
 
 			identifier, witness := getProcurementWitness(stage, hFunc, proofString, creditRating)
-			aliceParams := circuitParamsFactory("gnark", identifier)
-			if aliceCircuit != nil && aliceCircuit.StoreID != nil {
-				aliceParams["store_id"] = aliceCircuit.StoreID
+			provideParams := circuitParamsFactory("gnark", identifier)
+			if provideCircuit != nil && provideCircuit.StoreID != nil {
+				provideParams["store_id"] = provideCircuit.StoreID
 			}
-			aliceCircuit, err = privacy.CreateCircuit(*aliceToken, aliceParams)
+			provideCircuit, err = privacy.CreateCircuit(*provideToken, provideParams)
 			if err != nil {
-				t.Errorf("failed to create alice's %s circuit; %s", identifier, err.Error())
+				t.Errorf("failed to create provide's %s circuit; %s", identifier, err.Error())
 				return
 			}
 
-			t.Logf("created alice's %s circuit %v", identifier, aliceCircuit)
+			t.Logf("created provide's %s circuit %v", identifier, provideCircuit)
 
 			waitForAsync()
 			if stage == INVOICE {
 				waitForAsync()
 			}
 
-			aliceCircuit, err = privacy.GetCircuitDetails(*aliceToken, aliceCircuit.ID.String())
+			provideCircuit, err = privacy.GetCircuitDetails(*provideToken, provideCircuit.ID.String())
 			if err != nil {
 				t.Errorf("failed to get circuit details; %s", err.Error())
 				return
@@ -1361,7 +1361,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 				waitForAsync()
 			}
 
-			proof, err := privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
+			proof, err := privacy.Prove(*provideToken, provideCircuit.ID.String(), map[string]interface{}{
 				"witness": witness,
 			})
 			if err != nil {
@@ -1369,31 +1369,31 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 				return
 			}
 
-			t.Logf("alice's proof: %v", proof.Proof)
+			t.Logf("provide's proof: %v", proof.Proof)
 
-			aliceStore, err = privacy.GetStoreValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
+			provideStore, err = privacy.GetStoreValue(*provideToken, provideCircuit.ID.String(), hashIndex)
 			if err != nil {
 				t.Errorf("failed to get store value; %s", err.Error())
 				return
 			}
-			t.Logf("alice's store value index %v: %s, store root: %s", hashIndex, *aliceStore.Value, *aliceStore.Root)
+			t.Logf("provide's store value index %v: %s, store root: %s", hashIndex, *provideStore.Value, *provideStore.Root)
 
 			setBobEnv()
 
-			bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
-			if bobCircuit != nil && bobCircuit.StoreID != nil {
-				bobParams["store_id"] = bobCircuit.StoreID
+			financierParams := circuitParamsFactory(*provideCircuit.Provider, *provideCircuit.Identifier)
+			if financierCircuit != nil && financierCircuit.StoreID != nil {
+				financierParams["store_id"] = financierCircuit.StoreID
 			}
-			bobParams["artifacts"] = aliceCircuit.Artifacts
-			bobParams["verifier_contract"] = aliceCircuit.VerifierContract
+			financierParams["artifacts"] = provideCircuit.Artifacts
+			financierParams["verifier_contract"] = provideCircuit.VerifierContract
 
-			bobCircuit, err = privacy.CreateCircuit(*bobToken, bobParams)
+			financierCircuit, err = privacy.CreateCircuit(*financierToken, financierParams)
 			if err != nil {
 				t.Errorf("failed to create circuit; %s", err.Error())
 				return
 			}
 
-			t.Logf("created bob's %s circuit", identifier)
+			t.Logf("created financier's %s circuit", identifier)
 
 			waitForAsync()
 			if stage == INVOICE {
@@ -1402,7 +1402,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 				waitForAsync()
 			}
 
-			verification, err := privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
+			verification, err := privacy.Verify(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
 				"proof":   proof.Proof,
 				"witness": witness,
 				"store":   true,
@@ -1412,22 +1412,22 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 				return
 			}
 
-			t.Logf("bob's verification: %v", verification.Result)
+			t.Logf("financier's verification: %v", verification.Result)
 
-			bobStore, err := privacy.GetStoreValue(*bobToken, bobCircuit.ID.String(), hashIndex)
+			financierStore, err = privacy.GetStoreValue(*financierToken, financierCircuit.ID.String(), hashIndex)
 			if err != nil {
 				t.Errorf("failed to get store value; %s", err.Error())
 				return
 			}
-			t.Logf("bob's store value index %v: %s, store root: %s", hashIndex, *bobStore.Value, *bobStore.Root)
+			t.Logf("financier's store value index %v: %s, store root: %s", hashIndex, *financierStore.Value, *financierStore.Root)
 			hashIndex++
 
-			if *bobStore.Value != *aliceStore.Value {
+			if *financierStore.Value != *provideStore.Value {
 				t.Errorf("hash mismatch")
 				return
 			}
 
-			if *bobStore.Root != *aliceStore.Root {
+			if *financierStore.Root != *provideStore.Root {
 				t.Error("root mismatch")
 				return
 			}
@@ -1443,67 +1443,88 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 	root := tr.Recalculate()
 	t.Logf("calculated root: %s", root)
 
-	if root != *aliceStore.Root {
+	if root != *provideStore.Root {
 		t.Error("root mismatch with merkle store")
 		return
 	}
 
-	// FIXME-- replace with codegen
-	segmentSize := mimc.BlockSize
-	proofIndex := uint64(0)
-	merkleRoot, proofSet, numLeaves, err := gnark_merkle.BuildReaderProof(&buf, hFunc, segmentSize, proofIndex)
+	privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
+	pubKey := privKey.PublicKey
+
+	var financierRootData big.Int
+	financierRootData.SetString(*financierStore.Root, 16)
+	financierRootDataBytes := financierRootData.Bytes()
+
+	sigBytes, err := privKey.Sign(financierRootDataBytes, hFunc)
 	if err != nil {
-		t.Errorf("failed to build merkle proof; %s", err.Error())
+		t.Error("failed to sign financier root data")
 		return
 	}
 
-	proofVerified := gnark_merkle.VerifyProof(hFunc, merkleRoot, proofSet, proofIndex, numLeaves)
-	if !proofVerified {
-		t.Errorf("failed to verify merkle proof; %s", err.Error())
+	verified, err := pubKey.Verify(sigBytes, financierRootDataBytes, hFunc)
+	if err != nil || !verified {
+		t.Error("failed to verify financier root data")
 		return
 	}
 
-	var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
+	var sig eddsa.Signature
+	sig.SetBytes(sigBytes)
 
-	// to compile the circuit, the witnesses must be allocated in the correct sizes
-	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
-	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	r1cs, err := frontend.Compile(curveID, backend.GROTH16, &baselineCircuit)
-	if err != nil {
-		t.Errorf("failed to compile circuit; %s", err.Error())
-		return
-	}
+	var i big.Int
+	var point twistededwards.PointAffine
+	pubKeyBytes := pubKey.Bytes()
+	point.SetBytes(pubKeyBytes)
+	xKey := point.X.Bytes()
+	xKeyString := i.SetBytes(xKey[:]).String()
+	yKey := point.Y.Bytes()
+	yKeyString := i.SetBytes(yKey[:]).String()
 
-	merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
+	point.SetBytes(sigBytes)
+	xSig := point.X.Bytes()
+	xSigString := i.SetBytes(xSig[:]).String()
+	ySig := point.Y.Bytes()
+	ySigString := i.SetBytes(ySig[:]).String()
+	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
 
-	publicWitness.Proofs = make([]frontend.Variable, len(proofSet))
-	publicWitness.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	publicWitness.RootHash.Assign(merkleRoot)
-	for i := 0; i < len(proofSet); i++ {
-		publicWitness.Proofs[i].Assign(proofSet[i])
+	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
+	waitForAsync()
+	waitForAsync()
 
-		if i < len(proofSet)-1 {
-			publicWitness.Helpers[i].Assign(merkleProofHelper[i])
-		}
-	}
-
-	pk, vk, err := groth16.Setup(r1cs)
-	if err != nil {
-		t.Errorf("failed to setup circuit; %s", err.Error())
-		return
-	}
-
-	proof, err := groth16.Prove(r1cs, pk, &publicWitness)
+	proof, err := privacy.Prove(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"Msg":        financierRootData.String(),
+			"PubKey.A.X": xKeyString,
+			"PubKey.A.Y": yKeyString,
+			"Sig.R.A.X":  xSigString,
+			"Sig.R.A.Y":  ySigString,
+			"Sig.S":      sigSString,
+		},
+	})
 	if err != nil {
 		t.Errorf("failed to generate proof; %s", err.Error())
 		return
 	}
 
-	err = groth16.Verify(proof, vk, &publicWitness)
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
+
+	verification, err := privacy.Verify(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"Msg":        financierRootData.String(),
+			"PubKey.A.X": xKeyString,
+			"PubKey.A.Y": yKeyString,
+			"Sig.R.A.X":  xSigString,
+			"Sig.R.A.Y":  ySigString,
+			"Sig.S":      sigSString,
+		},
+	})
 	if err != nil {
 		t.Errorf("failed to verify proof; %s", err.Error())
 		return
 	}
 
-	t.Logf("rollup proof verified; verified %d proofs", hashIndex-1)
+	t.Logf("financier root signature proof/verification: %v / %v", proof.Proof, verification.Result)
 }

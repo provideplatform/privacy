@@ -33,6 +33,12 @@ const GnarkCircuitIdentifierInvoiceCircuit = "invoice"
 // GnarkCircuitIdentifierInvoiceSubdividedCircuit gnark circuit
 const GnarkCircuitIdentifierInvoiceSubdividedCircuit = "invoice_sub"
 
+// GnarkCircuitIdentifierProofHashCircuit gnark circuit
+const GnarkCircuitIdentifierProofHashCircuit = "proof_hash"
+
+// GnarkCircuitIdentifierProofEddsaCircuit gnark circuit
+const GnarkCircuitIdentifierProofEddsaCircuit = "proof_eddsa"
+
 // ZKSnarkCircuitProviderGnark gnark zksnark circuit provider
 const ZKSnarkCircuitProviderGnark = "gnark"
 

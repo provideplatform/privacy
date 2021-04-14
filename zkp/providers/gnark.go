@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -69,11 +70,24 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 		for k := range witmap {
 			field := witval
 			// handle variables in nested structs
-			for _, f := range strings.Split(k, ".") {
-				field = field.FieldByName(f)
+			var f string
+			for _, f = range strings.Split(k, ".") {
+				field = field.FieldByName(strings.Split(f, "[")[0])
 			}
 			if !field.CanSet() {
 				return nil, fmt.Errorf("failed to serialize witness; field %s does not exist on %s circuit", k, identifier)
+			}
+			if field.Kind() == reflect.Array && strings.Contains(f, "[") {
+				indexStr := strings.Split(f, "[")[1]
+				indexStr = strings.TrimRight(indexStr, "]")
+				index, err := strconv.Atoi(indexStr)
+				if err != nil {
+					return nil, fmt.Errorf("failed to serialize witness; unable to extract index from witness on %s circuit", identifier)
+				}
+				if index >= field.Len() {
+					return nil, fmt.Errorf("failed to serialize witness; invalid index %d for field %s on %s circuit", index, k, identifier)
+				}
+				field = field.Index(index)
 			}
 
 			v := frontend.Variable{}

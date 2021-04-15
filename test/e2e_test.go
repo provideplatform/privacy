@@ -1556,18 +1556,18 @@ func TestProofEddsaWithApi(t *testing.T) {
 		t.Errorf("failed to decode proof string")
 	}
 
-	chunks := 6
-	chunkSize := fr.Bytes
+	chunks := 16
+	chunkSize := 128 / chunks
 	witness := map[string]interface{}{}
 	for index := 0; index < chunks; index++ {
 		var elem fr.Element
-		if index*chunkSize < len(proofBytes) {
-			elem.SetBytes(proofBytes[index*chunkSize : (index+1)*chunkSize])
-		}
+		elem.SetBytes(proofBytes[index*chunkSize : index*chunkSize+chunkSize])
 		b := elem.Bytes()
 		hFunc.Write(b[:])
-		msgStr := fmt.Sprintf("Msg[%d]", index)
-		witness[msgStr] = elem.String()
+		for index := 0; index < 16; index++ {
+			msgStr := fmt.Sprintf("Msg[%d]", index)
+			witness[msgStr] = elem.String()
+		}
 	}
 	hash := hFunc.Sum(nil)
 

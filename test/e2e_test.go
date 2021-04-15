@@ -5,6 +5,7 @@ package test
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"hash"
 	"io"
 	"math"
@@ -17,6 +18,7 @@ import (
 
 	gnark_merkle "github.com/consensys/gnark-crypto/accumulator/merkletree"
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	mimc "github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
@@ -59,6 +61,7 @@ func setAliceEnv() {
 }
 
 func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t *testing.T) {
+	time.Sleep(time.Duration(10) * time.Second)
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
 	params := circuitParamsFactory("gnark", "cubic")
@@ -1520,6 +1523,115 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			"Sig.R.A.Y":  ySigString,
 			"Sig.S":      sigSString,
 		},
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("financier root signature proof/verification: %v / %v", proof.Proof, verification.Result)
+}
+
+func TestProofEddsaWithApi(t *testing.T) {
+	hFunc := mimc.NewMiMC("seed")
+	financierUserID, _ := uuid.NewV4()
+	financierToken, _ := userTokenFactory(financierUserID)
+	identifier := "proof_eddsa"
+
+	financierParams := circuitParamsFactory("gnark", identifier)
+	financierCircuit, err := privacy.CreateCircuit(*financierToken, financierParams)
+	if err != nil {
+		t.Errorf("failed to create financier's %s circuit; %s", identifier, err.Error())
+		return
+	}
+
+	t.Logf("created financier's %s circuit %v", identifier, financierCircuit)
+
+	waitForAsync()
+	waitForAsync()
+
+	proofString := "9f3aac14a60502ce8a8084d876e9da3ac85191aadc25003d3f81a41eff1f5a389b1177672ca50ee865a9a0563479ea316571d3f3895ab914a4312378f6e89e781dd0447826aebeb42335ec2ab89cd41fea4d797a376d621bf139b5030f873e3487eb40948f4c58dab967ea2e890c722e2ba85d8caa0afdb6301d360d27d966c0"
+	proofBytes, err := hex.DecodeString(proofString)
+	if err != nil {
+		t.Errorf("failed to decode proof string")
+	}
+
+	chunks := 16
+	chunkSize := 128 / chunks
+	witness := map[string]interface{}{}
+	for index := 0; index < chunks; index++ {
+		var elem fr.Element
+		elem.SetBytes(proofBytes[index*chunkSize : index*chunkSize+chunkSize])
+		b := elem.Bytes()
+		hFunc.Write(b[:])
+		for index := 0; index < 16; index++ {
+			msgStr := fmt.Sprintf("Msg[%d]", index)
+			witness[msgStr] = elem.String()
+		}
+	}
+	hash := hFunc.Sum(nil)
+
+	src := rand.NewSource(0)
+	r := rand.New(src)
+
+	privKey, _ := eddsa.GenerateKey(r)
+	pubKey := privKey.PublicKey
+
+	sigBytes, err := privKey.Sign(hash, hFunc)
+	if err != nil {
+		t.Error("failed to sign invoice data")
+		return
+	}
+
+	verified, err := pubKey.Verify(sigBytes, hash, hFunc)
+	if err != nil || !verified {
+		t.Error("failed to verify invoice data")
+		return
+	}
+
+	var sig eddsa.Signature
+	var i big.Int
+	var point twistededwards.PointAffine
+
+	sig.SetBytes(sigBytes)
+	pubKeyBytes := pubKey.Bytes()
+	point.SetBytes(pubKeyBytes)
+	xKey := point.X.Bytes()
+	xKeyString := i.SetBytes(xKey[:]).String()
+	yKey := point.Y.Bytes()
+	yKeyString := i.SetBytes(yKey[:]).String()
+
+	point.SetBytes(sigBytes)
+	xSig := point.X.Bytes()
+	xSigString := i.SetBytes(xSig[:]).String()
+	ySig := point.Y.Bytes()
+	ySigString := i.SetBytes(ySig[:]).String()
+	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
+
+	witness["PubKey.A.X"] = xKeyString
+	witness["PubKey.A.Y"] = yKeyString
+	witness["Sig.R.A.X"] = xSigString
+	witness["Sig.R.A.Y"] = ySigString
+	witness["Sig.S"] = sigSString
+
+	proof, err := privacy.Prove(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
+		"witness": witness,
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("generated proof for financier's %s circuit", identifier)
+
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
+
+	verification, err := privacy.Verify(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
+		"proof":   proof.Proof,
+		"witness": witness,
 	})
 	if err != nil {
 		t.Errorf("failed to verify proof; %s", err.Error())

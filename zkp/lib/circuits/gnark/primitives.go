@@ -88,7 +88,7 @@ func (circuit *GreaterCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSys
 
 // ProofHashCircuit defines hash(Proof[]) == Hash
 type ProofHashCircuit struct {
-	Proof [16]frontend.Variable
+	Proof [6]frontend.Variable
 	Hash  frontend.Variable `gnark:",public"`
 }
 
@@ -99,7 +99,7 @@ func (circuit *ProofHashCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintS
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Proof[0], circuit.Proof[1], circuit.Proof[2], circuit.Proof[3], circuit.Proof[4], circuit.Proof[5], circuit.Proof[6], circuit.Proof[7], circuit.Proof[8], circuit.Proof[9], circuit.Proof[10], circuit.Proof[11], circuit.Proof[12], circuit.Proof[13], circuit.Proof[14], circuit.Proof[15])
+	hash := hFunc.Hash(cs, circuit.Proof[0], circuit.Proof[1], circuit.Proof[2], circuit.Proof[3], circuit.Proof[4], circuit.Proof[5])
 	cs.AssertIsEqual(hash, circuit.Hash)
 
 	return nil
@@ -107,7 +107,7 @@ func (circuit *ProofHashCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintS
 
 // ProofEddsaCircuit defines eddsa.Verify(hash(Msg[])) of PubKey and Sig
 type ProofEddsaCircuit struct {
-	Msg    [16]frontend.Variable
+	Msg    [6]frontend.Variable
 	PubKey eddsa.PublicKey `gnark:",public"`
 	Sig    eddsa.Signature `gnark:",public"`
 }
@@ -125,7 +125,7 @@ func (circuit *ProofEddsaCircuit) Define(curveID ecc.ID, cs *frontend.Constraint
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Msg[0], circuit.Msg[1], circuit.Msg[2], circuit.Msg[3], circuit.Msg[4], circuit.Msg[5], circuit.Msg[6], circuit.Msg[7], circuit.Msg[8], circuit.Msg[9], circuit.Msg[10], circuit.Msg[11], circuit.Msg[12], circuit.Msg[13], circuit.Msg[14], circuit.Msg[15])
+	hash := hFunc.Hash(cs, circuit.Msg[0], circuit.Msg[1], circuit.Msg[2], circuit.Msg[3], circuit.Msg[4], circuit.Msg[5])
 	eddsa.Verify(cs, circuit.Sig, hash, circuit.PubKey)
 
 	return nil

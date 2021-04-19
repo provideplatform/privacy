@@ -22,7 +22,7 @@ require (
 	github.com/onsi/gomega v1.10.3
 	github.com/prometheus/procfs v0.0.10 // indirect
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210413174337-6fc12bd7c879
+	github.com/provideservices/provide-go v0.0.0-20210417082846-8ed6b3333d26
 	github.com/stretchr/testify v1.7.0
 )
 

@@ -1564,10 +1564,8 @@ func TestProofEddsaWithApi(t *testing.T) {
 		elem.SetBytes(proofBytes[index*chunkSize : index*chunkSize+chunkSize])
 		b := elem.Bytes()
 		hFunc.Write(b[:])
-		for index := 0; index < 16; index++ {
-			msgStr := fmt.Sprintf("Msg[%d]", index)
-			witness[msgStr] = elem.String()
-		}
+		msgStr := fmt.Sprintf("Msg[%d]", index)
+		witness[msgStr] = elem.String()
 	}
 	hash := hFunc.Sum(nil)
 

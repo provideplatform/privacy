@@ -107,6 +107,7 @@ services:
       - privacy0-nats-streaming
       - privacy0-postgres
       - privacy0-redis
+      - privacy0-vault
     environment:
       - DATABASE_HOST=privacy0-postgres
       - DATABASE_NAME=ident_dev

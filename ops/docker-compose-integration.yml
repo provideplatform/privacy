@@ -257,7 +257,6 @@ services:
     image: provide/vault:privacy-dev
     container_name: privacy0-vault
     depends_on:
-      - privacy0-ident
       - privacy0-postgres
     environment:
       - DATABASE_HOST=privacy0-postgres
@@ -537,7 +536,6 @@ services:
     image: provide/vault:privacy-dev
     container_name: privacy1-vault
     depends_on:
-      - privacy1-ident
       - privacy1-postgres
     environment:
       - DATABASE_HOST=privacy1-postgres

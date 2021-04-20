@@ -115,8 +115,6 @@ services:
       - DATABASE_PASSWORD=ident
       - DATABASE_SUPERUSER=prvd
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
-      - IDENT_API_HOST=localhost:8080
-      - IDENT_API_SCHEME=http
       - NATS_CLIENT_PREFIX=ident
       - NATS_URL=nats://privacy0-nats:4222
       - NATS_STREAMING_URL=nats://privacy0-nats-streaming:4222
@@ -157,8 +155,6 @@ services:
       - DATABASE_PASSWORD=ident
       - DATABASE_SUPERUSER=prvd
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
-      - IDENT_API_HOST=privacy0-ident:8080
-      - IDENT_API_SCHEME=http
       - NATS_CLIENT_PREFIX=privacy0-ident-consumer
       - NATS_URL=nats://privacy0-nats:4222
       - NATS_STREAMING_URL=nats://privacy0-nats-streaming:4222
@@ -400,8 +396,6 @@ services:
       - DATABASE_SUPERUSER=prvd
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
       - NATS_CLIENT_PREFIX=ident
-      - IDENT_API_HOST=localhost:8080
-      - IDENT_API_SCHEME=http
       - NATS_URL=nats://privacy1-nats:4222
       - NATS_STREAMING_URL=nats://privacy1-nats-streaming:4222
       - REDIS_HOSTS=privacy1-redis:6379
@@ -440,8 +434,6 @@ services:
       - DATABASE_PASSWORD=ident
       - DATABASE_SUPERUSER=prvd
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
-      - IDENT_API_HOST=privacy1-ident:8080
-      - IDENT_API_SCHEME=http
       - NATS_CLIENT_PREFIX=ident-consumer
       - NATS_URL=nats://privacy1-nats:4222
       - NATS_STREAMING_URL=nats://privacy1-nats-streaming:4222

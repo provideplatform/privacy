@@ -111,8 +111,6 @@ services:
       - DATABASE_PASSWORD=ident
       - DATABASE_SUPERUSER=prvd
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
-      - IDENT_API_HOST=localhost:8080
-      - IDENT_API_SCHEME=http
       - NATS_CLIENT_PREFIX=ident
       - NATS_URL=nats://nats:4222
       - NATS_STREAMING_URL=nats://nats-streaming:4222

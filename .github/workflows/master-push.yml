@@ -1,3 +1,4 @@
+name: Privacy
 on: 
   push:
     branches:

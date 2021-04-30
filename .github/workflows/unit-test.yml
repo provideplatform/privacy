@@ -44,6 +44,6 @@ jobs:
         working-directory: privacy
       - run: ./.bin/privacy_migrate
         working-directory: privacy
-      - run: make integration
+      - run: make test
         working-directory: privacy
       - run: docker volume rm ops_privacy-db

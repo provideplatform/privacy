@@ -40,7 +40,7 @@ stop_local_dependencies:
 
 test: build
 	./ops/run_local_dependencies.sh
-	./ops/run_local_unit_tests.sh
+	./ops/run_local_tests.sh
 
 integration: build
 	./ops/run_local_dependencies.sh

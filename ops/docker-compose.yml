@@ -249,7 +249,7 @@ services:
     restart: always
 
   vault:
-    image: provide/vault:privacy-dev
+    image: provide/vault:dev
     container_name: vault
     depends_on:
       - postgres

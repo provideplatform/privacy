@@ -36,9 +36,7 @@ jobs:
           path: 'ident'
           ref: master
           token: ${{ secrets.DEPLOY_GITHUB_PAT }}
-      - run: go mod tidy
-        working-directory: privacy
-      - run: go mod vendor
+      - run: make build
         working-directory: privacy
       - run: make test
         working-directory: privacy

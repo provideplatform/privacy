@@ -39,11 +39,9 @@ stop_local_dependencies:
 	./ops/stop_local_dependencies.sh
 
 test: build
-	./ops/run_local_dependencies.sh
 	./ops/run_local_tests.sh
 
 integration: build
-	./ops/run_local_dependencies.sh
 	./ops/run_integration_tests.sh
 
 zokrates:

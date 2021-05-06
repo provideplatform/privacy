@@ -178,7 +178,7 @@ services:
     restart: always
 
   privacy0-privacy:
-    build: ../
+    image: privacy-under-test
     container_name: privacy0-privacy
     depends_on:
       - privacy0-nats-streaming
@@ -217,7 +217,7 @@ services:
     restart: always
 
   privacy0-consumer:
-    build: ../
+    image: privacy-under-test
     entrypoint: ./ops/run_consumer.sh
     container_name: privacy0-consumer
     depends_on:
@@ -460,7 +460,7 @@ services:
     restart: always
 
   privacy1-privacy:
-    build: ../
+    image: privacy-under-test
     container_name: privacy1-privacy
     depends_on:
       - privacy1-nats-streaming
@@ -499,7 +499,7 @@ services:
     restart: always
 
   privacy1-consumer:
-    build: ../
+    image: privacy-under-test
     entrypoint: ./ops/run_consumer.sh
     container_name: privacy1-consumer
     depends_on:

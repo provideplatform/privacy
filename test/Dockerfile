@@ -10,14 +10,6 @@ RUN rm -rf ~/.ssh && rm -rf /go/src/github.com/provideapp/privacy/ops/keys
 WORKDIR /go/src/github.com/provideapp/privacy
 RUN make build
 
-FROM golang:1.15
-
-RUN mkdir -p /privacy
-WORKDIR /privacy
-
-COPY --from=builder /go/src/github.com/provideapp/privacy/.bin /privacy/.bin
-COPY --from=builder /go/src/github.com/provideapp/privacy/ops /privacy/ops
-
 ENV TAGS "integration"
 
 ENTRYPOINT ["./ops/run_local_tests.sh"]

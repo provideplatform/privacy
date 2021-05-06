@@ -43,7 +43,7 @@ services:
 
   privacy0-nats:
     image: provide/nats-server
-    container_name: privacy0-provide-nats
+    container_name: privacy0-nats
     command: ["-auth", "testtoken", "-p", "4222", "-D", "-V"]
     environment:
       JWT_SIGNER_PUBLIC_KEY: |-
@@ -107,6 +107,7 @@ services:
       - privacy0-nats-streaming
       - privacy0-postgres
       - privacy0-redis
+      - privacy0-vault
     environment:
       - DATABASE_HOST=privacy0-postgres
       - DATABASE_NAME=ident_dev
@@ -256,7 +257,6 @@ services:
     image: provide/vault:privacy-dev
     container_name: privacy0-vault
     depends_on:
-      - privacy0-ident
       - privacy0-postgres
     environment:
       - DATABASE_HOST=privacy0-postgres
@@ -325,7 +325,7 @@ services:
 
   privacy1-nats:
     image: provide/nats-server
-    container_name: privacy1-provide-nats
+    container_name: privacy1-nats
     command: ["-auth", "testtoken", "-p", "4222", "-D", "-V"]
     environment:
       JWT_SIGNER_PUBLIC_KEY: |-
@@ -389,6 +389,7 @@ services:
       - privacy1-nats-streaming
       - privacy1-postgres
       - privacy1-redis
+      - privacy1-vault
     environment:
       - DATABASE_HOST=privacy1-postgres
       - DATABASE_NAME=ident_dev
@@ -505,6 +506,7 @@ services:
       - privacy1-nats-streaming
       - privacy1-postgres
       - privacy1-redis
+      - privacy1-vault
     environment:
       - CONSUME_NATS_STREAMING_SUBSCRIPTIONS=true
       - DATABASE_HOST=privacy1-postgres
@@ -537,7 +539,6 @@ services:
     image: provide/vault:privacy-dev
     container_name: privacy1-vault
     depends_on:
-      - privacy1-ident
       - privacy1-postgres
     environment:
       - DATABASE_HOST=privacy1-postgres

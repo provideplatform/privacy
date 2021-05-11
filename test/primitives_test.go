@@ -299,9 +299,10 @@ func TestProofEddsa(t *testing.T) {
 		point.SetBytes(sigBytes[:32])
 		x2 := point.X.Bytes()
 		y2 := point.Y.Bytes()
-		publicWitness.Sig.R.A.X.Assign(x2[:])
-		publicWitness.Sig.R.A.Y.Assign(y2[:])
-		publicWitness.Sig.S.Assign(sigBytes[32:])
+		publicWitness.Sig.R.X.Assign(x2[:])
+		publicWitness.Sig.R.Y.Assign(y2[:])
+		publicWitness.Sig.S1.Assign(sigBytes[32:48])
+		publicWitness.Sig.S2.Assign(sigBytes[48:])
 
 		assert.ProverSucceeded(r1cs, &publicWitness)
 	}

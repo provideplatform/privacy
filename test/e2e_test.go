@@ -665,7 +665,8 @@ func TestProcurement(t *testing.T) {
 	xSigString := i.SetBytes(xSig[:]).String()
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
+	sigLen := len(sigBytes) / 2
+	sigSString := i.SetBytes(sigBytes[sigLen:]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()
@@ -676,9 +677,10 @@ func TestProcurement(t *testing.T) {
 			"Msg":        invoiceIntStr,
 			"PubKey.A.X": xKeyString,
 			"PubKey.A.Y": yKeyString,
-			"Sig.R.A.X":  xSigString,
-			"Sig.R.A.Y":  ySigString,
-			"Sig.S":      sigSString,
+			"Sig.R.X":    xSigString,
+			"Sig.R.Y":    ySigString,
+			"Sig.S1":     sigSString[:sigLen/2],
+			"Sig.S2":     sigSString[sigLen/2:],
 		},
 	})
 	if err != nil {
@@ -697,9 +699,10 @@ func TestProcurement(t *testing.T) {
 			"Msg":        invoiceIntStr,
 			"PubKey.A.X": xKeyString,
 			"PubKey.A.Y": yKeyString,
-			"Sig.R.A.X":  xSigString,
-			"Sig.R.A.Y":  ySigString,
-			"Sig.S":      sigSString,
+			"Sig.R.X":    xSigString,
+			"Sig.R.Y":    ySigString,
+			"Sig.S1":     sigSString[:sigLen/2],
+			"Sig.S2":     sigSString[sigLen/2:],
 		},
 	})
 	if err != nil {
@@ -1150,15 +1153,17 @@ func getProcurementWitness(stage STAGE, hFunc hash.Hash, proofString string, cre
 		xSigString := i.SetBytes(xSig[:]).String()
 		ySig := point.Y.Bytes()
 		ySigString := i.SetBytes(ySig[:]).String()
-		sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
+		sigLen := len(sigBytes) / 2
+		sigSString := i.SetBytes(sigBytes[sigLen:]).String()
 
 		return "invoice", map[string]interface{}{
 			"Msg":        invoiceIntStr,
 			"PubKey.A.X": xKeyString,
 			"PubKey.A.Y": yKeyString,
-			"Sig.R.A.X":  xSigString,
-			"Sig.R.A.Y":  ySigString,
-			"Sig.S":      sigSString,
+			"Sig.R.X":    xSigString,
+			"Sig.R.Y":    ySigString,
+			"Sig.S1":     sigSString[:sigLen/2],
+			"Sig.S2":     sigSString[sigLen/2:],
 		}
 	}
 
@@ -1487,7 +1492,8 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 	xSigString := i.SetBytes(xSig[:]).String()
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
+	sigLen := len(sigBytes) / 2
+	sigSString := i.SetBytes(sigBytes[sigLen:]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()
@@ -1498,9 +1504,10 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			"Msg":        financierRootData.String(),
 			"PubKey.A.X": xKeyString,
 			"PubKey.A.Y": yKeyString,
-			"Sig.R.A.X":  xSigString,
-			"Sig.R.A.Y":  ySigString,
-			"Sig.S":      sigSString,
+			"Sig.R.X":    xSigString,
+			"Sig.R.Y":    ySigString,
+			"Sig.S1":     sigSString[:sigLen/2],
+			"Sig.S2":     sigSString[sigLen/2:],
 		},
 	})
 	if err != nil {
@@ -1519,9 +1526,10 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			"Msg":        financierRootData.String(),
 			"PubKey.A.X": xKeyString,
 			"PubKey.A.Y": yKeyString,
-			"Sig.R.A.X":  xSigString,
-			"Sig.R.A.Y":  ySigString,
-			"Sig.S":      sigSString,
+			"Sig.R.X":    xSigString,
+			"Sig.R.Y":    ySigString,
+			"Sig.S1":     sigSString[:sigLen/2],
+			"Sig.S2":     sigSString[sigLen/2:],
 		},
 	})
 	if err != nil {
@@ -1606,13 +1614,15 @@ func TestProofEddsaWithApi(t *testing.T) {
 	xSigString := i.SetBytes(xSig[:]).String()
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
-	sigSString := i.SetBytes(sigBytes[len(sigBytes)/2:]).String()
+	sigLen := len(sigBytes) / 2
+	sigSString := i.SetBytes(sigBytes[sigLen:]).String()
 
 	witness["PubKey.A.X"] = xKeyString
 	witness["PubKey.A.Y"] = yKeyString
-	witness["Sig.R.A.X"] = xSigString
-	witness["Sig.R.A.Y"] = ySigString
-	witness["Sig.S"] = sigSString
+	witness["Sig.R.X"] = xSigString
+	witness["Sig.R.Y"] = ySigString
+	witness["Sig.S1"] = sigSString[:sigLen/2]
+	witness["Sig.S2"] = sigSString[sigLen/2:]
 
 	proof, err := privacy.Prove(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
 		"witness": witness,

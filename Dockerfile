@@ -10,7 +10,9 @@ RUN rm -rf ~/.ssh && rm -rf /go/src/github.com/provideapp/privacy/ops/keys
 WORKDIR /go/src/github.com/provideapp/privacy
 RUN make build
 
-FROM golang:1.15
+FROM alpine
+
+RUN apk add --no-cache bash
 
 RUN mkdir -p /privacy
 WORKDIR /privacy

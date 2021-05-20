@@ -181,7 +181,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(true)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -220,7 +220,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -260,7 +260,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -300,7 +300,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -340,7 +340,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -381,7 +381,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -422,7 +422,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -484,7 +484,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{
@@ -552,7 +552,7 @@ func TestCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		writeToFile(circuitFilePath, circuitStr)
@@ -580,7 +580,7 @@ func TestRollupCodegen(t *testing.T) {
 
 		circuitStr, err := circuit.Make(true)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err)
+			t.Fatalf("failed to make circuit: %s", err.Error())
 		}
 
 		test := ConstraintTest{

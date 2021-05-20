@@ -11,6 +11,8 @@ import (
 	eddsabls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/twistededwards/eddsa"
 	edwardsbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards"
 	eddsabls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards/eddsa"
+	edwardsbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards"
+	eddsabls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards/eddsa"
 	edwardsbn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
 	eddsabn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
 	edwardsbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/twistededwards"
@@ -28,6 +30,7 @@ func parseKeys(id ecc.ID, pubKeyBuf []byte, privKeyBuf []byte) ([]byte, []byte, 
 	var pointbls12381 edwardsbls12381.PointAffine
 	var pointbls12377 edwardsbls12377.PointAffine
 	var pointbw6761 edwardsbw6761.PointAffine
+	var pointbls24315 edwardsbls24315.PointAffine
 
 	switch id {
 	case ecc.BN254:
@@ -54,6 +57,12 @@ func parseKeys(id ecc.ID, pubKeyBuf []byte, privKeyBuf []byte) ([]byte, []byte, 
 		aY := pointbw6761.Y.Bytes()
 		scalar := privKeyBuf[48:96]
 		return aX[:], aY[:], scalar
+	case ecc.BLS24_315:
+		pointbls24315.SetBytes(pubKeyBuf[:32])
+		aX := pointbls24315.X.Bytes()
+		aY := pointbls24315.Y.Bytes()
+		scalar := privKeyBuf[32:64]
+		return aX[:], aY[:], scalar
 	default:
 		return pubKeyBuf, pubKeyBuf, privKeyBuf
 	}
@@ -66,6 +75,7 @@ func TestOwnershipSk(t *testing.T) {
 	signature.Register(signature.EDDSA_BLS12_381, eddsabls12381.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
 
 	type confSig struct {
 		h hash.Hash
@@ -77,6 +87,7 @@ func TestOwnershipSk(t *testing.T) {
 		ecc.BLS12_381: {hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
 		ecc.BLS12_377: {hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
 		ecc.BW6_761:   {hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
+		ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
 	}
 
 	for id, ss := range confs {

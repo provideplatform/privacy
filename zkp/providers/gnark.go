@@ -123,6 +123,8 @@ func curveIDFactory(curveID *string) ecc.ID {
 		return ecc.BN254
 	case ecc.BW6_761.String():
 		return ecc.BW6_761
+	case ecc.BLS24_315.String():
+		return ecc.BLS24_315
 	default:
 		common.Log.Warningf("failed to resolve elliptic curve; unknown curve: %s", *curveID)
 

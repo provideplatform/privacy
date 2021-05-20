@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	outOfBounds = "Incorrect index - Index out of bounds"
+	outOfBounds = "incorrect index - out of bounds"
 )
 
 // Node is implementation of types.Node and representation of a single node or leaf in the merkle tree

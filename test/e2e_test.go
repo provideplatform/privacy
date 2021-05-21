@@ -104,7 +104,7 @@ func TestBaselineDocumentProofGenerationFailureConstraintNotSatisfied(t *testing
 
 	_, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"PreImage": "3", // these are nonsense values for this circuit
+			"Preimage": "3", // these are nonsense values for this circuit
 			"Hash":     "9",
 		},
 	})
@@ -184,7 +184,7 @@ func TestBaselineDocument(t *testing.T) {
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"PreImage": preImageString,
+			"Preimage": preImageString,
 			"Hash":     hashString,
 		},
 	})
@@ -196,7 +196,7 @@ func TestBaselineDocument(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"PreImage": preImageString,
+			"Preimage": preImageString,
 			"Hash":     hashString,
 		},
 	})
@@ -420,7 +420,7 @@ func TestProcurement(t *testing.T) {
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -432,7 +432,7 @@ func TestProcurement(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -478,7 +478,7 @@ func TestProcurement(t *testing.T) {
 
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -490,7 +490,7 @@ func TestProcurement(t *testing.T) {
 	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -535,7 +535,7 @@ func TestProcurement(t *testing.T) {
 
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -547,7 +547,7 @@ func TestProcurement(t *testing.T) {
 	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -592,7 +592,7 @@ func TestProcurement(t *testing.T) {
 
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -604,7 +604,7 @@ func TestProcurement(t *testing.T) {
 	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -776,7 +776,7 @@ func TestProofVerifyMerkle(t *testing.T) {
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -788,7 +788,7 @@ func TestProofVerifyMerkle(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 		"store": false,
@@ -875,7 +875,7 @@ func TestDuplicateProofVerifyMerkle(t *testing.T) {
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -887,7 +887,7 @@ func TestDuplicateProofVerifyMerkle(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 		"store": true,
@@ -1000,7 +1000,7 @@ func TestTwoPartyProofVerification(t *testing.T) {
 
 	proof, err := privacy.Prove(*aliceToken, aliceCircuit.ID.String(), map[string]interface{}{
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 	})
@@ -1040,7 +1040,7 @@ func TestTwoPartyProofVerification(t *testing.T) {
 	verification, err := privacy.Verify(*bobToken, bobCircuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.PreImage": preImageString,
+			"Document.Preimage": preImageString,
 			"Document.Hash":     hashString,
 		},
 		"store": true,
@@ -1177,7 +1177,7 @@ func getProcurementWitness(stage STAGE, hFunc hash.Hash, proofString string, cre
 	hashString := i.SetBytes(hash).String()
 
 	return identifier, map[string]interface{}{
-		"Document.PreImage": preImageString,
+		"Document.Preimage": preImageString,
 		"Document.Hash":     hashString,
 	}
 }

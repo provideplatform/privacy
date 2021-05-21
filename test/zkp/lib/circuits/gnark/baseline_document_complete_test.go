@@ -190,7 +190,7 @@ func TestBaselineDocumentComplete(t *testing.T) {
 			sigRx, sigRy, sigS1, sigS2 := parseSignature(id, sig)
 
 			var witness libgnark.BaselineDocumentCompleteCircuit
-			witness.Doc.PreImage.Assign(preimage)
+			witness.Doc.Preimage.Assign(preimage)
 			witness.Doc.Hash.Assign(hash)
 			witness.Pk.A.X.Assign(pubkeyAx)
 			witness.Pk.A.Y.Assign(pubkeyAy)

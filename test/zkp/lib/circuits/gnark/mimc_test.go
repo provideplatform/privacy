@@ -38,7 +38,7 @@ func TestPreimage(t *testing.T) {
 			hash := hFunc.Sum(nil)
 
 			var witness libgnark.MimcCircuit
-			witness.PreImage.Assign(preimage)
+			witness.Preimage.Assign(preimage)
 			witness.Hash.Assign(hash)
 
 			assert.SolvingSucceeded(r1cs, &witness)
@@ -48,7 +48,7 @@ func TestPreimage(t *testing.T) {
 		{
 			var witness libgnark.MimcCircuit
 			witness.Hash.Assign(42) // these are nonsense values for this circuit
-			witness.PreImage.Assign(42)
+			witness.Preimage.Assign(42)
 
 			assert.SolvingFailed(r1cs, &witness)
 			//assert.ProverFailed(r1cs, &witness)

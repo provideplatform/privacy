@@ -43,7 +43,7 @@ func (circuit *PurchaseOrderCircuit) Define(curveID ecc.ID, cs *frontend.Constra
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.PreImage)
+	hash := mimc.Hash(cs, circuit.Document.Preimage)
 	cs.AssertIsEqual(circuit.Document.Hash, hash)
 
 	return nil
@@ -57,7 +57,7 @@ func (circuit *SalesOrderCircuit) Define(curveID ecc.ID, cs *frontend.Constraint
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.PreImage)
+	hash := mimc.Hash(cs, circuit.Document.Preimage)
 	cs.AssertIsEqual(circuit.Document.Hash, hash)
 
 	return nil
@@ -71,7 +71,7 @@ func (circuit *ShipmentNotificationCircuit) Define(curveID ecc.ID, cs *frontend.
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.PreImage)
+	hash := mimc.Hash(cs, circuit.Document.Preimage)
 	cs.AssertIsEqual(circuit.Document.Hash, hash)
 
 	return nil
@@ -85,7 +85,7 @@ func (circuit *GoodsReceiptCircuit) Define(curveID ecc.ID, cs *frontend.Constrai
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.PreImage)
+	hash := mimc.Hash(cs, circuit.Document.Preimage)
 	cs.AssertIsEqual(circuit.Document.Hash, hash)
 
 	return nil

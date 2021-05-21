@@ -18,7 +18,7 @@ type EddsaPrivateKey struct {
 
 // Document is similar to MimcCircuit
 type Document struct {
-	PreImage frontend.Variable
+	Preimage frontend.Variable
 	Hash     frontend.Variable `gnark:",public"`
 }
 
@@ -67,9 +67,9 @@ func (circuit *BaselineDocumentCompleteCircuit) Define(curveID ecc.ID, cs *front
 	eddsa.Verify(cs, circuit.Sig, circuit.Doc.Hash, circuit.Pk)
 
 	// Check for knowledge of preimage
-	// Hash = mimc(PreImage)
+	// Hash = mimc(Preimage)
 	mimc, _ := mimc.NewMiMC("seed", curveID)
-	cs.AssertIsEqual(circuit.Doc.Hash, mimc.Hash(cs, circuit.Doc.PreImage))
+	cs.AssertIsEqual(circuit.Doc.Hash, mimc.Hash(cs, circuit.Doc.Preimage))
 
 	return nil
 }

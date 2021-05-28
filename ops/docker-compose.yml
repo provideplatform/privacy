@@ -103,7 +103,6 @@ services:
       - nats-streaming
       - postgres
       - redis
-      - vault
     environment:
       - DATABASE_HOST=postgres
       - DATABASE_NAME=ident_dev
@@ -144,6 +143,7 @@ services:
       - nats-streaming
       - postgres
       - redis
+      - vault
     environment:
       - CONSUME_NATS_STREAMING_SUBSCRIPTIONS=true
       - DATABASE_HOST=postgres
@@ -177,6 +177,7 @@ services:
     build: ../
     container_name: privacy
     depends_on:
+      - ident
       - nats-streaming
       - postgres
       - privacy-consumer
@@ -253,6 +254,7 @@ services:
     image: provide/vault:dev
     container_name: vault
     depends_on:
+      - ident
       - postgres
     environment:
       - DATABASE_HOST=postgres
@@ -265,8 +267,8 @@ services:
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
       - PORT=8080
+      - SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
       - SEAL_UNSEAL_VALIDATION_HASH=0x1c1381fd075f1ee3d42799bb8da0602a2afb9ef4b492bf1eae72399ecc81b0f0
-      - VAULT_SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://vault:8080/status"]
       interval: 1m

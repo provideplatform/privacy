@@ -254,7 +254,7 @@ services:
     restart: always
 
   privacy0-vault:
-    image: provide/vault:privacy-dev
+    image: provide/vault
     container_name: privacy0-vault
     depends_on:
       - privacy0-ident
@@ -270,8 +270,9 @@ services:
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
       - PORT=8080
+      - REDIS_HOSTS=privacy0-redis:6379
+      - SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
       - SEAL_UNSEAL_VALIDATION_HASH=0x1c1381fd075f1ee3d42799bb8da0602a2afb9ef4b492bf1eae72399ecc81b0f0
-      - VAULT_SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://privacy0-vault:8080/status"]
       interval: 1m
@@ -538,7 +539,7 @@ services:
     restart: always
 
   privacy1-vault:
-    image: provide/vault:privacy-dev
+    image: provide/vault
     container_name: privacy1-vault
     depends_on:
       - privacy1-ident
@@ -554,8 +555,9 @@ services:
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
       - PORT=8080
-      - SEAL_UNSEAL_VALIDATION_HASH=0x1c1381fd075f1ee3d42799bb8da0602a2afb9ef4b492bf1eae72399ecc81b0f0
-      - VAULT_SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
+      - REDIS_HOSTS=privacy1-redis:6379
+      - SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
+      - SEAL_UNSEAL_VALIDATION_HASH=0x1c1381fd075f1ee3d42799bb8da0602a2afb9ef4b492bf1eae72399ecc81b0f0G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://privacy1-vault:8080/status"]
       interval: 1m

@@ -65,6 +65,8 @@ xH2b0OBcVjYsgRnQ9OZpQ+kIPaFhaWChnfEArCmhrOEgOnhfkr6YGDHFenfT3/RA
 PUl1cxrvY7BHh4obNa6Bf8ECAwEAAQ==
 -----END PUBLIC KEY-----'
 
+sleep 5
+
 pkgs=(test)
 for d in "${pkgs[@]}" ; do
   pkg=$(echo $d | sed 's/\/*$//g')

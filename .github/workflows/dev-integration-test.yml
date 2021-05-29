@@ -24,8 +24,8 @@ jobs:
       - name: Checkout privacy
         uses: actions/checkout@v2
         with:
-          path: 'privacy'                      
-      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache privacy
+          path: 'privacy'
+      - run: docker build -t privacy-under-test .
         working-directory: privacy
       - run: docker-compose -f ./ops/docker-compose.yml up -d
         working-directory: privacy

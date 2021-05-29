@@ -174,7 +174,7 @@ services:
     restart: always
 
   privacy:
-    build: ../
+    image: privacy-under-test
     container_name: privacy
     depends_on:
       - ident
@@ -214,7 +214,7 @@ services:
     restart: always
 
   privacy-consumer:
-    build: ../
+    image: privacy-under-test
     entrypoint: ./ops/run_consumer.sh
     container_name: privacy-consumer
     depends_on:
@@ -251,7 +251,7 @@ services:
     restart: always
 
   vault:
-    image: provide/vault:dev
+    image: provide/vault
     container_name: vault
     depends_on:
       - ident
@@ -267,6 +267,7 @@ services:
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
       - PORT=8080
+      - REDIS_HOSTS=redis:6379
       - SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
       - SEAL_UNSEAL_VALIDATION_HASH=0x1c1381fd075f1ee3d42799bb8da0602a2afb9ef4b492bf1eae72399ecc81b0f0
     healthcheck:

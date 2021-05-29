@@ -1,4 +1,4 @@
-name: dev-integration-test-scheduled
+name: Hourly Integration
 on:
   schedule:
     - cron: '0,30 * * * *'  # every half hour  

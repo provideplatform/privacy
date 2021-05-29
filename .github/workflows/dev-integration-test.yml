@@ -1,4 +1,4 @@
-name: dev-integration-test
+name: Integration (dev)
 on:
   push:
     branches:

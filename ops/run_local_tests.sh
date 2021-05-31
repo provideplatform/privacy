@@ -67,56 +67,51 @@ PUl1cxrvY7BHh4obNa6Bf8ECAwEAAQ==
 
 sleep 5
 
-pkgs=(test)
-for d in "${pkgs[@]}" ; do
-  pkg=$(echo $d | sed 's/\/*$//g')
-  
-  if [ "$RACE" = "true" ]; then
-    JWT_SIGNER_PUBLIC_KEY=$JWT_SIGNER_PUBLIC_KEY \
-    JWT_SIGNER_PRIVATE_KEY=$JWT_SIGNER_PRIVATE_KEY \
-    GIN_MODE=release \
-    DATABASE_HOST=localhost \
-    DATABASE_NAME=privacy_dev \
-    DATABASE_USER=${DATABASE_USER} \
-    DATABASE_PASSWORD=${DATABASE_PASSWORD} \
-    IDENT_API_HOST=localhost:8081 \
-    IDENT_API_SCHEME=http \
-    PRIVACY_API_HOST=localhost:8080 \
-    PRIVACY_API_SCHEME=http \
-    VAULT_API_HOST=localhost:8082 \
-    VAULT_API_SCHEME=http \
-    LOG_LEVEL=DEBUG \
-    go test ./... -v \
-                  -race \
-                  -timeout 1800s \
-                  -cover \
-                  -coverpkg=./circuit/...,./zkp/... \
-                  -coverprofile=profile.cov \
-                  -tags="$TAGS"
-    go tool cover -func profile.cov
-    go tool cover -html=profile.cov -o cover.html
-  else
-    JWT_SIGNER_PUBLIC_KEY=$JWT_SIGNER_PUBLIC_KEY \
-    JWT_SIGNER_PRIVATE_KEY=$JWT_SIGNER_PRIVATE_KEY \
-    GIN_MODE=release \
-    DATABASE_HOST=localhost \
-    DATABASE_NAME=privacy_dev \
-    DATABASE_USER=${DATABASE_USER} \
-    DATABASE_PASSWORD=${DATABASE_PASSWORD} \
-    IDENT_API_HOST=localhost:8081 \
-    IDENT_API_SCHEME=http \
-    PRIVACY_API_HOST=localhost:8080 \
-    PRIVACY_API_SCHEME=http \
-    VAULT_API_HOST=localhost:8082 \
-    VAULT_API_SCHEME=http \
-    LOG_LEVEL=DEBUG \
-    go test ./... -v \
-                  -timeout 1800s \
-                  -cover \
-                  -coverpkg=./circuit/...,./zkp/... \
-                  -coverprofile=profile.cov \
-                  -tags="$TAGS"
-    go tool cover -func profile.cov
-    go tool cover -html=profile.cov -o cover.html
-  fi
-done
+if [ "$RACE" = "true" ]; then
+  JWT_SIGNER_PUBLIC_KEY=$JWT_SIGNER_PUBLIC_KEY \
+  JWT_SIGNER_PRIVATE_KEY=$JWT_SIGNER_PRIVATE_KEY \
+  GIN_MODE=release \
+  DATABASE_HOST=localhost \
+  DATABASE_NAME=privacy_dev \
+  DATABASE_USER=${DATABASE_USER} \
+  DATABASE_PASSWORD=${DATABASE_PASSWORD} \
+  IDENT_API_HOST=localhost:8081 \
+  IDENT_API_SCHEME=http \
+  PRIVACY_API_HOST=localhost:8080 \
+  PRIVACY_API_SCHEME=http \
+  VAULT_API_HOST=localhost:8082 \
+  VAULT_API_SCHEME=http \
+  LOG_LEVEL=DEBUG \
+  go test ./... -v \
+                -race \
+                -timeout 1800s \
+                -cover \
+                -coverpkg=./circuit/...,./zkp/... \
+                -coverprofile=profile.cov \
+                -tags="$TAGS"
+  go tool cover -func profile.cov
+  go tool cover -html=profile.cov -o cover.html
+else
+  JWT_SIGNER_PUBLIC_KEY=$JWT_SIGNER_PUBLIC_KEY \
+  JWT_SIGNER_PRIVATE_KEY=$JWT_SIGNER_PRIVATE_KEY \
+  GIN_MODE=release \
+  DATABASE_HOST=localhost \
+  DATABASE_NAME=privacy_dev \
+  DATABASE_USER=${DATABASE_USER} \
+  DATABASE_PASSWORD=${DATABASE_PASSWORD} \
+  IDENT_API_HOST=localhost:8081 \
+  IDENT_API_SCHEME=http \
+  PRIVACY_API_HOST=localhost:8080 \
+  PRIVACY_API_SCHEME=http \
+  VAULT_API_HOST=localhost:8082 \
+  VAULT_API_SCHEME=http \
+  LOG_LEVEL=DEBUG \
+  go test ./... -v \
+                -timeout 1800s \
+                -cover \
+                -coverpkg=./circuit/...,./zkp/... \
+                -coverprofile=profile.cov \
+                -tags="$TAGS"
+  go tool cover -func profile.cov
+  go tool cover -html=profile.cov -o cover.html
+fi

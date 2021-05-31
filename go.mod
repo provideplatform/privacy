@@ -15,8 +15,8 @@ require (
 	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
 	github.com/nats-io/stan.go v0.9.0
-	github.com/onsi/ginkgo v1.16.3
-	github.com/onsi/gomega v1.13.0
+	github.com/onsi/ginkgo v1.16.3 // indirect
+	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
 	github.com/provideservices/provide-go v0.0.0-20210528064845-41b80b9b02b9
 	github.com/stretchr/testify v1.7.0

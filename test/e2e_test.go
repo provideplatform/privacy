@@ -1185,8 +1185,10 @@ func getProcurementWitness(stage STAGE, hFunc hash.Hash, proofString string, cre
 }
 
 func TestTwoPartyProcurement(t *testing.T) {
+	setAliceEnv()
 	aliceUserID, _ := uuid.NewV4()
 	aliceToken, _ := userTokenFactory(aliceUserID)
+	setBobEnv()
 	bobUserID, _ := uuid.NewV4()
 	bobToken, _ := userTokenFactory(bobUserID)
 
@@ -1319,8 +1321,10 @@ func TestTwoPartyProcurement(t *testing.T) {
 }
 
 func TestTwoPartyProcurementIterated(t *testing.T) {
+	setAliceEnv()
 	provideUserID, _ := uuid.NewV4()
 	provideToken, _ := userTokenFactory(provideUserID)
+	setBobEnv()
 	financierUserID, _ := uuid.NewV4()
 	financierToken, _ := userTokenFactory(financierUserID)
 

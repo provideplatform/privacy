@@ -10,7 +10,7 @@ jobs:
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.INTEGRATION_SLACK_WEBHOOK }}
     steps:
-      - name: Setup go
+      - name: Setup golang
         uses: actions/setup-go@v2
         with:
           go-version: '1.15.1'
@@ -37,7 +37,7 @@ jobs:
         working-directory: privacy
       - run: docker volume rm ops_privacy-db
         working-directory: privacy                                        
-      - name: slack channel update
+      - name: Send Slack Notification
         uses: act10ns/slack@v1
         with:
           status: ${{ job.status }}

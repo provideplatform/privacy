@@ -666,7 +666,8 @@ func TestProcurement(t *testing.T) {
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
 	sigLen := len(sigBytes) / 2
-	sigSString := i.SetBytes(sigBytes[sigLen:]).String()
+	sigS1String := i.SetBytes(sigBytes[sigLen : sigLen+sigLen/2]).String()
+	sigS2String := i.SetBytes(sigBytes[sigLen+sigLen/2:]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()
@@ -679,8 +680,8 @@ func TestProcurement(t *testing.T) {
 			"PubKey.A.Y": yKeyString,
 			"Sig.R.X":    xSigString,
 			"Sig.R.Y":    ySigString,
-			"Sig.S1":     sigSString[:sigLen/2],
-			"Sig.S2":     sigSString[sigLen/2:],
+			"Sig.S1":     sigS1String,
+			"Sig.S2":     sigS2String,
 		},
 	})
 	if err != nil {
@@ -701,8 +702,8 @@ func TestProcurement(t *testing.T) {
 			"PubKey.A.Y": yKeyString,
 			"Sig.R.X":    xSigString,
 			"Sig.R.Y":    ySigString,
-			"Sig.S1":     sigSString[:sigLen/2],
-			"Sig.S2":     sigSString[sigLen/2:],
+			"Sig.S1":     sigS1String,
+			"Sig.S2":     sigS2String,
 		},
 	})
 	if err != nil {
@@ -1154,7 +1155,8 @@ func getProcurementWitness(stage STAGE, hFunc hash.Hash, proofString string, cre
 		ySig := point.Y.Bytes()
 		ySigString := i.SetBytes(ySig[:]).String()
 		sigLen := len(sigBytes) / 2
-		sigSString := i.SetBytes(sigBytes[sigLen:]).String()
+		sigS1String := i.SetBytes(sigBytes[sigLen : sigLen+sigLen/2]).String()
+		sigS2String := i.SetBytes(sigBytes[sigLen+sigLen/2:]).String()
 
 		return "invoice", map[string]interface{}{
 			"Msg":        invoiceIntStr,
@@ -1162,8 +1164,8 @@ func getProcurementWitness(stage STAGE, hFunc hash.Hash, proofString string, cre
 			"PubKey.A.Y": yKeyString,
 			"Sig.R.X":    xSigString,
 			"Sig.R.Y":    ySigString,
-			"Sig.S1":     sigSString[:sigLen/2],
-			"Sig.S2":     sigSString[sigLen/2:],
+			"Sig.S1":     sigS1String,
+			"Sig.S2":     sigS2String,
 		}
 	}
 
@@ -1493,7 +1495,8 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
 	sigLen := len(sigBytes) / 2
-	sigSString := i.SetBytes(sigBytes[sigLen:]).String()
+	sigS1String := i.SetBytes(sigBytes[sigLen : sigLen+sigLen/2]).String()
+	sigS2String := i.SetBytes(sigBytes[sigLen+sigLen/2:]).String()
 
 	// this circuit takes an order of magnitude longer to complete requests due to huge internal params
 	waitForAsync()
@@ -1506,8 +1509,8 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			"PubKey.A.Y": yKeyString,
 			"Sig.R.X":    xSigString,
 			"Sig.R.Y":    ySigString,
-			"Sig.S1":     sigSString[:sigLen/2],
-			"Sig.S2":     sigSString[sigLen/2:],
+			"Sig.S1":     sigS1String,
+			"Sig.S2":     sigS2String,
 		},
 	})
 	if err != nil {
@@ -1528,8 +1531,8 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			"PubKey.A.Y": yKeyString,
 			"Sig.R.X":    xSigString,
 			"Sig.R.Y":    ySigString,
-			"Sig.S1":     sigSString[:sigLen/2],
-			"Sig.S2":     sigSString[sigLen/2:],
+			"Sig.S1":     sigS1String,
+			"Sig.S2":     sigS2String,
 		},
 	})
 	if err != nil {
@@ -1615,14 +1618,15 @@ func TestProofEddsaWithApi(t *testing.T) {
 	ySig := point.Y.Bytes()
 	ySigString := i.SetBytes(ySig[:]).String()
 	sigLen := len(sigBytes) / 2
-	sigSString := i.SetBytes(sigBytes[sigLen:]).String()
+	sigS1String := i.SetBytes(sigBytes[sigLen : sigLen+sigLen/2]).String()
+	sigS2String := i.SetBytes(sigBytes[sigLen+sigLen/2:]).String()
 
 	witness["PubKey.A.X"] = xKeyString
 	witness["PubKey.A.Y"] = yKeyString
 	witness["Sig.R.X"] = xSigString
 	witness["Sig.R.Y"] = ySigString
-	witness["Sig.S1"] = sigSString[:sigLen/2]
-	witness["Sig.S2"] = sigSString[sigLen/2:]
+	witness["Sig.S1"] = sigS1String
+	witness["Sig.S2"] = sigS2String
 
 	proof, err := privacy.Prove(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
 		"witness": witness,

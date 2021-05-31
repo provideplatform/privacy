@@ -259,6 +259,7 @@ services:
     depends_on:
       - privacy0-ident
       - privacy0-postgres
+      - privacy0-redis
     environment:
       - DATABASE_HOST=privacy0-postgres
       - DATABASE_NAME=vault_dev
@@ -544,6 +545,7 @@ services:
     depends_on:
       - privacy1-ident
       - privacy1-postgres
+      - privacy0-redis
     environment:
       - DATABASE_HOST=privacy1-postgres
       - DATABASE_NAME=vault_dev
@@ -557,7 +559,7 @@ services:
       - PORT=8080
       - REDIS_HOSTS=privacy1-redis:6379
       - SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
-      - SEAL_UNSEAL_VALIDATION_HASH=0x1c1381fd075f1ee3d42799bb8da0602a2afb9ef4b492bf1eae72399ecc81b0f0G
+      - SEAL_UNSEAL_VALIDATION_HASH=0x1c1381fd075f1ee3d42799bb8da0602a2afb9ef4b492bf1eae72399ecc81b0f0
     healthcheck:
       test: ["CMD", "curl", "-f", "http://privacy1-vault:8080/status"]
       interval: 1m

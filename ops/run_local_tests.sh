@@ -87,12 +87,12 @@ for d in "${pkgs[@]}" ; do
     VAULT_API_SCHEME=http \
     LOG_LEVEL=DEBUG \
     go test ./... -v \
-                       -race \
-                       -timeout 1800s \
-                       -cover \
-                       -coverpkg=./circuit/...,./zkp/... \
-                       -coverprofile=profile.cov \
-                       -tags="$TAGS"
+                  -race \
+                  -timeout 1800s \
+                  -cover \
+                  -coverpkg=./circuit/...,./zkp/... \
+                  -coverprofile=profile.cov \
+                  -tags="$TAGS"
     go tool cover -func profile.cov
     go tool cover -html=profile.cov -o cover.html
   else
@@ -111,11 +111,11 @@ for d in "${pkgs[@]}" ; do
     VAULT_API_SCHEME=http \
     LOG_LEVEL=DEBUG \
     go test ./... -v \
-                       -timeout 1800s \
-                       -cover \
-                       -coverpkg=./circuit/...,./zkp/... \
-                       -coverprofile=profile.cov \
-                       -tags="$TAGS"
+                  -timeout 1800s \
+                  -cover \
+                  -coverpkg=./circuit/...,./zkp/... \
+                  -coverprofile=profile.cov \
+                  -tags="$TAGS"
     go tool cover -func profile.cov
     go tool cover -html=profile.cov -o cover.html
   fi

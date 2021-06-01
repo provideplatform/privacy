@@ -35,7 +35,7 @@ import (
 )
 
 func waitForAsync() {
-	time.Sleep(time.Duration(2) * time.Second)
+	time.Sleep(time.Duration(5) * time.Second)
 }
 
 var curveID = ecc.BN254

@@ -5,8 +5,8 @@ on:
       - dev   
 jobs:
   integration-test-privacy:
-    runs-on: [self-hosted, ubuntu-latest]
-    timeout-minutes: 10    
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.INTEGRATION_SLACK_WEBHOOK }}
     steps:

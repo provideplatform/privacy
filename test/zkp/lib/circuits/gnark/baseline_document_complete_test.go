@@ -13,8 +13,9 @@ import (
 	eddsabls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/twistededwards/eddsa"
 	edwardsbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards"
 	eddsabls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards/eddsa"
-	edwardsbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards"
-	eddsabls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards/eddsa"
+
+	// edwardsbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards"
+	// eddsabls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards/eddsa"
 	edwardsbn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
 	eddsabn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
 	edwardsbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/twistededwards"
@@ -33,7 +34,7 @@ func parseSignature(id ecc.ID, buf []byte) ([]byte, []byte, []byte, []byte) {
 	var pointbls12381 edwardsbls12381.PointAffine
 	var pointbls12377 edwardsbls12377.PointAffine
 	var pointbw6761 edwardsbw6761.PointAffine
-	var pointbls24315 edwardsbls24315.PointAffine
+	// var pointbls24315 edwardsbls24315.PointAffine
 
 	switch id {
 	case ecc.BN254:
@@ -60,12 +61,12 @@ func parseSignature(id ecc.ID, buf []byte) ([]byte, []byte, []byte, []byte) {
 		s1 := buf[48:72]
 		s2 := buf[72:]
 		return a[:], b[:], s1, s2
-	case ecc.BLS24_315:
-		pointbls24315.SetBytes(buf[:32])
-		a, b := parsePoint(id, buf)
-		s1 := buf[32:48]
-		s2 := buf[48:]
-		return a[:], b[:], s1, s2
+	// case ecc.BLS24_315:
+	// 	pointbls24315.SetBytes(buf[:32])
+	// 	a, b := parsePoint(id, buf)
+	// 	s1 := buf[32:48]
+	// 	s2 := buf[48:]
+	// 	return a[:], b[:], s1, s2
 	default:
 		return buf, buf, buf, buf
 	}
@@ -76,7 +77,7 @@ func parsePoint(id ecc.ID, buf []byte) ([]byte, []byte) {
 	var pointbls12381 edwardsbls12381.PointAffine
 	var pointbls12377 edwardsbls12377.PointAffine
 	var pointbw6761 edwardsbw6761.PointAffine
-	var pointbls24315 edwardsbls24315.PointAffine
+	// var pointbls24315 edwardsbls24315.PointAffine
 
 	switch id {
 	case ecc.BN254:
@@ -99,11 +100,11 @@ func parsePoint(id ecc.ID, buf []byte) ([]byte, []byte) {
 		a := pointbw6761.X.Bytes()
 		b := pointbw6761.Y.Bytes()
 		return a[:], b[:]
-	case ecc.BLS24_315:
-		pointbls24315.SetBytes(buf[:32])
-		a := pointbls24315.X.Bytes()
-		b := pointbls24315.Y.Bytes()
-		return a[:], b[:]
+	// case ecc.BLS24_315:
+	// 	pointbls24315.SetBytes(buf[:32])
+	// 	a := pointbls24315.X.Bytes()
+	// 	b := pointbls24315.Y.Bytes()
+	// 	return a[:], b[:]
 	default:
 		return buf, buf
 	}
@@ -123,9 +124,9 @@ func parseSkScalar(id ecc.ID, buf []byte) []byte {
 	case ecc.BW6_761:
 		scalar := buf[48:96]
 		return scalar
-	case ecc.BLS24_315:
-		scalar := buf[32:64]
-		return scalar
+	// case ecc.BLS24_315:
+	// 	scalar := buf[32:64]
+	// 	return scalar
 	default:
 		return buf
 	}
@@ -138,7 +139,7 @@ func TestBaselineDocumentComplete(t *testing.T) {
 	signature.Register(signature.EDDSA_BLS12_381, eddsabls12381.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
-	signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
+	// signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
 
 	type confSig struct {
 		h hash.Hash
@@ -150,7 +151,7 @@ func TestBaselineDocumentComplete(t *testing.T) {
 		ecc.BLS12_381: {hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
 		ecc.BLS12_377: {hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
 		ecc.BW6_761:   {hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
-		ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+		// ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
 	}
 
 	for id, conf := range confs {

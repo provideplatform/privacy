@@ -1,12 +1,11 @@
 name: Integration (dev)
-runs-on: [self-hosted]
 on:
   push:
     branches:
       - dev   
 jobs:
   integration-test-privacy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-latest]
     timeout-minutes: 10    
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.INTEGRATION_SLACK_WEBHOOK }}

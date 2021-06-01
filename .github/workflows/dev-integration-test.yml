@@ -1,4 +1,5 @@
 name: Integration (dev)
+runs-on: [self-hosted]
 on:
   push:
     branches:

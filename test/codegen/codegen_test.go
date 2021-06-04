@@ -596,3 +596,41 @@ func TestRollupCodegen(t *testing.T) {
 		writeToFile(testFilePath, testStr)
 	}
 }
+
+func TestRollupCodegenPlonk(t *testing.T) {
+	circuitFilePath := "./generated_code.go"
+	testFilePath := "./generated_code_test.go"
+	curveIDString := "BN254"
+	provingScheme := "plonk"
+	{
+		circuitName := "GenRollupCircuit"
+		packageName := "test"
+		proofs := []string{
+			"aa5500ca9af223afdec21989169de5c63938274908f09ee85a233fd1a7396bba89ea271a41a7d38014dfffbdcbe806d0726c5dc4eef7f178ea52de45852697d51f2c74152e1fbbed79ebdfd1235788ea2b1637e6ed49a33a05653133e21a5cfdaa86f1acc9588b17838f8da88a5398cb324b1289aa7759457ddccddf53ee1ca9",
+			"9f2becacfe12908f1766b00ed6c7c1d7aa0aa65d2c9651d3aa70b30d25a884aeac1e50a5848f3c2ce9877a690d56801da287224ec2be2e1f26fd73b519fa1b7a19980d9b770a872d03612bd217ea4ff2f6a3bef527997f1eea30098e6772ca8cb033c3f019ce79f794419d2db6039855759e29addc72836fb3a99379e4d5e572",
+		}
+
+		circuit := Circuit{
+			Name:             circuitName,
+			PackageName:      packageName,
+			RollupProofCount: len(proofs),
+		}
+
+		circuitStr, err := circuit.Make(true)
+		if err != nil {
+			t.Fatalf("failed to make circuit: %s", err.Error())
+		}
+
+		test := ConstraintTest{
+			CircuitName:   circuitName,
+			CurveID:       curveIDString,
+			PackageName:   packageName,
+			ProvingScheme: provingScheme,
+			Proofs:        proofs,
+		}
+		testStr := test.makeRollupTest(true)
+
+		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(testFilePath, testStr)
+	}
+}

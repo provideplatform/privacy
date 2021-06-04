@@ -22,6 +22,7 @@ import (
 	"github.com/consensys/gnark-crypto/signature"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
@@ -69,7 +70,7 @@ func parseKeys(id ecc.ID, pubKeyBuf []byte, privKeyBuf []byte) ([]byte, []byte, 
 	}
 }
 
-func TestOwnershipSk(t *testing.T) {
+func TestOwnershipSkGroth16(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	signature.Register(signature.EDDSA_BN254, eddsabn254.GenerateKeyInterfaces)
@@ -120,6 +121,85 @@ func TestOwnershipSk(t *testing.T) {
 
 			assert.SolvingSucceeded(r1cs, &witness)
 			//assert.ProverSucceeded(r1cs, &witness)
+		}
+
+		// Incorrect sk, pk
+		{
+			var witness libgnark.OwnershipSkCircuit
+			witness.Pk.A.X.Assign(42) // these are nonsense values for this circuit
+			witness.Pk.A.Y.Assign(42)
+			witness.Sk.Upper.Assign(42)
+			witness.Sk.Lower.Assign(0)
+
+			assert.SolvingFailed(r1cs, &witness)
+			//assert.ProverFailed(r1cs, &witness)
+		}
+
+	}
+}
+
+func TestOwnershipSkPlonk(t *testing.T) {
+	assert := plonk.NewAssert(t)
+
+	signature.Register(signature.EDDSA_BN254, eddsabn254.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS12_381, eddsabls12381.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
+	// signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
+
+	type confSig struct {
+		h hash.Hash
+		s signature.SignatureScheme
+	}
+
+	confs := map[ecc.ID]confSig{
+		ecc.BN254:     {hash.MIMC_BN254, signature.EDDSA_BN254},
+		ecc.BLS12_381: {hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
+		ecc.BLS12_377: {hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
+		ecc.BW6_761:   {hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
+		// ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+	}
+
+	for id, ss := range confs {
+		var ownershipSkCircuit libgnark.OwnershipSkCircuit
+		r1cs, err := frontend.Compile(id, backend.PLONK, &ownershipSkCircuit)
+		assert.NoError(err)
+
+		// kate := getKzgScheme(id)
+
+		// Correct sk, pk
+		{
+			// Generate eddsa sk, pk
+			src := rand.NewSource(0)
+			r := rand.New(src)
+			privKey, err := ss.s.New(r)
+			assert.NoError(err)
+			pubKey := privKey.Public()
+
+			// Parse sk, pk
+			pubkeyAx, pubkeyAy, privkeyScalar := parseKeys(id, pubKey.Bytes(), privKey.Bytes())
+			privKeyScalarLength := len(privkeyScalar)
+			privKeyScalarUpper := privkeyScalar[:privKeyScalarLength/2]
+			privKeyScalarLower := privkeyScalar[privKeyScalarLength/2:]
+
+			var witness libgnark.OwnershipSkCircuit
+			witness.Pk.A.X.Assign(pubkeyAx)
+			witness.Pk.A.Y.Assign(pubkeyAy)
+
+			witness.Sk.Upper.Assign(privKeyScalarUpper)
+			witness.Sk.Lower.Assign(privKeyScalarLower)
+
+			assert.SolvingSucceeded(r1cs, &witness)
+			//assert.ProverSucceeded(r1cs, &witness)
+
+			// publicData, err := plonk.Setup(r1cs, kate, &witness)
+			// assert.NoError(err, "Generating public data should not have failed")
+
+			// proof, err := plonk.Prove(r1cs, publicData, &witness)
+			// assert.NoError(err, "Proving with good witness should not output an error")
+
+			// err = plonk.Verify(proof, publicData, &witness)
+			// assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 		}
 
 		// Incorrect sk, pk

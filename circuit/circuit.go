@@ -22,6 +22,7 @@ import (
 )
 
 const circuitProvingSchemeGroth16 = "groth16"
+const circuitProvingSchemePlonk = "plonk"
 
 const circuitStatusFailed = "failed"
 const circuitStatusInit = "init"
@@ -307,7 +308,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 		circuit := provider.CircuitFactory(*c.Identifier)
 
 		if circuit != nil {
-			artifacts, err = provider.Compile(circuit)
+			artifacts, err = provider.Compile(circuit, c.ProvingScheme)
 			if err != nil {
 				c.Errors = append(c.Errors, &provide.Error{
 					Message: common.StringOrNil(fmt.Sprintf("failed to compile circuit with identifier %s; %s", *c.Identifier, err.Error())),
@@ -525,7 +526,7 @@ func (c *Circuit) persistKeys() bool {
 }
 
 func (c *Circuit) setupRequired() bool {
-	return c.ProvingScheme != nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && c.Status != nil && (*c.Status == circuitStatusCompiled || *c.Status == circuitStatusPendingSetup)
+	return c.ProvingScheme != nil && (*c.ProvingScheme == circuitProvingSchemeGroth16 || *c.ProvingScheme == circuitProvingSchemePlonk) && c.Status != nil && (*c.Status == circuitStatusCompiled || *c.Status == circuitStatusPendingSetup)
 }
 
 // setup attempts to setup the circuit

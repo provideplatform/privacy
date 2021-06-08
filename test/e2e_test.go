@@ -40,13 +40,16 @@ func waitForAsync() {
 
 var curveID = ecc.BN254
 
-func circuitParamsFactory(provider, identifier string) map[string]interface{} {
+const testProvingSchemeGroth16 = "groth16"
+const testProvingSchemePlonk = "plonk"
+
+func circuitParamsFactory(provider, identifier string, provingScheme string) map[string]interface{} {
 	return map[string]interface{}{
 		"curve":          strings.ToUpper(curveID.String()),
 		"identifier":     identifier,
 		"name":           "my 1337 circuit",
 		"provider":       provider,
-		"proving_scheme": "groth16",
+		"proving_scheme": provingScheme,
 	}
 }
 
@@ -64,7 +67,7 @@ func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t
 	time.Sleep(time.Duration(10) * time.Second)
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "cubic")
+	params := circuitParamsFactory("gnark", "cubic", testProvingSchemeGroth16)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -90,7 +93,7 @@ func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t
 func TestBaselineDocumentProofGenerationFailureConstraintNotSatisfied(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "mimc")
+	params := circuitParamsFactory("gnark", "mimc", testProvingSchemeGroth16)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -116,7 +119,7 @@ func TestBaselineDocumentProofGenerationFailureConstraintNotSatisfied(t *testing
 func TestCreateCircuitGroth16Cubic(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "cubic")
+	params := circuitParamsFactory("gnark", "cubic", testProvingSchemeGroth16)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -157,7 +160,7 @@ func TestCreateCircuitGroth16Cubic(t *testing.T) {
 func TestBaselineDocument(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "mimc")
+	params := circuitParamsFactory("gnark", "mimc", testProvingSchemeGroth16)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -379,7 +382,7 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 func TestProcurement(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "purchase_order")
+	params := circuitParamsFactory("gnark", "purchase_order", testProvingSchemeGroth16)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -447,7 +450,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	storeID := circuit.StoreID
-	params = circuitParamsFactory("gnark", "sales_order")
+	params = circuitParamsFactory("gnark", "sales_order", testProvingSchemeGroth16)
 	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
@@ -504,7 +507,7 @@ func TestProcurement(t *testing.T) {
 	index, h = tr.RawAdd([]byte(*proof.Proof))
 	t.Logf("added sales order proof to merkle tree, index/hash: %v / %v", index, h)
 
-	params = circuitParamsFactory("gnark", "shipment_notification")
+	params = circuitParamsFactory("gnark", "shipment_notification", testProvingSchemeGroth16)
 	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
@@ -561,7 +564,7 @@ func TestProcurement(t *testing.T) {
 	index, h = tr.RawAdd([]byte(*proof.Proof))
 	t.Logf("added shipment notification proof to merkle tree, index/hash: %v / %v", index, h)
 
-	params = circuitParamsFactory("gnark", "goods_receipt")
+	params = circuitParamsFactory("gnark", "goods_receipt", testProvingSchemeGroth16)
 	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
@@ -638,7 +641,7 @@ func TestProcurement(t *testing.T) {
 		return
 	}
 
-	params = circuitParamsFactory("gnark", "invoice")
+	params = circuitParamsFactory("gnark", "invoice", testProvingSchemeGroth16)
 	params["store_id"] = storeID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
@@ -736,7 +739,7 @@ func TestProcurement(t *testing.T) {
 func TestProofVerifyMerkle(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "purchase_order")
+	params := circuitParamsFactory("gnark", "purchase_order", testProvingSchemeGroth16)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -835,7 +838,7 @@ func TestProofVerifyMerkle(t *testing.T) {
 func TestDuplicateProofVerifyMerkle(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "purchase_order")
+	params := circuitParamsFactory("gnark", "purchase_order", testProvingSchemeGroth16)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -954,7 +957,7 @@ func TestTwoPartyProofVerification(t *testing.T) {
 	setAliceEnv()
 	aliceUserID, _ := uuid.NewV4()
 	aliceToken, _ := userTokenFactory(aliceUserID)
-	params := circuitParamsFactory("gnark", "purchase_order")
+	params := circuitParamsFactory("gnark", "purchase_order", testProvingSchemeGroth16)
 
 	aliceCircuit, err := privacy.CreateCircuit(*aliceToken, params)
 	if err != nil {
@@ -1024,7 +1027,7 @@ func TestTwoPartyProofVerification(t *testing.T) {
 	bobUserID, _ := uuid.NewV4()
 	bobToken, _ := userTokenFactory(bobUserID)
 
-	bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
+	bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier, testProvingSchemeGroth16)
 	bobParams["artifacts"] = aliceCircuit.Artifacts
 	bobParams["verifier_contract"] = aliceCircuit.VerifierContract
 
@@ -1205,7 +1208,7 @@ func TestTwoPartyProcurement(t *testing.T) {
 		setAliceEnv()
 
 		identifier, witness := getProcurementWitness(stage, hFunc, proofString, "")
-		aliceParams := circuitParamsFactory("gnark", identifier)
+		aliceParams := circuitParamsFactory("gnark", identifier, testProvingSchemeGroth16)
 		if aliceCircuit != nil && aliceCircuit.StoreID != nil {
 			aliceParams["store_id"] = aliceCircuit.StoreID
 		}
@@ -1254,7 +1257,7 @@ func TestTwoPartyProcurement(t *testing.T) {
 
 		setBobEnv()
 
-		bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier)
+		bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier, testProvingSchemeGroth16)
 		if bobCircuit != nil && bobCircuit.StoreID != nil {
 			bobParams["store_id"] = bobCircuit.StoreID
 		}
@@ -1345,7 +1348,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			setAliceEnv()
 
 			identifier, witness := getProcurementWitness(stage, hFunc, proofString, creditRating)
-			provideParams := circuitParamsFactory("gnark", identifier)
+			provideParams := circuitParamsFactory("gnark", identifier, testProvingSchemeGroth16)
 			if provideCircuit != nil && provideCircuit.StoreID != nil {
 				provideParams["store_id"] = provideCircuit.StoreID
 			}
@@ -1394,7 +1397,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 
 			setBobEnv()
 
-			financierParams := circuitParamsFactory(*provideCircuit.Provider, *provideCircuit.Identifier)
+			financierParams := circuitParamsFactory(*provideCircuit.Provider, *provideCircuit.Identifier, testProvingSchemeGroth16)
 			if financierCircuit != nil && financierCircuit.StoreID != nil {
 				financierParams["store_id"] = financierCircuit.StoreID
 			}
@@ -1553,7 +1556,7 @@ func TestProofEddsaWithApi(t *testing.T) {
 	financierToken, _ := userTokenFactory(financierUserID)
 	identifier := "proof_eddsa"
 
-	financierParams := circuitParamsFactory("gnark", identifier)
+	financierParams := circuitParamsFactory("gnark", identifier, testProvingSchemeGroth16)
 	financierCircuit, err := privacy.CreateCircuit(*financierToken, financierParams)
 	if err != nil {
 		t.Errorf("failed to create financier's %s circuit; %s", identifier, err.Error())

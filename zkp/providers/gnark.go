@@ -16,6 +16,9 @@ import (
 	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
 )
 
+const providersProvingSchemeGroth16 = "groth16"
+const providersProvingSchemePlonk = "plonk"
+
 // GnarkCircuitProvider interacts with the go-native gnark package
 type GnarkCircuitProvider struct {
 	curveID ecc.ID
@@ -133,6 +136,24 @@ func curveIDFactory(curveID *string) ecc.ID {
 	return ecc.UNKNOWN
 }
 
+func provingSchemeFactory(provingScheme *string) backend.ID {
+	if provingScheme == nil {
+		common.Log.Warning("no proving scheme provided")
+		return backend.UNKNOWN
+	}
+
+	switch strings.ToLower(*provingScheme) {
+	case providersProvingSchemeGroth16:
+		return backend.GROTH16
+	case providersProvingSchemePlonk:
+		return backend.PLONK
+	default:
+		common.Log.Warningf("failed to resolve proving scheme; unknown scheme: %s", *provingScheme)
+	}
+
+	return backend.UNKNOWN
+}
+
 func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {
 	decodedR1CS := groth16.NewCS(p.curveID)
 	_, err := decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
@@ -180,7 +201,8 @@ func (p *GnarkCircuitProvider) decodeProof(proof []byte) (groth16.Proof, error) 
 // Compile the circuit...
 func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error) {
 	circuit := argv[0].(frontend.Circuit)
-	r1cs, err := frontend.Compile(p.curveID, backend.GROTH16, circuit)
+	provider := argv[1].(*string)
+	r1cs, err := frontend.Compile(p.curveID, provingSchemeFactory(provider), circuit)
 	if err != nil {
 		common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
 		return nil, err

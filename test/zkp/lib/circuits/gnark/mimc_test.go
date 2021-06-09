@@ -23,7 +23,7 @@ func TestPreimageGroth16(t *testing.T) {
 		ecc.BLS12_381: hash.MIMC_BLS12_381,
 		ecc.BLS12_377: hash.MIMC_BLS12_377,
 		ecc.BW6_761:   hash.MIMC_BW6_761,
-		// ecc.BLS24_315: hash.MIMC_BLS24_315,
+		ecc.BLS24_315: hash.MIMC_BLS24_315,
 	}
 
 	for id, h := range confs {
@@ -65,7 +65,7 @@ func TestPreimagePlonk(t *testing.T) {
 		ecc.BLS12_381: hash.MIMC_BLS12_381,
 		ecc.BLS12_377: hash.MIMC_BLS12_377,
 		ecc.BW6_761:   hash.MIMC_BW6_761,
-		// ecc.BLS24_315: hash.MIMC_BLS24_315,
+		ecc.BLS24_315: hash.MIMC_BLS24_315,
 	}
 
 	for id, h := range confs {
@@ -73,7 +73,7 @@ func TestPreimagePlonk(t *testing.T) {
 		r1cs, err := frontend.Compile(id, backend.PLONK, &mimcCircuit)
 		assert.NoError(err)
 
-		// kate := getKzgScheme(id)
+		kate := getKzgScheme(r1cs)
 
 		{
 			hFunc := h.New("seed")
@@ -86,17 +86,14 @@ func TestPreimagePlonk(t *testing.T) {
 			witness.Preimage.Assign(preimage)
 			witness.Hash.Assign(hash)
 
-			assert.SolvingSucceeded(r1cs, &witness)
-			//assert.ProverSucceeded(r1cs, &witness)
+			publicData, err := plonk.Setup(r1cs, kate, &witness)
+			assert.NoError(err, "Generating public data should not have failed")
 
-			// publicData, err := plonk.Setup(r1cs, kate, &witness)
-			// assert.NoError(err, "Generating public data should not have failed")
+			proof, err := plonk.Prove(r1cs, publicData, &witness)
+			assert.NoError(err, "Proving with good witness should not output an error")
 
-			// proof, err := plonk.Prove(r1cs, publicData, &witness)
-			// assert.NoError(err, "Proving with good witness should not output an error")
-
-			// err = plonk.Verify(proof, publicData, &witness)
-			// assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
+			err = plonk.Verify(proof, publicData, &witness)
+			assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 		}
 
 		{
@@ -104,8 +101,14 @@ func TestPreimagePlonk(t *testing.T) {
 			witness.Hash.Assign(42) // these are nonsense values for this circuit
 			witness.Preimage.Assign(42)
 
-			assert.SolvingFailed(r1cs, &witness)
-			//assert.ProverFailed(r1cs, &witness)
+			publicData, err := plonk.Setup(r1cs, kate, &witness)
+			assert.NoError(err, "Generating public data should not have failed")
+
+			proof, err := plonk.Prove(r1cs, publicData, &witness)
+			assert.NoError(err, "Proving with bad witness should not output an error")
+
+			err = plonk.Verify(proof, publicData, &witness)
+			assert.Error(err, "Verifying proof with bad witness should output an error")
 		}
 	}
 }

@@ -17,14 +17,16 @@ import (
 	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/polynomial/kzg"
 	edwardsbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards"
 	eddsabls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards/eddsa"
+	frbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr"
+	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/polynomial/kzg"
 	frbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/polynomial/kzg"
 	frbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
 	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/polynomial/kzg"
 	"github.com/consensys/gnark-crypto/polynomial"
 
-	// edwardsbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards"
-	// eddsabls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards/eddsa"
+	edwardsbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards"
+	eddsabls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards/eddsa"
 	edwardsbn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
 	eddsabn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
 	edwardsbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/twistededwards"
@@ -44,7 +46,7 @@ func parseSignature(id ecc.ID, buf []byte) ([]byte, []byte, []byte, []byte) {
 	var pointbls12381 edwardsbls12381.PointAffine
 	var pointbls12377 edwardsbls12377.PointAffine
 	var pointbw6761 edwardsbw6761.PointAffine
-	// var pointbls24315 edwardsbls24315.PointAffine
+	var pointbls24315 edwardsbls24315.PointAffine
 
 	switch id {
 	case ecc.BN254:
@@ -71,12 +73,12 @@ func parseSignature(id ecc.ID, buf []byte) ([]byte, []byte, []byte, []byte) {
 		s1 := buf[48:72]
 		s2 := buf[72:]
 		return a[:], b[:], s1, s2
-	// case ecc.BLS24_315:
-	// 	pointbls24315.SetBytes(buf[:32])
-	// 	a, b := parsePoint(id, buf)
-	// 	s1 := buf[32:48]
-	// 	s2 := buf[48:]
-	// 	return a[:], b[:], s1, s2
+	case ecc.BLS24_315:
+		pointbls24315.SetBytes(buf[:32])
+		a, b := parsePoint(id, buf)
+		s1 := buf[32:48]
+		s2 := buf[48:]
+		return a[:], b[:], s1, s2
 	default:
 		return buf, buf, buf, buf
 	}
@@ -87,7 +89,7 @@ func parsePoint(id ecc.ID, buf []byte) ([]byte, []byte) {
 	var pointbls12381 edwardsbls12381.PointAffine
 	var pointbls12377 edwardsbls12377.PointAffine
 	var pointbw6761 edwardsbw6761.PointAffine
-	// var pointbls24315 edwardsbls24315.PointAffine
+	var pointbls24315 edwardsbls24315.PointAffine
 
 	switch id {
 	case ecc.BN254:
@@ -110,11 +112,11 @@ func parsePoint(id ecc.ID, buf []byte) ([]byte, []byte) {
 		a := pointbw6761.X.Bytes()
 		b := pointbw6761.Y.Bytes()
 		return a[:], b[:]
-	// case ecc.BLS24_315:
-	// 	pointbls24315.SetBytes(buf[:32])
-	// 	a := pointbls24315.X.Bytes()
-	// 	b := pointbls24315.Y.Bytes()
-	// 	return a[:], b[:]
+	case ecc.BLS24_315:
+		pointbls24315.SetBytes(buf[:32])
+		a := pointbls24315.X.Bytes()
+		b := pointbls24315.Y.Bytes()
+		return a[:], b[:]
 	default:
 		return buf, buf
 	}
@@ -134,32 +136,50 @@ func parseSkScalar(id ecc.ID, buf []byte) []byte {
 	case ecc.BW6_761:
 		scalar := buf[48:96]
 		return scalar
-	// case ecc.BLS24_315:
-	// 	scalar := buf[32:64]
-	// 	return scalar
+	case ecc.BLS24_315:
+		scalar := buf[32:64]
+		return scalar
 	default:
 		return buf
 	}
 }
 
-func getKzgScheme(id ecc.ID) polynomial.CommitmentScheme {
-	switch id {
+func getKzgScheme(r1cs frontend.CompiledConstraintSystem) polynomial.CommitmentScheme {
+	nbConstraints := r1cs.GetNbConstraints()
+	internal, secret, public := r1cs.GetNbVariables()
+	nbVariables := internal + secret + public
+	var s, size int
+	if nbConstraints > nbVariables {
+		s = nbConstraints
+	} else {
+		s = nbVariables
+	}
+	size = 1
+	for ; size < s; size *= 2 {
+	}
+
+	// fmt.Println("size", size, "s", s, "id", r1cs.CurveID().String())
+	switch r1cs.CurveID() {
 	case ecc.BN254:
 		var alpha frbn254.Element
 		alpha.SetRandom()
-		return kzgbn254.NewScheme(128, alpha)
+		return kzgbn254.NewScheme(size, alpha)
 	case ecc.BLS12_381:
 		var alpha frbls12381.Element
 		alpha.SetRandom()
-		return kzgbls12381.NewScheme(128, alpha)
+		return kzgbls12381.NewScheme(size, alpha)
 	case ecc.BLS12_377:
 		var alpha frbls12377.Element
 		alpha.SetRandom()
-		return kzgbls12377.NewScheme(128, alpha)
+		return kzgbls12377.NewScheme(size, alpha)
 	case ecc.BW6_761:
 		var alpha frbw6761.Element
 		alpha.SetRandom()
-		return kzgbw6761.NewScheme(128, alpha)
+		return kzgbw6761.NewScheme(size*2, alpha)
+	case ecc.BLS24_315:
+		var alpha frbls24315.Element
+		alpha.SetRandom()
+		return kzgbls24315.NewScheme(size, alpha)
 	default:
 		return nil
 	}
@@ -172,7 +192,7 @@ func TestBaselineDocumentCompleteGroth16(t *testing.T) {
 	signature.Register(signature.EDDSA_BLS12_381, eddsabls12381.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
-	// signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
 
 	type confSig struct {
 		h hash.Hash
@@ -184,7 +204,7 @@ func TestBaselineDocumentCompleteGroth16(t *testing.T) {
 		ecc.BLS12_381: {hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
 		ecc.BLS12_377: {hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
 		ecc.BW6_761:   {hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
-		// ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+		ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
 	}
 
 	for id, conf := range confs {
@@ -248,7 +268,7 @@ func TestBaselineDocumentCompletePlonk(t *testing.T) {
 	signature.Register(signature.EDDSA_BLS12_381, eddsabls12381.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
-	// signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
 
 	type confSig struct {
 		h hash.Hash
@@ -260,7 +280,7 @@ func TestBaselineDocumentCompletePlonk(t *testing.T) {
 		ecc.BLS12_381: {hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
 		ecc.BLS12_377: {hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
 		ecc.BW6_761:   {hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
-		// ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+		ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
 	}
 
 	for id, conf := range confs {
@@ -268,7 +288,7 @@ func TestBaselineDocumentCompletePlonk(t *testing.T) {
 		r1cs, err := frontend.Compile(id, backend.PLONK, &baselineDocumentComplete)
 		assert.NoError(err)
 
-		// kate := getKzgScheme(id)
+		kate := getKzgScheme(r1cs)
 
 		fmt.Println(id)
 		// Correct sk, pk, sig, hash, preimage
@@ -313,16 +333,14 @@ func TestBaselineDocumentCompletePlonk(t *testing.T) {
 			witness.Sig.S1.Assign(sigS1)
 			witness.Sig.S2.Assign(sigS2)
 
-			assert.SolvingSucceeded(r1cs, &witness)
-			assert.ProverSucceeded(r1cs, &witness)
-			// publicData, err := plonk.Setup(r1cs, kate, &witness)
-			// assert.NoError(err, "Generating public data should not have failed")
+			publicData, err := plonk.Setup(r1cs, kate, &witness)
+			assert.NoError(err, "Generating public data should not have failed")
 
-			// proof, err := plonk.Prove(r1cs, publicData, &witness)
-			// assert.NoError(err, "Proving with good witness should not output an error")
+			proof, err := plonk.Prove(r1cs, publicData, &witness)
+			assert.NoError(err, "Proving with good witness should not output an error")
 
-			// err = plonk.Verify(proof, publicData, &witness)
-			// assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
+			err = plonk.Verify(proof, publicData, &witness)
+			assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 		}
 	}
 }

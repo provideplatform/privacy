@@ -34,8 +34,8 @@ func hashFactory(hash *string) hash.Hash {
 		return mimc.MIMC_BN254.New("seed")
 	case ecc.BW6_761.String():
 		return mimc.MIMC_BW6_761.New("seed")
-	// case ecc.BLS24_315.String():
-	// 	return mimc.MIMC_BLS24_315.New("seed")
+	case ecc.BLS24_315.String():
+		return mimc.MIMC_BLS24_315.New("seed")
 	default:
 		common.Log.Warningf("failed to resolve hash type string; unknown or unsupported hash: %s", *hash)
 	}

@@ -18,7 +18,7 @@ require (
 	github.com/onsi/ginkgo v1.16.3 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210528064845-41b80b9b02b9
+	github.com/provideservices/provide-go v0.0.0-20210610091141-756e6385f6b8
 	github.com/stretchr/testify v1.7.0
 )
 

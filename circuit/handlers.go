@@ -41,7 +41,8 @@ func InstallAPI(r *gin.Engine) {
 	r.POST("/api/v1/circuits/:id/verify", verifyCircuitHandler)
 	// r.GET("/api/v1/circuits/:id/verify/:verifyId", proofDetailsHandler)
 
-	r.GET("/api/v1/circuits/:id/store/:index", circuitStoreValueHandler)
+	r.GET("/api/v1/circuits/:id/notes/:index", circuitNoteStoreValueHandler)
+	r.GET("/api/v1/circuits/:id/proofs/:index", circuitProofStoreValueHandler)
 }
 
 // list/query available circuits in the registry
@@ -296,8 +297,8 @@ func verifyCircuitHandler(c *gin.Context) {
 	}, 200, c)
 }
 
-// circuit store value hanbdler
-func circuitStoreValueHandler(c *gin.Context) {
+// circuit note store value hanbdler
+func circuitNoteStoreValueHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -339,7 +340,75 @@ func circuitStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	length, err := circuit.StoreLength()
+	length, err := circuit.NoteStoreLength()
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
+	value, err := circuit.NoteValueAt(index)
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
+	root, err := circuit.StoreRoot()
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
+	provide.Render(map[string]interface{}{
+		"length": length,
+		"root":   root,
+		"value":  value,
+	}, 200, c)
+}
+
+// circuit proof store value hanbdler
+func circuitProofStoreValueHandler(c *gin.Context) {
+	appID := util.AuthorizedSubjectID(c, "application")
+	orgID := util.AuthorizedSubjectID(c, "organization")
+	userID := util.AuthorizedSubjectID(c, "user")
+	if appID == nil && orgID == nil && userID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	db := dbconf.DatabaseConnection()
+	circuitID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError("bad request", 400, c)
+		return
+	}
+
+	circuit := &Circuit{}
+	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
+
+	if circuit == nil || circuit.ID == uuid.Nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if appID != nil && circuit.ApplicationID == nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	} else if orgID != nil && circuit.OrganizationID == nil {
+		provide.RenderError("circuit not found", 404, c)
+		return
+	}
+
+	index, err := strconv.ParseUint(c.Param("index"), 10, 64)
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	length, err := circuit.ProofStoreLength()
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
 		return

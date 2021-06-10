@@ -13,7 +13,7 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/privacy/common"
-	proofstorage "github.com/provideapp/privacy/store"
+	storage "github.com/provideapp/privacy/store"
 	storeprovider "github.com/provideapp/privacy/store/providers"
 	zkp "github.com/provideapp/privacy/zkp/providers"
 	provide "github.com/provideservices/provide-go/api"
@@ -41,10 +41,11 @@ type Circuit struct {
 	ABI    []byte `json:"abi,omitempty"`
 	Binary []byte `gorm:"column:bin" json:"-"`
 
-	// Vault and the vault secret identifiers for the proving/verifying keys
-	VaultID        *uuid.UUID `json:"vault_id"`
-	ProvingKeyID   *uuid.UUID `json:"proving_key_id"`
-	VerifyingKeyID *uuid.UUID `json:"verifying_key_id"`
+	// Vault and the vault secret identifiers for the encryption/decryption key and proving/verifying keys
+	VaultID         *uuid.UUID `json:"vault_id"`
+	EncryptionKeyID *uuid.UUID `json:"encryption_key_id"`
+	ProvingKeyID    *uuid.UUID `json:"proving_key_id"`
+	VerifyingKeyID  *uuid.UUID `json:"verifying_key_id"`
 
 	// Associations
 	ApplicationID  *uuid.UUID `sql:"type:uuid" json:"-"`
@@ -60,9 +61,13 @@ type Circuit struct {
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
-	// proof storage
-	StoreID *uuid.UUID `sql:"type:uuid" json:"store_id"`
-	store   *proofstorage.Store
+	// encrypted notes storage
+	NoteStoreID *uuid.UUID `sql:"type:uuid" json:"note_store_id"`
+	noteStore   *storage.Store
+
+	// storage for hashed proofs
+	ProofStoreID *uuid.UUID `sql:"type:uuid" json:"proof_store_id"`
+	proofStore   *storage.Store
 
 	// ephemeral fields
 	provingKey   []byte
@@ -128,8 +133,8 @@ func (c *Circuit) Create() bool {
 			if success {
 				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
 
-				if c.StoreID == nil {
-					err := c.initStore()
+				if c.NoteStoreID == nil || c.ProofStoreID == nil {
+					err := c.initStorage()
 					if err != nil {
 						common.Log.Warning(err.Error())
 						c.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
@@ -139,7 +144,13 @@ func (c *Circuit) Create() bool {
 						return false
 					}
 				} else {
-					c.store = proofstorage.Find(*c.StoreID)
+					if c.NoteStoreID != nil {
+						c.noteStore = storage.Find(*c.NoteStoreID)
+					}
+
+					if c.ProofStoreID != nil {
+						c.proofStore = storage.Find(*c.ProofStoreID)
+					}
 				}
 
 				if c.setupRequired() {
@@ -161,44 +172,71 @@ func (c *Circuit) Create() bool {
 	return false
 }
 
-// StoreLength returns the underlying store length
-func (c *Circuit) StoreLength() (*int, error) {
-	if c.store == nil && c.StoreID != nil {
-		c.store = proofstorage.Find(*c.StoreID)
+// NoteStoreLength returns the underlying note store length
+func (c *Circuit) NoteStoreLength() (*int, error) {
+	if c.noteStore == nil && c.NoteStoreID != nil {
+		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
-	if c.store == nil {
-		return nil, fmt.Errorf("failed to resolve store length for circuit %s", c.ID)
+	if c.noteStore == nil {
+		return nil, fmt.Errorf("failed to resolve note store length for circuit %s", c.ID)
 	}
 
-	length := c.store.Length()
+	length := c.noteStore.Length()
+	return &length, nil
+}
+
+// ProofStoreLength returns the underlying proof store length
+func (c *Circuit) ProofStoreLength() (*int, error) {
+	if c.proofStore == nil && c.ProofStoreID != nil {
+		c.proofStore = storage.Find(*c.ProofStoreID)
+	}
+
+	if c.proofStore == nil {
+		return nil, fmt.Errorf("failed to resolve proof store length for circuit %s", c.ID)
+	}
+
+	length := c.proofStore.Length()
 	return &length, nil
 }
 
 // StoreRoot returns the underlying store root
 func (c *Circuit) StoreRoot() (*string, error) {
-	if c.store == nil && c.StoreID != nil {
-		c.store = proofstorage.Find(*c.StoreID)
+	if c.proofStore == nil && c.ProofStoreID != nil {
+		c.proofStore = storage.Find(*c.ProofStoreID)
 	}
 
-	if c.store == nil {
+	if c.proofStore == nil {
 		return nil, fmt.Errorf("failed to resolve store root for circuit %s", c.ID)
 	}
 
-	return c.store.Root()
+	return c.proofStore.Root()
 }
 
-// StoreValueAt returns the underlying store representation
+// NoteValueAt returns the decrypted note from the underlying note storage provider
+func (c *Circuit) NoteValueAt(index uint64) (*string, error) {
+	if c.noteStore == nil && c.NoteStoreID != nil {
+		c.noteStore = storage.Find(*c.NoteStoreID)
+	}
+
+	if c.noteStore == nil {
+		return nil, fmt.Errorf("failed to resolve note store value at index %d for circuit %s", index, c.ID)
+	}
+
+	return c.noteStore.ValueAt(index)
+}
+
+// StoreValueAt returns the hashed proof from the underlying proof storage provider
 func (c *Circuit) StoreValueAt(index uint64) (*string, error) {
-	if c.store == nil && c.StoreID != nil {
-		c.store = proofstorage.Find(*c.StoreID)
+	if c.proofStore == nil && c.ProofStoreID != nil {
+		c.proofStore = storage.Find(*c.ProofStoreID)
 	}
 
-	if c.store == nil {
-		return nil, fmt.Errorf("failed to resolve store value at index %d for circuit %s", index, c.ID)
+	if c.proofStore == nil {
+		return nil, fmt.Errorf("failed to resolve proof store value at index %d for circuit %s", index, c.ID)
 	}
 
-	return c.store.ValueAt(index)
+	return c.proofStore.ValueAt(index)
 }
 
 // Prove generates a proof for the given witness
@@ -234,8 +272,8 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
 	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
 
-	if c.store != nil {
-		idx, err := c.store.Insert(*_proof)
+	if c.proofStore != nil {
+		idx, err := c.proofStore.Insert(*_proof)
 		if err != nil {
 			common.Log.Warningf("failed to insert proof; %s", err.Error())
 		} else {
@@ -275,8 +313,8 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 		return false, err
 	}
 
-	if c.store != nil && store {
-		idx, err := c.store.Insert(proof)
+	if c.proofStore != nil && store {
+		idx, err := c.proofStore.Insert(proof)
 		if err != nil {
 			common.Log.Warningf("failed to insert proof; %s", err.Error())
 		} else {
@@ -356,6 +394,23 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
+	if (c.provingKey == nil || len(c.provingKey) == 0) && c.ProvingKeyID != nil {
+		secret, err := vault.FetchSecret(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.ProvingKeyID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+		c.provingKey, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode proving key secret from hex; %s", err.Error())
+			return err
+		}
+	}
+
 	if (c.verifyingKey == nil || len(c.verifyingKey) == 0) && c.VerifyingKeyID != nil {
 		secret, err := vault.FetchSecret(
 			util.DefaultVaultAccessJWT,
@@ -381,8 +436,12 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
-	if c.store == nil && c.StoreID != nil {
-		c.store = proofstorage.Find(*c.StoreID)
+	if c.noteStore == nil && c.ProofStoreID != nil {
+		c.proofStore = storage.Find(*c.ProofStoreID)
+	}
+
+	if c.proofStore == nil && c.ProofStoreID != nil {
+		c.proofStore = storage.Find(*c.ProofStoreID)
 	}
 
 	if c.VerifierContract == nil {
@@ -453,6 +512,10 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		}
 	}
 
+	if !c.generateEncryptionKey() {
+		return false
+	}
+
 	if !c.persistKeys() {
 		return false
 	}
@@ -460,18 +523,67 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 	return len(c.Errors) == 0
 }
 
-// initStore attempts to initialize proof storage for the circuit instance
-func (c *Circuit) initStore() error {
+// initStorage attempts to initialize storage for notes (dense) and hashed proofs (sparse)
+// for the circuit instance; no-op for each store type if it has already been initialized
+func (c *Circuit) initStorage() error {
+	if c.NoteStoreID == nil {
+		if c.EncryptionKeyID == nil {
+
+		}
+
+		err := c.initNoteStorage()
+		if err != nil {
+			return err
+		}
+	}
+
+	if c.ProofStoreID != nil {
+		return c.initProofStorage()
+	}
+
+	return nil
+}
+
+// initNoteStorage initializes dense merkle tree storage for the circuit instance
+func (c *Circuit) initNoteStorage() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if c.StoreID != nil {
+	if c.NoteStoreID != nil {
+		return fmt.Errorf("failed to initialize notes storage provider for circuit %s; notes store has already been initialized", c.ID)
+	}
+
+	common.Log.Debugf("attempting to initialize notes storage for circuit %s", c.ID)
+
+	store := &storage.Store{
+		Name:     common.StringOrNil(fmt.Sprintf("dense merkle tree notes storage for circuit %s", c.ID)),
+		Provider: common.StringOrNil(storeprovider.StoreProviderMerkleTree),
+		Curve:    common.StringOrNil(*c.Curve),
+	}
+
+	if store.Create() {
+		common.Log.Debugf("initialized notes storage for circuit with identifier %s", c.ID)
+		c.NoteStoreID = &store.ID
+		c.noteStore = store
+	} else {
+		return fmt.Errorf("failed to initialize notes storage provider for circuit %s; store not persisted", c.ID)
+	}
+
+	return nil
+}
+
+// initProofStorage initializes sparse merkle tree storage for hashed proofs for the circuit instance
+func (c *Circuit) initProofStorage() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.ProofStoreID != nil {
 		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store has already been initialized", c.ID)
 	}
 
 	common.Log.Debugf("attempting to initialize proof storage for circuit %s", c.ID)
 
-	store := &proofstorage.Store{
+	store := &storage.Store{
 		Name:     common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
 		Provider: common.StringOrNil(storeprovider.StoreProviderMerkleTree),
 		Curve:    common.StringOrNil(*c.Curve),
@@ -479,8 +591,8 @@ func (c *Circuit) initStore() error {
 
 	if store.Create() {
 		common.Log.Debugf("initialized proof storage for circuit with identifier %s", c.ID)
-		c.StoreID = &store.ID
-		c.store = store
+		c.ProofStoreID = &store.ID
+		c.proofStore = store
 	} else {
 		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store not persisted", c.ID)
 	}
@@ -488,7 +600,33 @@ func (c *Circuit) initStore() error {
 	return nil
 }
 
-// persistKeys attempts to persist the proving and verifying keys
+// generateEncryptionKey attempts to generate an AES-256-GCM symmetric key for encrypting
+// notes and persist the key id on the circuit instance
+func (c *Circuit) generateEncryptionKey() bool {
+	key, err := vault.CreateKey(
+		util.DefaultVaultAccessJWT,
+		c.VaultID.String(),
+		map[string]interface{}{
+			"name":        fmt.Sprintf("%s circuit note encryption key", *c.Name),
+			"description": fmt.Sprintf("%s circuit key for encrypted note storage", *c.Name, *c.ProvingScheme),
+			"spec":        "AES-256-GCM",
+			"type":        "symmetric",
+			"usage":       "encrypt/decrypt",
+		},
+	)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to generate symmetric key material for encrypted notes storage for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+		})
+		return false
+	}
+
+	c.EncryptionKeyID = &key.ID
+	return c.EncryptionKeyID != nil
+}
+
+// persistKeys attempts to persist the proving and verifying keys as secrets
+// in the configured vault instance
 func (c *Circuit) persistKeys() bool {
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
@@ -588,8 +726,9 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 	}
 	c.verifyingKey = buf.Bytes()
 
+	encryptionKeyPersisted := c.generateEncryptionKey()
 	keysPersisted := c.persistKeys()
-	success := len(c.Errors) == 0 && keysPersisted
+	success := len(c.Errors) == 0 && encryptionKeyPersisted && keysPersisted
 	if success {
 		c.enrich()
 		c.updateStatus(db, circuitStatusProvisioned, nil)

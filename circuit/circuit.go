@@ -94,7 +94,7 @@ func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
 
 	switch *c.Provider {
 	case zkp.ZKSnarkCircuitProviderGnark:
-		return zkp.InitGnarkCircuitProvider(c.Curve)
+		return zkp.InitGnarkCircuitProvider(c.Curve, c.ProvingScheme)
 	case zkp.ZKSnarkCircuitProviderZoKrates:
 		return nil // not implemented
 	default:
@@ -346,7 +346,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 		circuit := provider.CircuitFactory(*c.Identifier)
 
 		if circuit != nil {
-			artifacts, err = provider.Compile(circuit, c.ProvingScheme)
+			artifacts, err = provider.Compile(circuit)
 			if err != nil {
 				c.Errors = append(c.Errors, &provide.Error{
 					Message: common.StringOrNil(fmt.Sprintf("failed to compile circuit with identifier %s; %s", *c.Identifier, err.Error())),

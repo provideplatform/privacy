@@ -7,30 +7,30 @@ import (
 	"math/big"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	frbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/polynomial/kzg"
+
+	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
 	edwardsbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/twistededwards"
 	eddsabls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/twistededwards/eddsa"
-	frbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/polynomial/kzg"
+
+	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
 	edwardsbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards"
 	eddsabls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/twistededwards/eddsa"
-	frbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr"
-	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/polynomial/kzg"
-	frbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/polynomial/kzg"
-	frbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
-	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/polynomial/kzg"
-	"github.com/consensys/gnark-crypto/polynomial"
 
+	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
 	edwardsbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards"
 	eddsabls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/twistededwards/eddsa"
+
+	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
 	edwardsbn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
 	eddsabn254 "github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
+
+	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 	edwardsbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/twistededwards"
 	eddsabw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/twistededwards/eddsa"
+
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark-crypto/signature"
 	"github.com/consensys/gnark/backend"
@@ -144,7 +144,19 @@ func parseSkScalar(id ecc.ID, buf []byte) []byte {
 	}
 }
 
-func getKzgScheme(r1cs frontend.CompiledConstraintSystem) polynomial.CommitmentScheme {
+func nextPowerOfTwo(_n int) int {
+	n := uint64(_n)
+	p := uint64(1)
+	if (n & (n - 1)) == 0 {
+		return _n
+	}
+	for p < n {
+		p <<= 1
+	}
+	return int(p)
+}
+
+func getKzgScheme(r1cs frontend.CompiledConstraintSystem) interface{} {
 	nbConstraints := r1cs.GetNbConstraints()
 	internal, secret, public := r1cs.GetNbVariables()
 	nbVariables := internal + secret + public
@@ -154,32 +166,22 @@ func getKzgScheme(r1cs frontend.CompiledConstraintSystem) polynomial.CommitmentS
 	} else {
 		s = nbVariables
 	}
-	size = 1
-	for ; size < s; size *= 2 {
-	}
+	size = nextPowerOfTwo(s)
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	alpha := new(big.Int).SetUint64(seededRand.Uint64())
 
 	// fmt.Println("size", size, "s", s, "id", r1cs.CurveID().String())
 	switch r1cs.CurveID() {
 	case ecc.BN254:
-		var alpha frbn254.Element
-		alpha.SetRandom()
-		return kzgbn254.NewScheme(size, alpha)
+		return kzgbn254.NewSRS(size, alpha)
 	case ecc.BLS12_381:
-		var alpha frbls12381.Element
-		alpha.SetRandom()
-		return kzgbls12381.NewScheme(size, alpha)
+		return kzgbls12381.NewSRS(size, alpha)
 	case ecc.BLS12_377:
-		var alpha frbls12377.Element
-		alpha.SetRandom()
-		return kzgbls12377.NewScheme(size, alpha)
+		return kzgbls12377.NewSRS(size, alpha)
 	case ecc.BW6_761:
-		var alpha frbw6761.Element
-		alpha.SetRandom()
-		return kzgbw6761.NewScheme(size*2, alpha)
+		return kzgbw6761.NewSRS(size*2, alpha)
 	case ecc.BLS24_315:
-		var alpha frbls24315.Element
-		alpha.SetRandom()
-		return kzgbls24315.NewScheme(size, alpha)
+		return kzgbls24315.NewSRS(size, alpha)
 	default:
 		return nil
 	}
@@ -288,8 +290,6 @@ func TestBaselineDocumentCompletePlonk(t *testing.T) {
 		r1cs, err := frontend.Compile(id, backend.PLONK, &baselineDocumentComplete)
 		assert.NoError(err)
 
-		kate := getKzgScheme(r1cs)
-
 		fmt.Println(id)
 		// Correct sk, pk, sig, hash, preimage
 		{
@@ -333,13 +333,13 @@ func TestBaselineDocumentCompletePlonk(t *testing.T) {
 			witness.Sig.S1.Assign(sigS1)
 			witness.Sig.S2.Assign(sigS2)
 
-			publicData, err := plonk.Setup(r1cs, kate, &witness)
+			pk, vk, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
 			assert.NoError(err, "Generating public data should not have failed")
 
-			proof, err := plonk.Prove(r1cs, publicData, &witness)
+			proof, err := plonk.Prove(r1cs, pk, &witness)
 			assert.NoError(err, "Proving with good witness should not output an error")
 
-			err = plonk.Verify(proof, publicData, &witness)
+			err = plonk.Verify(proof, vk, &witness)
 			assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 		}
 	}

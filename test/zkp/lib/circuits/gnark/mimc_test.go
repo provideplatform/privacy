@@ -73,8 +73,6 @@ func TestPreimagePlonk(t *testing.T) {
 		r1cs, err := frontend.Compile(id, backend.PLONK, &mimcCircuit)
 		assert.NoError(err)
 
-		kate := getKzgScheme(r1cs)
-
 		{
 			hFunc := h.New("seed")
 			var preimage big.Int
@@ -86,13 +84,13 @@ func TestPreimagePlonk(t *testing.T) {
 			witness.Preimage.Assign(preimage)
 			witness.Hash.Assign(hash)
 
-			publicData, err := plonk.Setup(r1cs, kate, &witness)
+			pk, vk, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
 			assert.NoError(err, "Generating public data should not have failed")
 
-			proof, err := plonk.Prove(r1cs, publicData, &witness)
+			proof, err := plonk.Prove(r1cs, pk, &witness)
 			assert.NoError(err, "Proving with good witness should not output an error")
 
-			err = plonk.Verify(proof, publicData, &witness)
+			err = plonk.Verify(proof, vk, &witness)
 			assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 		}
 
@@ -101,14 +99,11 @@ func TestPreimagePlonk(t *testing.T) {
 			witness.Hash.Assign(42) // these are nonsense values for this circuit
 			witness.Preimage.Assign(42)
 
-			publicData, err := plonk.Setup(r1cs, kate, &witness)
+			pk, _, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
 			assert.NoError(err, "Generating public data should not have failed")
 
-			proof, err := plonk.Prove(r1cs, publicData, &witness)
-			assert.NoError(err, "Proving with bad witness should not output an error")
-
-			err = plonk.Verify(proof, publicData, &witness)
-			assert.Error(err, "Verifying proof with bad witness should output an error")
+			_, err = plonk.Prove(r1cs, pk, &witness)
+			assert.Error(err, "Proving with bad witness should output an error")
 		}
 	}
 }

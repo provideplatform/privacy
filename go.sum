@@ -58,10 +58,10 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/cloudflare/cloudflare-go v0.10.2-0.20190916151808-a80f83b9add9/go.mod h1:1MxXX1Ux4x6mqPmjkUgTP1CdXIBXKX7T+Jk9Gxrmx+U=
 github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=
 github.com/consensys/bavard v0.1.8-0.20210406032232-f3452dc9b572/go.mod h1:Bpd0/3mZuaj6Sj+PqrmIquiOKy397AKGThQPaGzNXAQ=
-github.com/consensys/gnark v0.4.1-0.20210609191849-b43c62c60502 h1:TRmN4+vg93e7PsXUg//W6ozL0MhaKBGtKHsjrQtcr1M=
-github.com/consensys/gnark v0.4.1-0.20210609191849-b43c62c60502/go.mod h1:0PmIx4iBc+K+GPFANlF1hyi5kiyNyMjauc/6pHsJUMY=
-github.com/consensys/gnark-crypto v0.4.1-0.20210609004241-9c700025967d h1:5qLDWFbyU4WXkyrrhxb7MG3c6Za0C3qPT3YWyeDQy0U=
-github.com/consensys/gnark-crypto v0.4.1-0.20210609004241-9c700025967d/go.mod h1:815PAHg3wvysy0SyIqanF8gZ0Y1wjk/hrDHD/iT88+Q=
+github.com/consensys/gnark v0.4.1-0.20210616174802-c08d25d8ba45 h1:cT+DrV+m5oLfym9t0l5H5pUSCgnfvqWhTkKZ4asP9aw=
+github.com/consensys/gnark v0.4.1-0.20210616174802-c08d25d8ba45/go.mod h1:EobfUz4qlsG55PZ5B+iEJMFEm0GwtJKk8G5U9Dp6vH0=
+github.com/consensys/gnark-crypto v0.4.1-0.20210616171714-903a4bc1a32d h1:PNSlaZEaYq4Y0BFXZlpJQ0/yg4ouadsJ10my86dQPDs=
+github.com/consensys/gnark-crypto v0.4.1-0.20210616171714-903a4bc1a32d/go.mod h1:815PAHg3wvysy0SyIqanF8gZ0Y1wjk/hrDHD/iT88+Q=
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
 github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

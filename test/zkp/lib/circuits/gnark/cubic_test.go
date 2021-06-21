@@ -6,9 +6,6 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/polynomial/kzg"
-	mockcommitment_bn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/polynomial/mockcommitment"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
@@ -82,13 +79,13 @@ func TestCubicEquationPlonkElaborated(t *testing.T) {
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
-		publicData, err := plonk.SetupDummyCommitment(sparseR1cs, &witness)
+		pk, vk, err := plonk.Setup(sparseR1cs, getKzgScheme(sparseR1cs))
 		assert.NoError(err, "Generating public data should not have failed")
 
-		proof, err := plonk.Prove(sparseR1cs, publicData, &witness)
+		proof, err := plonk.Prove(sparseR1cs, pk, &witness)
 		assert.NoError(err, "Proving with good witness should not output an error")
 
-		err = plonk.Verify(proof, publicData, &witness)
+		err = plonk.Verify(proof, vk, &witness)
 		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 	}
 
@@ -108,15 +105,13 @@ func TestCubicEquationPlonkElaboratedWithSpecifiedMockCommitment(t *testing.T) {
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
-		polynomialCommitment := &mockcommitment_bn254.Scheme{}
-
-		publicData, err := plonk.Setup(sparseR1cs, polynomialCommitment, &witness)
+		pk, vk, err := plonk.Setup(sparseR1cs, getKzgScheme(sparseR1cs))
 		assert.NoError(err, "Generating public data should not have failed")
 
-		proof, err := plonk.Prove(sparseR1cs, publicData, &witness)
+		proof, err := plonk.Prove(sparseR1cs, pk, &witness)
 		assert.NoError(err, "Proving with good witness should not output an error")
 
-		err = plonk.Verify(proof, publicData, &witness)
+		err = plonk.Verify(proof, vk, &witness)
 		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 	}
 
@@ -131,22 +126,18 @@ func TestCubicEquationPlonkElaboratedWithSpecifiedKzgCommitment(t *testing.T) {
 	sparseR1cs, err := frontend.Compile(ecc.BN254, backend.PLONK, &cubicCircuit)
 	assert.NoError(err)
 
-	var alpha fr.Element
-	alpha.SetRandom()
-	kate := kzg.NewScheme(64, alpha)
-
 	{
 		var witness libgnark.CubicCircuit
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
-		publicData, err := plonk.Setup(sparseR1cs, kate, &witness)
+		pk, vk, err := plonk.Setup(sparseR1cs, getKzgScheme(sparseR1cs))
 		assert.NoError(err, "Generating public data should not have failed")
 
-		proof, err := plonk.Prove(sparseR1cs, publicData, &witness)
+		proof, err := plonk.Prove(sparseR1cs, pk, &witness)
 		assert.NoError(err, "Proving with good witness should not output an error")
 
-		err = plonk.Verify(proof, publicData, &witness)
+		err = plonk.Verify(proof, vk, &witness)
 		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 	}
 

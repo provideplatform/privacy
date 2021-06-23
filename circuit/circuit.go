@@ -8,6 +8,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -362,7 +363,17 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 	}
 
 	buf = new(bytes.Buffer)
-	_, err = artifacts.(io.WriterTo).WriteTo(buf)
+	if *c.ProvingScheme == circuitProvingSchemeGroth16 {
+		_, err = artifacts.(io.WriterTo).WriteTo(buf)
+	} else if *c.ProvingScheme == circuitProvingSchemePlonk { // FIXME-- remove when io is properly implemented by gnark
+		encoder := cbor.NewEncoder(buf)
+		err = encoder.Encode(&artifacts)
+	} else {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to identify proving scheme for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+		})
+		return false
+	}
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary artifacts for circuit with identifier %s; %s", *c.Identifier, err.Error())),

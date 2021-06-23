@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/polynomial"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/provideplatform/privacy/common"
 	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
@@ -160,19 +160,26 @@ func provingSchemeFactory(provingScheme *string) backend.ID {
 
 func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {
 	var decodedR1CS frontend.CompiledConstraintSystem
+	var decodeErr error
 	switch p.provingSchemeID {
 	case backend.GROTH16:
 		decodedR1CS = groth16.NewCS(p.curveID)
-	case backend.PLONK:
-		decodedR1CS = plonk.NewCS(p.curveID)
+		_, decodeErr = decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
+	case backend.PLONK: // FIXME-- remove when io is properly implemented by gnark
+		// decodedR1CS = plonk.NewCS(p.curveID)
+		dm, err := cbor.DecOptions{MaxArrayElements: 134217728}.DecMode()
+		if err != nil {
+			return nil, err
+		}
+		decoder := dm.NewDecoder(bytes.NewReader(encodedR1CS))
+		decodeErr = decoder.Decode(&decodedR1CS)
 	default:
 		return nil, fmt.Errorf("invalid proving scheme in decodeR1CS")
 	}
 
-	_, err := decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
-	if err != nil {
-		common.Log.Warningf("unable to decode R1CS; %s", err.Error())
-		return nil, err
+	if decodeErr != nil {
+		common.Log.Warningf("unable to decode R1CS; %s", decodeErr.Error())
+		return nil, decodeErr
 	}
 
 	return decodedR1CS, nil
@@ -198,18 +205,6 @@ func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (groth16.VerifyingK
 	}
 
 	return verifyingKey, nil
-}
-
-func (p *GnarkCircuitProvider) decodePublicData(pd []byte) (plonk.PublicData, error) {
-	publicData := plonk.NewPublicData(p.curveID)
-	// FIXME-- ReadFrom not yet implemented by gnark
-	n, err := publicData.ReadFrom(bytes.NewReader(pd))
-	common.Log.Debugf("read %d bytes during attempted public data deserialization", n)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode public data; %s", err.Error())
-	}
-
-	return publicData, nil
 }
 
 func (p *GnarkCircuitProvider) decodeProof(proof []byte) (interface{}, error) {
@@ -285,10 +280,8 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interfac
 	case backend.GROTH16:
 		return groth16.Setup(r1cs)
 	case backend.PLONK:
-		var scheme polynomial.CommitmentScheme
-		// FIXME-- need to submit witness during setup as well
-		pd, err := plonk.Setup(r1cs, scheme, nil)
-		return pd, nil, err
+		// FIXME-- need to submit SRS during setup as well
+		return plonk.Setup(r1cs, nil)
 	}
 
 	return nil, nil, fmt.Errorf("invalid proving scheme")

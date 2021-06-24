@@ -48,5 +48,5 @@ func userTokenFactory(testID uuid.UUID) (*string, error) {
 		return nil, fmt.Errorf("error generating token; %s", err.Error())
 	}
 
-	return token.Token, nil
+	return token.AccessToken, nil
 }

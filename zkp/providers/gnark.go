@@ -12,8 +12,8 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/provideapp/privacy/common"
-	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
+	"github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
 const providersProvingSchemeGroth16 = "groth16"

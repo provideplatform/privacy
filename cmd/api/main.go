@@ -11,14 +11,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/provideapp/ident/common"
-	"github.com/provideapp/ident/token"
-	"github.com/provideapp/privacy/circuit"
-	privacycommon "github.com/provideapp/privacy/common"
-	"github.com/provideapp/privacy/store"
+	"github.com/provideplatform/ident/common"
+	"github.com/provideplatform/ident/token"
+	"github.com/provideplatform/privacy/circuit"
+	privacycommon "github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/privacy/store"
 
-	provide "github.com/provideservices/provide-go/common"
-	util "github.com/provideservices/provide-go/common/util"
+	provide "github.com/provideplatform/provide-go/common"
+	util "github.com/provideplatform/provide-go/common/util"
 )
 
 const runloopSleepInterval = 250 * time.Millisecond

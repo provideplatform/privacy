@@ -8,8 +8,8 @@ import (
 
 	"github.com/joho/godotenv"
 	logger "github.com/kthomas/go-logger"
-	"github.com/provideservices/provide-go/api/vault"
-	"github.com/provideservices/provide-go/common/util"
+	"github.com/provideplatform/provide-go/api/vault"
+	"github.com/provideplatform/provide-go/common/util"
 )
 
 var (

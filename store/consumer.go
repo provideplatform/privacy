@@ -2,10 +2,10 @@ package store
 
 import (
 
-	// vault "github.com/provideservices/provide-go/api/vault"
+	// vault "github.com/provideplatform/provide-go/api/vault"
 
 	natsutil "github.com/kthomas/go-natsutil"
-	"github.com/provideapp/privacy/common"
+	"github.com/provideplatform/privacy/common"
 )
 
 func init() {

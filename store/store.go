@@ -5,9 +5,9 @@ import (
 
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/privacy/common"
-	proofstorage "github.com/provideapp/privacy/store/providers"
-	provide "github.com/provideservices/provide-go/api"
+	"github.com/provideplatform/privacy/common"
+	proofstorage "github.com/provideplatform/privacy/store/providers"
+	provide "github.com/provideplatform/provide-go/api"
 )
 
 // Store model

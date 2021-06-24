@@ -2,8 +2,8 @@ package store
 
 import (
 	"github.com/gin-gonic/gin"
-	provide "github.com/provideservices/provide-go/common"
-	util "github.com/provideservices/provide-go/common/util"
+	provide "github.com/provideplatform/provide-go/common"
+	util "github.com/provideplatform/provide-go/common/util"
 )
 
 // InstallAPI registers the store API handlers with gin

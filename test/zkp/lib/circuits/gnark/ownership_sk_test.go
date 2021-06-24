@@ -24,7 +24,7 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
-	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
+	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
 func parseKeys(id ecc.ID, pubKeyBuf []byte, privKeyBuf []byte) ([]byte, []byte, []byte) {

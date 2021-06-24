@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/kthomas/go-redisutil"
-	_ "github.com/provideapp/privacy/circuit"
-	"github.com/provideapp/privacy/common"
+	_ "github.com/provideplatform/privacy/circuit"
+	"github.com/provideplatform/privacy/common"
 )
 
 const natsStreamingSubscriptionStatusTickerInterval = 5 * time.Second

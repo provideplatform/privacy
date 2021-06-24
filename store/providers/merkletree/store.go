@@ -10,8 +10,8 @@ import (
 	mimc "github.com/consensys/gnark-crypto/hash"
 	"github.com/jinzhu/gorm"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/privacy/common"
-	provide "github.com/provideservices/provide-go/api"
+	"github.com/provideplatform/privacy/common"
+	provide "github.com/provideplatform/provide-go/api"
 )
 
 // DurableMerkleTree is a full MerkleTree impl backed by a postgres persistence provider

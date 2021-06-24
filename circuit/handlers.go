@@ -8,11 +8,11 @@ import (
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/privacy/common"
-	"github.com/provideservices/provide-go/api"
-	"github.com/provideservices/provide-go/api/privacy"
-	provide "github.com/provideservices/provide-go/common"
-	"github.com/provideservices/provide-go/common/util"
+	"github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/privacy"
+	provide "github.com/provideplatform/provide-go/common"
+	"github.com/provideplatform/provide-go/common/util"
 )
 
 func resolveCircuitsQuery(db *gorm.DB, circuitID, orgID, appID *uuid.UUID) *gorm.DB {

@@ -37,7 +37,7 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
-	libgnark "github.com/provideapp/privacy/zkp/lib/circuits/gnark"
+	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
 func parseSignature(id ecc.ID, buf []byte) ([]byte, []byte, []byte, []byte) {

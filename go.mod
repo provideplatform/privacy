@@ -1,4 +1,4 @@
-module github.com/provideapp/privacy
+module github.com/provideplatform/privacy
 
 go 1.16
 
@@ -17,9 +17,9 @@ require (
 	github.com/nats-io/stan.go v0.9.0
 	github.com/onsi/ginkgo v1.16.3 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
-	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210610091141-756e6385f6b8
+	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
+	github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8
 	github.com/stretchr/testify v1.7.0
 )
 
-replace github.com/provideapp/ident => ../ident
+replace github.com/provideplatform/ident => ../ident

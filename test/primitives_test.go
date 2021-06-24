@@ -17,7 +17,7 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
-	"github.com/provideapp/privacy/zkp/lib/circuits/gnark"
+	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
 func TestEq(t *testing.T) {

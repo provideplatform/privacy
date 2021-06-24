@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
-	// vault "github.com/provideservices/provide-go/api/vault"
+	// vault "github.com/provideplatform/provide-go/api/vault"
 
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	stan "github.com/nats-io/stan.go"
-	"github.com/provideapp/privacy/common"
+	"github.com/provideplatform/privacy/common"
 )
 
 const natsCircuitSetupCompleteSubject = "privacy.circuit.setup.complete"

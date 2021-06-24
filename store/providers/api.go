@@ -3,7 +3,7 @@ package providers
 import (
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/privacy/store/providers/merkletree"
+	"github.com/provideplatform/privacy/store/providers/merkletree"
 )
 
 // StoreProviderMerkleTree merkle tree storage provider

@@ -3,19 +3,27 @@ package providers
 import (
 	"bytes"
 	"fmt"
+	"math/big"
+	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/kzg"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/fxamacker/cbor/v2"
-	"github.com/provideplatform/privacy/common"
-	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
+
+	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
+	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
+	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
+	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
+	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
 const providersProvingSchemeGroth16 = "groth16"
@@ -160,34 +168,42 @@ func provingSchemeFactory(provingScheme *string) backend.ID {
 
 func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {
 	var decodedR1CS frontend.CompiledConstraintSystem
-	var decodeErr error
+
 	switch p.provingSchemeID {
 	case backend.GROTH16:
 		decodedR1CS = groth16.NewCS(p.curveID)
-		_, decodeErr = decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
-	case backend.PLONK: // FIXME-- remove when io is properly implemented by gnark
-		// decodedR1CS = plonk.NewCS(p.curveID)
-		dm, err := cbor.DecOptions{MaxArrayElements: 134217728}.DecMode()
-		if err != nil {
-			return nil, err
-		}
-		decoder := dm.NewDecoder(bytes.NewReader(encodedR1CS))
-		decodeErr = decoder.Decode(&decodedR1CS)
+	case backend.PLONK:
+		decodedR1CS = plonk.NewCS(p.curveID)
 	default:
 		return nil, fmt.Errorf("invalid proving scheme in decodeR1CS")
 	}
 
-	if decodeErr != nil {
-		common.Log.Warningf("unable to decode R1CS; %s", decodeErr.Error())
-		return nil, decodeErr
+	_, err := decodedR1CS.ReadFrom(bytes.NewReader(encodedR1CS))
+	if err != nil {
+		common.Log.Warningf("unable to decode R1CS; %s", err.Error())
+		return nil, err
 	}
 
 	return decodedR1CS, nil
 }
 
-func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (groth16.ProvingKey, error) {
-	provingKey := groth16.NewProvingKey(p.curveID)
-	n, err := provingKey.ReadFrom(bytes.NewReader(pk))
+func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (interface{}, error) {
+	var n int64
+	var err error
+	var provingKey interface{}
+
+	switch p.provingSchemeID {
+	case backend.GROTH16:
+		provingKey = groth16.NewProvingKey(p.curveID)
+		n, err = provingKey.(groth16.ProvingKey).ReadFrom(bytes.NewReader(pk))
+
+	case backend.PLONK:
+		provingKey = plonk.NewProvingKey(p.curveID)
+		n, err = provingKey.(plonk.ProvingKey).ReadFrom(bytes.NewReader(pk))
+	default:
+		return nil, fmt.Errorf("invalid proving scheme in decodeProvingKey")
+	}
+
 	common.Log.Debugf("read %d bytes during attempted proving key deserialization", n)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
@@ -196,9 +212,25 @@ func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (groth16.ProvingKey, 
 	return provingKey, nil
 }
 
-func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (groth16.VerifyingKey, error) {
-	verifyingKey := groth16.NewVerifyingKey(p.curveID)
-	n, err := verifyingKey.ReadFrom(bytes.NewReader(vk))
+func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (interface{}, error) {
+	var n int64
+	var err error
+	var verifyingKey interface{}
+
+	switch p.provingSchemeID {
+	case backend.GROTH16:
+		verifyingKey = groth16.NewVerifyingKey(p.curveID)
+		n, err = verifyingKey.(groth16.VerifyingKey).ReadFrom(bytes.NewReader(vk))
+
+	case backend.PLONK:
+		verifyingKey = plonk.NewVerifyingKey(p.curveID)
+		n, err = verifyingKey.(plonk.VerifyingKey).ReadFrom(bytes.NewReader(vk))
+	default:
+		return nil, fmt.Errorf("invalid proving scheme in decodeVerifyingKeyy")
+	}
+
+	// verifyingKey := groth16.NewVerifyingKey(p.curveID)
+	// n, err := verifyingKey.ReadFrom(bytes.NewReader(vk))
 	common.Log.Debugf("read %d bytes during attempted verifying key deserialization", n)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
@@ -210,14 +242,17 @@ func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (groth16.VerifyingK
 func (p *GnarkCircuitProvider) decodeProof(proof []byte) (interface{}, error) {
 	var err error
 	var prf interface{}
+
 	switch p.provingSchemeID {
 	case backend.GROTH16:
 		prf = groth16.NewProof(p.curveID)
 		_, err = prf.(groth16.Proof).ReadFrom(bytes.NewReader(proof))
 	case backend.PLONK:
-		// FIXME-- not yet implemented by gnark
-		// prf := plonk.NewProof(p.curveID)
-		// _, err = prf.ReadFrom(bytes.NewReader(proof))
+		if p.curveID != ecc.BN254 {
+			return nil, fmt.Errorf("unsupported plonk curve")
+		}
+		prf = plonk.NewProof(p.curveID)
+		_, err = prf.(plonk.Proof).ReadFrom(bytes.NewReader(proof))
 	default:
 		return nil, fmt.Errorf("invalid proving scheme in decodeR1CS")
 	}
@@ -249,13 +284,16 @@ func (p *GnarkCircuitProvider) ComputeWitness(artifacts interface{}, argv ...int
 
 // ExportVerifier exports the verifier contract, if supported; returns nil if the `Verify` method should be called
 func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{}, error) {
+	if p.provingSchemeID != backend.GROTH16 {
+		return nil, fmt.Errorf("ExportVerifier not supported for plonk circuits")
+	}
 	vk, err := p.decodeVerifyingKey([]byte(verifyingKey))
 	if err != nil {
 		return nil, err
 	}
 
 	buf := new(bytes.Buffer)
-	err = vk.ExportSolidity(buf)
+	err = vk.(groth16.VerifyingKey).ExportSolidity(buf)
 	if err != nil {
 		common.Log.Warningf("failed to export verifier contract for using gnark; %s", err.Error())
 		return nil, err
@@ -269,6 +307,48 @@ func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness interf
 	return nil, fmt.Errorf("gnark does not not implement GenerateProof()")
 }
 
+func nextPowerOfTwo(_n int) int {
+	n := uint64(_n)
+	p := uint64(1)
+	if (n & (n - 1)) == 0 {
+		return _n
+	}
+	for p < n {
+		p <<= 1
+	}
+	return int(p)
+}
+
+func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
+	nbConstraints := r1cs.GetNbConstraints()
+	internal, secret, public := r1cs.GetNbVariables()
+	nbVariables := internal + secret + public
+	var s, size int
+	if nbConstraints > nbVariables {
+		s = nbConstraints
+	} else {
+		s = nbVariables
+	}
+	size = nextPowerOfTwo(s)
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	alpha := new(big.Int).SetUint64(seededRand.Uint64())
+
+	switch r1cs.CurveID() {
+	case ecc.BN254:
+		return kzgbn254.NewSRS(size, alpha)
+	case ecc.BLS12_381:
+		return kzgbls12381.NewSRS(size, alpha)
+	case ecc.BLS12_377:
+		return kzgbls12377.NewSRS(size, alpha)
+	case ecc.BW6_761:
+		return kzgbw6761.NewSRS(size*2, alpha)
+	case ecc.BLS24_315:
+		return kzgbls24315.NewSRS(size, alpha)
+	default:
+		return nil
+	}
+}
+
 // Setup runs the trusted setup
 func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interface{}, error) {
 	r1cs, err := p.decodeR1CS(circuit.([]byte))
@@ -280,11 +360,11 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interfac
 	case backend.GROTH16:
 		return groth16.Setup(r1cs)
 	case backend.PLONK:
-		// FIXME-- need to submit SRS during setup as well
-		return plonk.Setup(r1cs, nil)
+		// FIXME-- need to submit SRS via API during setup as well
+		return plonk.Setup(r1cs, getKzgScheme(r1cs))
 	}
 
-	return nil, nil, fmt.Errorf("invalid proving scheme")
+	return nil, nil, fmt.Errorf("invalid proving scheme for Setup")
 }
 
 // Prove generates a proof
@@ -301,7 +381,14 @@ func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interfa
 		return nil, err
 	}
 
-	return groth16.Prove(r1cs, pk, witness.(frontend.Circuit))
+	switch p.provingSchemeID {
+	case backend.GROTH16:
+		return groth16.Prove(r1cs, pk.(groth16.ProvingKey), witness.(frontend.Circuit))
+	case backend.PLONK:
+		return plonk.Prove(r1cs, pk.(plonk.ProvingKey), witness.(frontend.Circuit))
+	}
+
+	return nil, fmt.Errorf("invalid proving scheme for Prove")
 }
 
 // Verify the given proof and witness
@@ -318,5 +405,12 @@ func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interf
 		return err
 	}
 
-	return groth16.Verify(prf.(groth16.Proof), vk, witness.(frontend.Circuit))
+	switch p.provingSchemeID {
+	case backend.GROTH16:
+		return groth16.Verify(prf.(groth16.Proof), vk.(groth16.VerifyingKey), witness.(frontend.Circuit))
+	case backend.PLONK:
+		return plonk.Verify(prf.(plonk.Proof), vk.(plonk.VerifyingKey), witness.(frontend.Circuit))
+	}
+
+	return fmt.Errorf("invalid proving scheme for Verify")
 }

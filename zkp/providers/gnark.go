@@ -17,7 +17,8 @@ import (
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/fxamacker/cbor/v2"
+	"github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 
 	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
 	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"

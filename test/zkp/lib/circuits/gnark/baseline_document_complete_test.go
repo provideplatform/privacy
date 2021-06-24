@@ -32,6 +32,7 @@ import (
 	eddsabw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/twistededwards/eddsa"
 
 	"github.com/consensys/gnark-crypto/hash"
+	"github.com/consensys/gnark-crypto/kzg"
 	"github.com/consensys/gnark-crypto/signature"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
@@ -156,7 +157,7 @@ func nextPowerOfTwo(_n int) int {
 	return int(p)
 }
 
-func getKzgScheme(r1cs frontend.CompiledConstraintSystem) interface{} {
+func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
 	nbConstraints := r1cs.GetNbConstraints()
 	internal, secret, public := r1cs.GetNbVariables()
 	nbVariables := internal + secret + public

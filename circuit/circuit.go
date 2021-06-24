@@ -608,7 +608,7 @@ func (c *Circuit) generateEncryptionKey() bool {
 		c.VaultID.String(),
 		map[string]interface{}{
 			"name":        fmt.Sprintf("%s circuit note encryption key", *c.Name),
-			"description": fmt.Sprintf("%s circuit key for encrypted note storage", *c.Name, *c.ProvingScheme),
+			"description": fmt.Sprintf("%s circuit key for encrypted note storage", *c.Name),
 			"spec":        "AES-256-GCM",
 			"type":        "symmetric",
 			"usage":       "encrypt/decrypt",

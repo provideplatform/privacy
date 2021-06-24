@@ -28,8 +28,8 @@ import (
 	// "github.com/consensys/gnark/frontend"
 	// "github.com/consensys/gnark/std/accumulator/merkle"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/privacy/store/providers/merkletree"
-	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
+	// "github.com/provideplatform/privacy/store/providers/merkletree"
+	// "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 
 	privacy "github.com/provideplatform/provide-go/api/privacy"
 )

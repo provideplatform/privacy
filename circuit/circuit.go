@@ -8,6 +8,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -375,6 +376,10 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 	return len(c.Errors) == 0
 }
 
+func (c *Circuit) canExportVerifier() bool {
+	return c.VerifierContract == nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && *c.Curve == ecc.BN254.String()
+}
+
 // enrich the circuit
 func (c *Circuit) enrich() error {
 	if (c.provingKey == nil || len(c.provingKey) == 0) && c.ProvingKeyID != nil {
@@ -444,7 +449,7 @@ func (c *Circuit) enrich() error {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
-	if c.VerifierContract == nil {
+	if c.canExportVerifier() {
 		err := c.exportVerifier()
 		if err != nil {
 			common.Log.Debugf("failed to export verifier contract for circuit; %s", err.Error())

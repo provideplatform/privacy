@@ -197,18 +197,21 @@ func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (interface{}, error) 
 	case backend.GROTH16:
 		provingKey = groth16.NewProvingKey(p.curveID)
 		n, err = provingKey.(groth16.ProvingKey).ReadFrom(bytes.NewReader(pk))
-
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
+		}
 	case backend.PLONK:
 		provingKey = plonk.NewProvingKey(p.curveID)
 		n, err = provingKey.(plonk.ProvingKey).ReadFrom(bytes.NewReader(pk))
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
+		}
+		// err = provingKey.(plonk.ProvingKey).InitKZG(getKzgScheme())
 	default:
 		return nil, fmt.Errorf("invalid proving scheme in decodeProvingKey")
 	}
 
 	common.Log.Debugf("read %d bytes during attempted proving key deserialization", n)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
-	}
 
 	return provingKey, nil
 }
@@ -222,20 +225,21 @@ func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (interface{}, error
 	case backend.GROTH16:
 		verifyingKey = groth16.NewVerifyingKey(p.curveID)
 		n, err = verifyingKey.(groth16.VerifyingKey).ReadFrom(bytes.NewReader(vk))
-
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
+		}
 	case backend.PLONK:
 		verifyingKey = plonk.NewVerifyingKey(p.curveID)
 		n, err = verifyingKey.(plonk.VerifyingKey).ReadFrom(bytes.NewReader(vk))
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
+		}
+		// err = verifyingKey.(plonk.VerifyingKey).InitKZG(getKzgScheme())
 	default:
 		return nil, fmt.Errorf("invalid proving scheme in decodeVerifyingKeyy")
 	}
 
-	// verifyingKey := groth16.NewVerifyingKey(p.curveID)
-	// n, err := verifyingKey.ReadFrom(bytes.NewReader(vk))
 	common.Log.Debugf("read %d bytes during attempted verifying key deserialization", n)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
-	}
 
 	return verifyingKey, nil
 }

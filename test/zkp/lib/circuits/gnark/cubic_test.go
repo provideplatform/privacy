@@ -3,6 +3,8 @@
 package gnark
 
 import (
+	"bytes"
+	"io"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -91,7 +93,7 @@ func TestCubicEquationPlonkElaborated(t *testing.T) {
 
 }
 
-func TestCubicEquationPlonkElaboratedWithSpecifiedMockCommitment(t *testing.T) {
+func TestCubicEquationPlonkElaboratedWithMarshalling(t *testing.T) {
 	assert := plonk.NewAssert(t)
 
 	var cubicCircuit libgnark.CubicCircuit
@@ -105,36 +107,27 @@ func TestCubicEquationPlonkElaboratedWithSpecifiedMockCommitment(t *testing.T) {
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
-		pk, vk, err := plonk.Setup(sparseR1cs, getKzgScheme(sparseR1cs))
+		kzgSRS := getKzgScheme(sparseR1cs)
+		pk, vk, err := plonk.Setup(sparseR1cs, kzgSRS)
 		assert.NoError(err, "Generating public data should not have failed")
 
-		proof, err := plonk.Prove(sparseR1cs, pk, &witness)
-		assert.NoError(err, "Proving with good witness should not output an error")
+		var buf *bytes.Buffer
+		buf = new(bytes.Buffer)
+		_, err = pk.(io.WriterTo).WriteTo(buf)
+		if err != nil {
+			t.Errorf("failed to write proving key to buffer")
+		}
 
-		err = plonk.Verify(proof, vk, &witness)
-		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
-	}
+		t.Logf("proving key size in bytes: %d", buf.Len())
 
-}
+		pkCopy := plonk.NewProvingKey(ecc.BN254)
+		n, err := pkCopy.ReadFrom(buf)
 
-func TestCubicEquationPlonkElaboratedWithSpecifiedKzgCommitment(t *testing.T) {
-	assert := plonk.NewAssert(t)
+		t.Logf("bytes read back from proving key: %d", n)
 
-	var cubicCircuit libgnark.CubicCircuit
+		pkCopy.InitKZG(kzgSRS)
 
-	// compiles our circuit into a R1CS
-	sparseR1cs, err := frontend.Compile(ecc.BN254, backend.PLONK, &cubicCircuit)
-	assert.NoError(err)
-
-	{
-		var witness libgnark.CubicCircuit
-		witness.X.Assign(3)
-		witness.Y.Assign(35)
-
-		pk, vk, err := plonk.Setup(sparseR1cs, getKzgScheme(sparseR1cs))
-		assert.NoError(err, "Generating public data should not have failed")
-
-		proof, err := plonk.Prove(sparseR1cs, pk, &witness)
+		proof, err := plonk.Prove(sparseR1cs, pkCopy, &witness)
 		assert.NoError(err, "Proving with good witness should not output an error")
 
 		err = plonk.Verify(proof, vk, &witness)

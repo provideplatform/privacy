@@ -64,6 +64,10 @@ func setAliceEnv() {
 }
 
 func TestCreateCircuitGroth16CubicProofGenerationFailureConstraintNotSatisfied(t *testing.T) {
+	// wait for services to start for first test
+	waitForAsync()
+	waitForAsync()
+
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
 	params := circuitParamsFactory("gnark", "cubic", testProvingSchemeGroth16)

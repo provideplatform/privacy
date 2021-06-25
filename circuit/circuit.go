@@ -65,9 +65,9 @@ type Circuit struct {
 	NoteStoreID *uuid.UUID `sql:"type:uuid" json:"note_store_id"`
 	noteStore   *storage.Store
 
-	// storage for hashed proofs
-	ProofStoreID *uuid.UUID `sql:"type:uuid" json:"proof_store_id"`
-	proofStore   *storage.Store
+	// storage for hashed proofs (nullifiers)
+	NullifierStoreID *uuid.UUID `sql:"type:uuid" json:"nullifier_store_id"`
+	nullifierStore   *storage.Store
 
 	// ephemeral fields
 	provingKey   []byte
@@ -133,7 +133,7 @@ func (c *Circuit) Create() bool {
 			if success {
 				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
 
-				if c.NoteStoreID == nil || c.ProofStoreID == nil {
+				if c.NoteStoreID == nil || c.NullifierStoreID == nil {
 					err := c.initStorage()
 					if err != nil {
 						common.Log.Warning(err.Error())
@@ -148,8 +148,8 @@ func (c *Circuit) Create() bool {
 						c.noteStore = storage.Find(*c.NoteStoreID)
 					}
 
-					if c.ProofStoreID != nil {
-						c.proofStore = storage.Find(*c.ProofStoreID)
+					if c.NullifierStoreID != nil {
+						c.nullifierStore = storage.Find(*c.NullifierStoreID)
 					}
 				}
 
@@ -188,29 +188,29 @@ func (c *Circuit) NoteStoreLength() (*int, error) {
 
 // ProofStoreLength returns the underlying proof store length
 func (c *Circuit) ProofStoreLength() (*int, error) {
-	if c.proofStore == nil && c.ProofStoreID != nil {
-		c.proofStore = storage.Find(*c.ProofStoreID)
+	if c.nullifierStore == nil && c.NullifierStoreID != nil {
+		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
-	if c.proofStore == nil {
+	if c.nullifierStore == nil {
 		return nil, fmt.Errorf("failed to resolve proof store length for circuit %s", c.ID)
 	}
 
-	length := c.proofStore.Length()
+	length := c.nullifierStore.Length()
 	return &length, nil
 }
 
 // StoreRoot returns the underlying store root
 func (c *Circuit) StoreRoot() (*string, error) {
-	if c.proofStore == nil && c.ProofStoreID != nil {
-		c.proofStore = storage.Find(*c.ProofStoreID)
+	if c.nullifierStore == nil && c.NullifierStoreID != nil {
+		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
-	if c.proofStore == nil {
+	if c.nullifierStore == nil {
 		return nil, fmt.Errorf("failed to resolve store root for circuit %s", c.ID)
 	}
 
-	return c.proofStore.Root()
+	return c.nullifierStore.Root()
 }
 
 // NoteValueAt returns the decrypted note from the underlying note storage provider
@@ -228,15 +228,15 @@ func (c *Circuit) NoteValueAt(index uint64) (*string, error) {
 
 // StoreValueAt returns the hashed proof from the underlying proof storage provider
 func (c *Circuit) StoreValueAt(index uint64) (*string, error) {
-	if c.proofStore == nil && c.ProofStoreID != nil {
-		c.proofStore = storage.Find(*c.ProofStoreID)
+	if c.nullifierStore == nil && c.NullifierStoreID != nil {
+		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
-	if c.proofStore == nil {
+	if c.nullifierStore == nil {
 		return nil, fmt.Errorf("failed to resolve proof store value at index %d for circuit %s", index, c.ID)
 	}
 
-	return c.proofStore.ValueAt(index)
+	return c.nullifierStore.ValueAt(index)
 }
 
 // Prove generates a proof for the given witness
@@ -272,8 +272,8 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
 	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
 
-	if c.proofStore != nil {
-		idx, err := c.proofStore.Insert(*_proof)
+	if c.nullifierStore != nil {
+		idx, err := c.nullifierStore.Insert(*_proof)
 		if err != nil {
 			common.Log.Warningf("failed to insert proof; %s", err.Error())
 		} else {
@@ -313,8 +313,8 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 		return false, err
 	}
 
-	if c.proofStore != nil && store {
-		idx, err := c.proofStore.Insert(proof)
+	if c.nullifierStore != nil && store {
+		idx, err := c.nullifierStore.Insert(proof)
 		if err != nil {
 			common.Log.Warningf("failed to insert proof; %s", err.Error())
 		} else {
@@ -436,12 +436,12 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
-	if c.noteStore == nil && c.ProofStoreID != nil {
-		c.proofStore = storage.Find(*c.ProofStoreID)
+	if c.noteStore == nil && c.NullifierStoreID != nil {
+		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
-	if c.proofStore == nil && c.ProofStoreID != nil {
-		c.proofStore = storage.Find(*c.ProofStoreID)
+	if c.nullifierStore == nil && c.NullifierStoreID != nil {
+		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
 	if c.VerifierContract == nil {
@@ -537,7 +537,7 @@ func (c *Circuit) initStorage() error {
 		}
 	}
 
-	if c.ProofStoreID != nil {
+	if c.NullifierStoreID != nil {
 		return c.initProofStorage()
 	}
 
@@ -577,7 +577,7 @@ func (c *Circuit) initProofStorage() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if c.ProofStoreID != nil {
+	if c.NullifierStoreID != nil {
 		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store has already been initialized", c.ID)
 	}
 
@@ -591,8 +591,8 @@ func (c *Circuit) initProofStorage() error {
 
 	if store.Create() {
 		common.Log.Debugf("initialized proof storage for circuit with identifier %s", c.ID)
-		c.ProofStoreID = &store.ID
-		c.proofStore = store
+		c.NullifierStoreID = &store.ID
+		c.nullifierStore = store
 	} else {
 		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store not persisted", c.ID)
 	}

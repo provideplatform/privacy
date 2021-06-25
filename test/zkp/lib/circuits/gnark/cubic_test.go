@@ -130,7 +130,22 @@ func TestCubicEquationPlonkElaboratedWithMarshalling(t *testing.T) {
 		proof, err := plonk.Prove(sparseR1cs, pkCopy, &witness)
 		assert.NoError(err, "Proving with good witness should not output an error")
 
-		err = plonk.Verify(proof, vk, &witness)
+		buf.Reset()
+		_, err = vk.(io.WriterTo).WriteTo(buf)
+		if err != nil {
+			t.Errorf("failed to write verifying key to buffer")
+		}
+
+		t.Logf("verifying key size in bytes: %d", buf.Len())
+
+		vkCopy := plonk.NewVerifyingKey(ecc.BN254)
+		n, err = vkCopy.ReadFrom(buf)
+
+		t.Logf("bytes read back from verifying key: %d", n)
+
+		vkCopy.InitKZG(kzgSRS)
+
+		err = plonk.Verify(proof, vkCopy, &witness)
 		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 	}
 

@@ -1,0 +1,1 @@
+ALTER TABLE ONLY circuits DROP COLUMN srs_id;

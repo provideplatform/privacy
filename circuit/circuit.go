@@ -63,7 +63,7 @@ type Circuit struct {
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
 	// SRS (structured reference string) is protocol-specific and may be nil depending on the proving scheme
-	StructuredReferenceStringID *uuid.UUID `json:"srs_id,omitempty"`
+	StructuredReferenceStringID *uuid.UUID `gorm:"column:srs_id" json:"srs_id,omitempty"`
 
 	// encrypted notes storage
 	NoteStoreID *uuid.UUID `sql:"type:uuid" json:"note_store_id"`

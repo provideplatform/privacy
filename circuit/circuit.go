@@ -760,7 +760,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 	if c.srsRequired() {
 		if c.srs == nil || len(c.srs) == 0 {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; no compiled artifacts", *c.ProvingScheme, *c.Identifier)),
+				Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),
 			})
 			return false
 		}

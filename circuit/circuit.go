@@ -42,7 +42,7 @@ type Circuit struct {
 	ABI    []byte `json:"abi,omitempty"`
 	Binary []byte `gorm:"column:bin" json:"-"`
 
-	// Vault and the vault secret identifiers for the encryption/decryption key and proving/verifying keys
+	// Vault and the vault secret identifiers for the encryption/decryption key and proving/verifying keys, SRS
 	VaultID         *uuid.UUID `json:"vault_id"`
 	EncryptionKeyID *uuid.UUID `json:"encryption_key_id"`
 	ProvingKeyID    *uuid.UUID `json:"proving_key_id"`
@@ -62,6 +62,9 @@ type Circuit struct {
 
 	Status *string `sql:"not null;default:'init'" json:"status"`
 
+	// SRS (structured reference string) is protocol-specific and may be nil depending on the proving scheme
+	StructuredReferenceStringID *uuid.UUID `json:"srs_id,omitempty"`
+
 	// encrypted notes storage
 	NoteStoreID *uuid.UUID `sql:"type:uuid" json:"note_store_id"`
 	noteStore   *storage.Store
@@ -71,6 +74,7 @@ type Circuit struct {
 	nullifierStore   *storage.Store
 
 	// ephemeral fields
+	srs          []byte
 	provingKey   []byte
 	verifyingKey []byte
 
@@ -433,11 +437,32 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
+	if (c.srs == nil || len(c.srs) == 0) && c.StructuredReferenceStringID != nil {
+		secret, err := vault.FetchSecret(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.StructuredReferenceStringID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+		c.srs, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode SRS secret from hex; %s", err.Error())
+			return err
+		}
+	}
+
 	if c.Artifacts == nil {
 		c.Artifacts = map[string]interface{}{
 			"binary":        hex.EncodeToString(c.Binary),
 			"proving_key":   hex.EncodeToString(c.provingKey),
 			"verifying_key": hex.EncodeToString(c.verifyingKey),
+		}
+
+		if c.srs != nil && len(c.srs) > 0 {
+			c.Artifacts["srs"] = hex.EncodeToString(c.srs)
 		}
 	}
 
@@ -517,11 +542,25 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		}
 	}
 
+	if srs, srsOk := c.Artifacts["srs"].(string); srsOk {
+		c.srs, err = hex.DecodeString(srs)
+		if err != nil {
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to import SRS for circuit %s; %s", *c.Identifier, err.Error())),
+			})
+			return false
+		}
+	}
+
 	if !c.generateEncryptionKey() {
 		return false
 	}
 
 	if !c.persistKeys() {
+		return false
+	}
+
+	if c.srs != nil && len(c.srs) > 0 && !c.persistSRS() {
 		return false
 	}
 
@@ -668,6 +707,26 @@ func (c *Circuit) persistKeys() bool {
 	return c.ProvingKeyID != nil && c.VerifyingKeyID != nil
 }
 
+// persistSRS attempts to persist the circuit SRS as a secret in the configured vault instance
+func (c *Circuit) persistSRS() bool {
+	secret, err := vault.CreateSecret(
+		util.DefaultVaultAccessJWT,
+		c.VaultID.String(),
+		hex.EncodeToString(c.srs),
+		fmt.Sprintf("%s circuit SRS", *c.Name),
+		fmt.Sprintf("%s circuit %s SRS", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s SRS", *c.ProvingScheme),
+	)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to store SRS for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+		})
+		return false
+	}
+	c.StructuredReferenceStringID = &secret.ID
+	return c.StructuredReferenceStringID != nil
+}
+
 func (c *Circuit) setupRequired() bool {
 	return c.ProvingScheme != nil && (*c.ProvingScheme == circuitProvingSchemeGroth16 || *c.ProvingScheme == circuitProvingSchemePlonk) && c.Status != nil && (*c.Status == circuitStatusCompiled || *c.Status == circuitStatusPendingSetup)
 }
@@ -698,7 +757,24 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 
 	var buf *bytes.Buffer
 
-	pk, vk, err := provider.Setup(c.Binary)
+	if c.srsRequired() {
+		if c.srs == nil || len(c.srs) == 0 {
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; no compiled artifacts", *c.ProvingScheme, *c.Identifier)),
+			})
+			return false
+		}
+
+		if !c.persistSRS() {
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; SRS not persisted", *c.ProvingScheme, *c.Identifier)),
+			})
+			return false
+		}
+	}
+
+	pk, vk, err := provider.Setup(c.Binary, c.srs)
+
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),
@@ -740,6 +816,10 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 	}
 
 	return success
+}
+
+func (c *Circuit) srsRequired() bool {
+	return c.ProvingScheme != nil && *c.ProvingScheme == circuitProvingSchemePlonk
 }
 
 // updateStatus updates the circuit status and optional description

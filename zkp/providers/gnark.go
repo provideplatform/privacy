@@ -354,8 +354,9 @@ func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
 	}
 }
 
-// Setup runs the trusted setup
-func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interface{}, error) {
+// Setup runs the circuit setup; if srs is non-nil, it is intended to be
+// the input from a MPC process
+func (p *GnarkCircuitProvider) Setup(circuit interface{}, srs []byte) (interface{}, interface{}, error) {
 	r1cs, err := p.decodeR1CS(circuit.([]byte))
 	if err != nil {
 		return nil, nil, err
@@ -365,8 +366,9 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}) (interface{}, interfac
 	case backend.GROTH16:
 		return groth16.Setup(r1cs)
 	case backend.PLONK:
-		// FIXME-- need to submit SRS via API during setup as well
-		return plonk.Setup(r1cs, getKzgScheme(r1cs))
+		kzgsrs := kzg.NewSRS(p.curveID)
+		kzgsrs.ReadFrom(bytes.NewReader(srs))
+		return plonk.Setup(r1cs, kzgsrs)
 	}
 
 	return nil, nil, fmt.Errorf("invalid proving scheme for Setup")

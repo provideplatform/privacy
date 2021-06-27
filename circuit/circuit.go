@@ -259,7 +259,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
-	proof, err := provider.Prove(c.Binary, c.provingKey, witval)
+	proof, err := provider.Prove(c.Binary, c.provingKey, witval, c.srs)
 	if err != nil {
 		common.Log.Warningf("failed to generate proof; %s", err.Error())
 		return nil, err
@@ -313,7 +313,7 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 		return false, err
 	}
 
-	err = provider.Verify(_proof, c.verifyingKey, witval)
+	err = provider.Verify(_proof, c.verifyingKey, witval, c.srs)
 	if err != nil {
 		return false, err
 	}

@@ -375,7 +375,7 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}, srs []byte) (interface
 }
 
 // Prove generates a proof
-func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interface{}) (interface{}, error) {
+func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interface{}, srs []byte) (interface{}, error) {
 	var err error
 
 	r1cs, err := p.decodeR1CS(circuit)
@@ -392,6 +392,12 @@ func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interfa
 	case backend.GROTH16:
 		return groth16.Prove(r1cs, pk.(groth16.ProvingKey), witness.(frontend.Circuit))
 	case backend.PLONK:
+		kzgsrs := kzg.NewSRS(p.curveID)
+		kzgsrs.ReadFrom(bytes.NewReader(srs))
+		err := pk.(plonk.ProvingKey).InitKZG(kzgsrs)
+		if err != nil {
+			return nil, err
+		}
 		return plonk.Prove(r1cs, pk.(plonk.ProvingKey), witness.(frontend.Circuit))
 	}
 
@@ -399,7 +405,7 @@ func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interfa
 }
 
 // Verify the given proof and witness
-func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interface{}) error {
+func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interface{}, srs []byte) error {
 	var err error
 
 	prf, err := p.decodeProof(proof)
@@ -416,6 +422,12 @@ func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interf
 	case backend.GROTH16:
 		return groth16.Verify(prf.(groth16.Proof), vk.(groth16.VerifyingKey), witness.(frontend.Circuit))
 	case backend.PLONK:
+		kzgsrs := kzg.NewSRS(p.curveID)
+		kzgsrs.ReadFrom(bytes.NewReader(srs))
+		err := vk.(plonk.ProvingKey).InitKZG(kzgsrs)
+		if err != nil {
+			return err
+		}
 		return plonk.Verify(prf.(plonk.Proof), vk.(plonk.VerifyingKey), witness.(frontend.Circuit))
 	}
 

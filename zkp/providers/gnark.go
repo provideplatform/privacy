@@ -424,7 +424,7 @@ func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interf
 	case backend.PLONK:
 		kzgsrs := kzg.NewSRS(p.curveID)
 		kzgsrs.ReadFrom(bytes.NewReader(srs))
-		err := vk.(plonk.ProvingKey).InitKZG(kzgsrs)
+		err := vk.(plonk.VerifyingKey).InitKZG(kzgsrs)
 		if err != nil {
 			return err
 		}

@@ -274,45 +274,45 @@ func (c *Circuit) Create() bool {
 	return false
 }
 
-// NoteStoreLength returns the underlying note store length
-func (c *Circuit) NoteStoreLength() (*int, error) {
+// NoteStoreHeight returns the underlying note store height
+func (c *Circuit) NoteStoreHeight() (*int, error) {
 	if c.noteStore == nil && c.NoteStoreID != nil {
 		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
 	if c.noteStore == nil {
-		return nil, fmt.Errorf("failed to resolve note store length for circuit %s", c.ID)
+		return nil, fmt.Errorf("failed to resolve note store height for circuit %s", c.ID)
 	}
 
-	length := c.noteStore.Length()
-	return &length, nil
+	height := c.noteStore.Height()
+	return &height, nil
 }
 
-// NullifierStoreLength returns the underlying nullifier store length
-func (c *Circuit) NullifierStoreLength() (*int, error) {
+// NullifierStoreHeight returns the underlying nullifier store height
+func (c *Circuit) NullifierStoreHeight() (*int, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
 	if c.nullifierStore == nil {
-		return nil, fmt.Errorf("failed to resolve proof store length for circuit %s", c.ID)
+		return nil, fmt.Errorf("failed to resolve nullifier store height for circuit %s", c.ID)
 	}
 
-	length := c.nullifierStore.Length()
-	return &length, nil
+	height := c.nullifierStore.Height()
+	return &height, nil
 }
 
 // NoteValueAt returns the decrypted note from the underlying note storage provider
-func (c *Circuit) NoteValueAt(index uint64) (*string, error) {
+func (c *Circuit) NoteValueAt(key []byte) ([]byte, error) {
 	if c.noteStore == nil && c.NoteStoreID != nil {
 		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
 	if c.noteStore == nil {
-		return nil, fmt.Errorf("failed to resolve note store value at index %d for circuit %s", index, c.ID)
+		return nil, fmt.Errorf("failed to resolve note store value for key %s for circuit %s", key, c.ID)
 	}
 
-	val, err := c.noteStore.ValueAt(index)
+	val, err := c.noteStore.ValueAt(key)
 	if err != nil {
 		return nil, err
 	}
@@ -340,16 +340,16 @@ func (c *Circuit) NullifierStoreRoot() (*string, error) {
 }
 
 // NullifierValueAt returns the hashed proof from the underlying nullifier proof storage provider
-func (c *Circuit) NullifierValueAt(index uint64) (*string, error) {
+func (c *Circuit) NullifierValueAt(key []byte) ([]byte, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
 	if c.nullifierStore == nil {
-		return nil, fmt.Errorf("failed to resolve proof store value at index %d for circuit %s", index, c.ID)
+		return nil, fmt.Errorf("failed to resolve proof store value for key %s for circuit %s", string(key), c.ID)
 	}
 
-	return c.nullifierStore.ValueAt(index)
+	return c.nullifierStore.ValueAt(key)
 }
 
 // Prove generates a proof for the given witness
@@ -733,7 +733,7 @@ func (c *Circuit) initNullifierStorage() error {
 
 	store := &storage.Store{
 		Name:     common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
-		Provider: common.StringOrNil(storeprovider.StoreProviderMerkleTree),
+		Provider: common.StringOrNil(storeprovider.StoreProviderSparseMerkleTree),
 		Curve:    common.StringOrNil(*c.Curve),
 	}
 
@@ -993,21 +993,21 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
-		idx, err := c.noteStore.Insert(resp.Data)
+		root, err := c.noteStore.Insert(resp.Data)
 		if err != nil {
 			common.Log.Warningf("failed to insert note; %s", err.Error())
 		} else {
-			common.Log.Debugf("inserted %d-byte note at location %d for circuit %s", len(note), *idx, c.ID)
+			common.Log.Debugf("inserted %d-byte note for circuit %s; root: %s", len(note), c.ID, hex.EncodeToString(root))
 		}
 	}
 
 	if c.nullifierStore != nil {
-		idx, err := c.nullifierStore.Insert(proof)
+		root, err := c.nullifierStore.Insert(proof)
 		if err != nil {
-			common.Log.Warningf("failed to insert proof; %s", err.Error())
+			common.Log.Warningf("failed to insert nullifier proof; %s", err.Error())
 			return err
 		} else {
-			common.Log.Debugf("inserted nullifier proof at location %d for circuit %s: %s", *idx, c.ID, hex.EncodeToString([]byte(proof)))
+			common.Log.Debugf("inserted nullifier proof for circuit %s: %s; root: %s", c.ID, hex.EncodeToString([]byte(proof)), hex.EncodeToString(root))
 		}
 	}
 

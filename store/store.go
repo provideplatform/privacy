@@ -29,6 +29,8 @@ func (s *Store) storeProviderFactory() proofstorage.StoreProvider {
 	switch *s.Provider {
 	case proofstorage.StoreProviderMerkleTree:
 		return proofstorage.InitMerkleTreeStoreProvider(s.ID, s.Curve)
+	case proofstorage.StoreProviderSparseMerkleTree:
+		return proofstorage.InitSparseMerkleTreeStoreProvider(&s.ID)
 	default:
 		common.Log.Warningf("failed to initialize store provider; unknown provider: %s", *s.Provider)
 	}
@@ -89,34 +91,22 @@ func (s *Store) Contains(val string) bool {
 }
 
 // Insert a proof into the state of the configured storage provider
-func (s *Store) Insert(val string) (*int, error) {
+func (s *Store) Insert(val string) (root []byte, err error) {
 	provider := s.storeProviderFactory()
 	if provider != nil {
-		idx, _ := provider.Add([]byte(val))
-		return &idx, nil
+		root, _ := provider.Insert(val)
+		return root, nil
 	}
 	return nil, fmt.Errorf("failed to insert proof in store %s", s.ID)
 }
 
-// Length returns the number of stored nodes
-func (s *Store) Length() int {
+// Height returns the height of the underlying store
+func (s *Store) Height() int {
 	provider := s.storeProviderFactory()
 	if provider != nil {
-		return provider.Length()
+		return provider.Height()
 	}
 	return 0
-}
-
-// Recalculate the underlying state of the configured storage provider
-// (i.e., the root in the case of a merkle tree provider)
-func (s *Store) Recalculate() (*string, error) {
-	provider := s.storeProviderFactory()
-	if provider != nil {
-		root := provider.Recalculate()
-		return &root, nil
-
-	}
-	return nil, fmt.Errorf("failed to recalculate store %s", s.ID)
 }
 
 // Root returns the store root
@@ -133,16 +123,16 @@ func (s *Store) Root() (*string, error) {
 }
 
 // ValueAt returns the store representation of value at the given index
-func (s *Store) ValueAt(index uint64) (*string, error) {
+func (s *Store) ValueAt(key []byte) ([]byte, error) {
 	provider := s.storeProviderFactory()
 	if provider != nil {
-		val, err := provider.HashAt(index)
+		val, err := provider.Get(key)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve value at index %d in store %s; %s", index, s.ID, err.Error())
+			return nil, fmt.Errorf("failed to resolve value for key %s in store %s; %s", string(key), s.ID, err.Error())
 		}
-		return &val, nil
+		return val, nil
 	}
-	return nil, fmt.Errorf("failed to resolve value at index %d in store %s", index, s.ID)
+	return nil, fmt.Errorf("failed to resolve value for key %s in store %s", string(key), s.ID)
 }
 
 // validate the store params

@@ -180,15 +180,7 @@ func (tree *MemoryMerkleTree) getIntermediaryHashesByIndex(index int) (intermedi
 // Also recalculates and recalibrates the tree.
 // Returns the index it was inserted and the hash of the new data
 func (tree *MemoryMerkleTree) Add(val []byte) (index int, hash string) {
-	if tree.HashFunc != nil {
-		h := tree.HashFunc(val)
-		hash = hex.EncodeToString(h)
-		index = tree.Insert(hash)
-	} else {
-		index = tree.Insert(string(val))
-	}
-
-	return index, hash
+	return tree.RawAdd(val)
 }
 
 // RawAdd adds data to the tree without recalculating the tree
@@ -251,7 +243,7 @@ func (tree *MemoryMerkleTree) Recalculate() (treeRoot string) {
 // Insert creates node out of the hash and pushes it into the tree
 // Also recalculates and recalibrates the tree
 // Returns the index it was inserted at
-func (tree *MemoryMerkleTree) Insert(val string) (index int) {
+func (tree *MemoryMerkleTree) Insert(val string) (root []byte, err error) {
 	tree.Mutex.RLock()
 	defer tree.Mutex.RUnlock()
 
@@ -264,7 +256,7 @@ func (tree *MemoryMerkleTree) Insert(val string) (index int) {
 		tree.RootNode = tree.propagateChange()
 	}
 
-	return index
+	return tree.RootNode.val, nil
 }
 
 // IntermediaryHashesByIndex returns all hashes needed to produce the root from the given index

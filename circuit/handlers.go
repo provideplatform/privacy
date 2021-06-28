@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math/big"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -357,20 +356,20 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	index, err := strconv.ParseUint(c.Param("index"), 10, 64)
-	if err != nil {
-		provide.RenderError(err.Error(), 400, c)
-		return
-	}
+	// index, err := strconv.ParseUint(c.Param("index"), 10, 64)
+	// if err != nil {
+	// 	provide.RenderError(err.Error(), 400, c)
+	// 	return
+	// }
 
-	value, err := circuit.NoteValueAt(index)
-	if err != nil {
-		provide.RenderError(err.Error(), 500, c)
-		return
-	}
+	// value, err := circuit.NoteValueAt(index)
+	// if err != nil {
+	// 	provide.RenderError(err.Error(), 500, c)
+	// 	return
+	// }
 
 	provide.Render(map[string]interface{}{
-		"value": value,
+		// "value": value,
 	}, 200, c)
 }
 
@@ -411,13 +410,13 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	index, err := strconv.ParseUint(c.Param("index"), 10, 64)
-	if err != nil {
-		provide.RenderError(err.Error(), 400, c)
-		return
-	}
+	// index, err := strconv.ParseUint(c.Param("index"), 10, 64)
+	// if err != nil {
+	// 	provide.RenderError(err.Error(), 400, c)
+	// 	return
+	// }
 
-	length, err := circuit.NullifierStoreLength()
+	height, err := circuit.NullifierStoreHeight()
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
 		return
@@ -426,22 +425,22 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 	var value *string
 	var root *string
 
-	if *length > 0 {
-		value, err = circuit.NullifierValueAt(index)
-		if err != nil {
-			provide.RenderError(err.Error(), 500, c)
-			return
-		}
+	// if *length > 0 {
+	// value, err = circuit.NullifierValueAt(index)
+	// if err != nil {
+	// 	provide.RenderError(err.Error(), 500, c)
+	// 	return
+	// }
 
-		root, err = circuit.NullifierStoreRoot()
-		if err != nil {
-			provide.RenderError(err.Error(), 500, c)
-			return
-		}
+	root, err = circuit.NullifierStoreRoot()
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
 	}
+	// }
 
 	provide.Render(map[string]interface{}{
-		"length": length,
+		"height": height,
 		"root":   root,
 		"value":  value,
 	}, 200, c)

@@ -1,6 +1,7 @@
 package merkletree
 
 import (
+	"errors"
 	"fmt"
 	"hash"
 	"strings"
@@ -88,6 +89,14 @@ func (tree *DurableMerkleTree) Contains(val string) bool {
 		return string(hash) == _hash
 	}
 	return false
+}
+
+func (tree *DurableMerkleTree) Get(key []byte) (val []byte, err error) {
+	return nil, errors.New("not implemented")
+}
+
+func (tree *DurableMerkleTree) Height() int {
+	return tree.Height()
 }
 
 // Length returns the count of hashes in the store

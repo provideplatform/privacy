@@ -25,7 +25,7 @@ type MerkleTreeNode interface {
 }
 
 type internaler interface {
-	Insert(val string) (index int)
+	Insert(val string) (root []byte, err error)
 	RawInsert(hash string) (index int, leaf MerkleTreeNode)
 	Recalculate() (root string)
 }

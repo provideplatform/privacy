@@ -277,38 +277,12 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
 	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
 
-	if c.noteStore != nil {
-		note, _ := json.Marshal(map[string]interface{}{
-			"proof":   _proof,
-			"witness": witness,
+	err = c.updateState(*_proof, witness)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
-
-		resp, err := vault.Encrypt(
-			util.DefaultVaultAccessJWT,
-			c.VaultID.String(),
-			c.EncryptionKeyID.String(),
-			string(note),
-		)
-		if err != nil {
-			common.Log.Warningf("failed to insert proof; failed to encrypt %s", err.Error())
-			return nil, err
-		}
-
-		idx, err := c.noteStore.Insert(resp.Data)
-		if err != nil {
-			common.Log.Warningf("failed to insert note; %s", err.Error())
-		} else {
-			common.Log.Debugf("inserted %d-byte note at location %d for circuit %s", len(note), *idx, c.ID)
-		}
-	}
-
-	if c.nullifierStore != nil {
-		idx, err := c.nullifierStore.Insert(*_proof)
-		if err != nil {
-			common.Log.Warningf("failed to insert proof; %s", err.Error())
-		} else {
-			common.Log.Debugf("inserted proof at location %d for circuit %s: %s", *idx, c.ID, *_proof)
-		}
+		return nil, err
 	}
 
 	return _proof, nil
@@ -344,11 +318,12 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 	}
 
 	if c.nullifierStore != nil && store {
-		idx, err := c.nullifierStore.Insert(proof)
+		err = c.updateState(string(_proof), witness)
 		if err != nil {
-			common.Log.Warningf("failed to insert proof; %s", err.Error())
-		} else {
-			common.Log.Debugf("inserted proof at location %d for circuit %s: %s", *idx, c.ID, proof)
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			})
+			return false, err
 		}
 	}
 
@@ -864,6 +839,46 @@ func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) 
 			return errors[0]
 		}
 	}
+	return nil
+}
+
+func (c *Circuit) updateState(proof string, witness map[string]interface{}) error {
+	if c.noteStore != nil {
+		// FIXME -- adopt proper Note structure
+		note, _ := json.Marshal(map[string]interface{}{
+			"proof":   proof,
+			"witness": witness,
+		})
+
+		resp, err := vault.Encrypt(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.EncryptionKeyID.String(),
+			string(note),
+		)
+		if err != nil {
+			common.Log.Warningf("failed to insert proof; failed to encrypt note; %s", err.Error())
+			return err
+		}
+
+		idx, err := c.noteStore.Insert(resp.Data)
+		if err != nil {
+			common.Log.Warningf("failed to insert note; %s", err.Error())
+		} else {
+			common.Log.Debugf("inserted %d-byte note at location %d for circuit %s", len(note), *idx, c.ID)
+		}
+	}
+
+	if c.nullifierStore != nil {
+		idx, err := c.nullifierStore.Insert(proof)
+		if err != nil {
+			common.Log.Warningf("failed to insert proof; %s", err.Error())
+			return err
+		} else {
+			common.Log.Debugf("inserted nullifier proof at location %d for circuit %s: %s", *idx, c.ID, proof)
+		}
+	}
+
 	return nil
 }
 

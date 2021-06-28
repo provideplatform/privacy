@@ -340,28 +340,14 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	length, err := circuit.NoteStoreLength()
-	if err != nil {
-		provide.RenderError(err.Error(), 500, c)
-		return
-	}
-
 	value, err := circuit.NoteValueAt(index)
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
 		return
 	}
 
-	root, err := circuit.StoreRoot()
-	if err != nil {
-		provide.RenderError(err.Error(), 500, c)
-		return
-	}
-
 	provide.Render(map[string]interface{}{
-		"length": length,
-		"root":   root,
-		"value":  value,
+		"value": value,
 	}, 200, c)
 }
 

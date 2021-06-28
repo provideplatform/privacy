@@ -11,11 +11,11 @@ const StoreProviderMerkleTree = "merkle_tree"
 
 // StoreProvider provides a common interface to interact with proof storage facilities
 type StoreProvider interface {
-	Contains(hash string) bool
-	Add(data []byte) (index int, hash string)
-	RawAdd(data []byte) (index int, hash string)
+	Contains(val string) bool
+	Add(val []byte) (index int, hash string)
+	RawAdd(val []byte) (index int, hash string)
 	HashAt(index uint64) (hash string, err error)
-	Insert(hash string) (index int)
+	Insert(val string) (index int)
 	Length() int
 	Recalculate() (root string)
 	Root() (root *string, err error)

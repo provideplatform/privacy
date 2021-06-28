@@ -18,9 +18,6 @@ type Store struct {
 	Description *string `json:"description"`
 	Provider    *string `json:"provider"`
 	Curve       *string `json:"curve"`
-
-	// FIXME -- this is not locked down yet from a permissions perspective...
-	// Circuits []interface{} `gorm:"many2many:circuits_stores" json:"-"`
 }
 
 func (s *Store) storeProviderFactory() proofstorage.StoreProvider {
@@ -82,20 +79,20 @@ func (s *Store) Create() bool {
 	return false
 }
 
-// Contains returns true if the given proof exists in the store
-func (s *Store) Contains(proof string) bool {
+// Contains returns true if the given hash exists in the store
+func (s *Store) Contains(val string) bool {
 	provider := s.storeProviderFactory()
 	if provider != nil {
-		return provider.Contains(proof)
+		return provider.Contains(val)
 	}
 	return false
 }
 
 // Insert a proof into the state of the configured storage provider
-func (s *Store) Insert(proof string) (*int, error) {
+func (s *Store) Insert(val string) (*int, error) {
 	provider := s.storeProviderFactory()
 	if provider != nil {
-		idx, _ := provider.Add([]byte(proof)) // FIXME-- should this be hex.DecodeString? RawAdd? return the hash?
+		idx, _ := provider.Add([]byte(val))
 		return &idx, nil
 	}
 	return nil, fmt.Errorf("failed to insert proof in store %s", s.ID)

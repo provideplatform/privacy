@@ -17,7 +17,7 @@ const (
 
 // Node is implementation of types.Node and representation of a single node or leaf in the merkle tree
 type Node struct {
-	hash   []byte
+	val    []byte
 	index  int
 	Parent *Node
 }
@@ -31,7 +31,7 @@ func (node Node) BigInt() *big.Int {
 
 // Hash returns the string representation of the hash of the node
 func (node *Node) Hash() string {
-	return hex.EncodeToString(node.hash)
+	return hex.EncodeToString(node.val)
 }
 
 // Index returns the index of this node in its level
@@ -86,7 +86,7 @@ func (tree *MemoryMerkleTree) resizeVertically() {
 
 func (tree *MemoryMerkleTree) createParent(left, right *Node) *Node {
 	parentNode := &Node{
-		hash:   tree.HashFunc(left.hash[:], right.hash[:]),
+		val:    tree.HashFunc(left.val[:], right.val[:]),
 		Parent: nil,
 		index:  right.index / 2, // Parent index is always the current node index divided by two
 	}
@@ -179,20 +179,30 @@ func (tree *MemoryMerkleTree) getIntermediaryHashesByIndex(index int) (intermedi
 // Add hashes and inserts data on the next available slot in the tree.
 // Also recalculates and recalibrates the tree.
 // Returns the index it was inserted and the hash of the new data
-func (tree *MemoryMerkleTree) Add(data []byte) (index int, hash string) {
-	h := tree.HashFunc(data)
-	val := hex.EncodeToString(h)
-	index = tree.Insert(val)
-	return index, val
+func (tree *MemoryMerkleTree) Add(val []byte) (index int, hash string) {
+	if tree.HashFunc != nil {
+		h := tree.HashFunc(val)
+		hash = string(h)
+		index = tree.Insert(string(hash))
+	} else {
+		index = tree.Insert(string(val))
+	}
+
+	return index, hash
 }
 
 // RawAdd adds data to the tree without recalculating the tree
 // Returns the index of the leaf and the node
-func (tree *MemoryMerkleTree) RawAdd(data []byte) (index int, hash string) {
-	h := tree.HashFunc(data)
-	val := hex.EncodeToString(h)
-	index, _ = tree.RawInsert(val)
-	return index, val
+func (tree *MemoryMerkleTree) RawAdd(val []byte) (index int, hash string) {
+	if tree.HashFunc != nil {
+		h := tree.HashFunc(val)
+		hash = hex.EncodeToString(h)
+		index, _ = tree.RawInsert(hash)
+	} else {
+		index, _ = tree.RawInsert(string(val))
+	}
+
+	return index, hash
 }
 
 // RawInsert creates node out of the hash and pushes it into the tree without recalculating the tree
@@ -201,10 +211,8 @@ func (tree *MemoryMerkleTree) RawInsert(hash string) (index int, insertedLeaf Me
 	tree.Mutex.RLock()
 	index = len(tree.Nodes[0])
 
-	dec, _ := hex.DecodeString(hash)
-
 	leaf := &Node{
-		dec,
+		[]byte(hash),
 		index,
 		nil,
 	}

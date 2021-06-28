@@ -8,8 +8,8 @@ import (
 // MerkleTree defines and represents the methods a generic Merkle tree should have
 type MerkleTree interface {
 	fmt.Stringer
-	Add(data []byte) (index int, hash string)
-	RawAdd(data []byte) (index int, hash string)
+	Add(val []byte) (index int, hash string)
+	RawAdd(val []byte) (index int, hash string)
 	IntermediaryHashesByIndex(index int) (intermediaryHashes []string, err error)
 	ValidateExistence(original []byte, index int, intermediaryHashes []string) (bool, error)
 	HashAt(index uint64) (string, error)
@@ -25,7 +25,7 @@ type MerkleTreeNode interface {
 }
 
 type internaler interface {
-	Insert(hash string) (index int)
+	Insert(val string) (index int)
 	RawInsert(hash string) (index int, leaf MerkleTreeNode)
 	Recalculate() (root string)
 }

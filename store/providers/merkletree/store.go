@@ -63,21 +63,30 @@ func LoadMerkleTree(db *gorm.DB, id uuid.UUID, hash *string) (*DurableMerkleTree
 // Add hashes the given data, adds it to the tree and triggers recalculation
 func (tree *DurableMerkleTree) Add(data []byte) (index int, hash string) {
 	tree.mutex.Lock()
+	defer tree.mutex.Unlock()
 	index, hash = tree.FullMerkleTree.Add(data)
 	tree.addHashToDB(hash)
-	tree.mutex.Unlock()
 	return index, hash
 }
 
 // Contains returns true if the given hash exists in the store
-func (tree *DurableMerkleTree) Contains(hash string) bool {
-	hashes, err := tree.IntermediaryHashesByIndex(tree.Length())
+func (tree *DurableMerkleTree) Contains(val string) bool {
+	hash := tree.FullMerkleTree.(*MemoryMerkleTree).HashFunc([]byte(val))
+	rows, err := tree.db.Raw("SELECT hash from hashes WHERE store_id = ? AND hash = ?", tree.id, hash).Rows()
 	if err != nil {
-		common.Log.Warningf("failed to scan store for merkle tree hashes; %s", err.Error())
+		common.Log.Warningf("failed to query merkle tree store for inclusion of hash: %s: store id: %s; %s", string(hash), tree.id, err.Error())
 		return false
 	}
 
-	common.Log.Debugf("hashes: %s", hashes)
+	for rows.Next() {
+		var _hash string
+		err = rows.Scan(&_hash)
+		if err != nil {
+			common.Log.Warningf("failed to scan the store for merkle tree hash; %s", err.Error())
+			return false
+		}
+		return string(hash) == _hash
+	}
 	return false
 }
 
@@ -103,11 +112,11 @@ func (tree *DurableMerkleTree) Length() int {
 }
 
 // RawAdd hashes the given data and adds it to the tree but does not trigger recalculation
-func (tree *DurableMerkleTree) RawAdd(data []byte) (index int, hash string) {
+func (tree *DurableMerkleTree) RawAdd(val []byte) (index int, hash string) {
 	tree.mutex.Lock()
-	index, hash = tree.FullMerkleTree.RawAdd(data)
+	defer tree.mutex.Unlock()
+	index, hash = tree.FullMerkleTree.RawAdd(val)
 	tree.addHashToDB(hash)
-	tree.mutex.Unlock()
 	return index, hash
 }
 

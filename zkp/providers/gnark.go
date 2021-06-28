@@ -2,6 +2,7 @@ package providers
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -206,7 +207,6 @@ func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (interface{}, error) 
 		if err != nil {
 			return nil, fmt.Errorf("unable to decode proving key; %s", err.Error())
 		}
-		// err = provingKey.(plonk.ProvingKey).InitKZG(getKzgScheme())
 	default:
 		return nil, fmt.Errorf("invalid proving scheme in decodeProvingKey")
 	}
@@ -234,7 +234,6 @@ func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (interface{}, error
 		if err != nil {
 			return nil, fmt.Errorf("unable to decode verifying key; %s", err.Error())
 		}
-		// err = verifyingKey.(plonk.VerifyingKey).InitKZG(getKzgScheme())
 	default:
 		return nil, fmt.Errorf("invalid proving scheme in decodeVerifyingKeyy")
 	}
@@ -263,8 +262,8 @@ func (p *GnarkCircuitProvider) decodeProof(proof []byte) (interface{}, error) {
 	}
 
 	if err != nil {
-		common.Log.Warningf("unable to decode proof; %s", err.Error()) // HACK?
-		// return nil, fmt.Errorf("unable to decode proof; %s", err.Error())
+		common.Log.Warningf("unable to decode proof; %s", err.Error())
+		return nil, err
 	}
 
 	return prf, nil
@@ -290,7 +289,7 @@ func (p *GnarkCircuitProvider) ComputeWitness(artifacts interface{}, argv ...int
 // ExportVerifier exports the verifier contract, if supported; returns nil if the `Verify` method should be called
 func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{}, error) {
 	if p.provingSchemeID != backend.GROTH16 {
-		return nil, fmt.Errorf("ExportVerifier not supported for plonk circuits")
+		return nil, errors.New("export verifier not supported for proving scheme")
 	}
 	vk, err := p.decodeVerifyingKey([]byte(verifyingKey))
 	if err != nil {

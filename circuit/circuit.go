@@ -314,7 +314,7 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 
 	_proof, err = hex.DecodeString(proof)
 	if err != nil {
-		common.Log.Tracef("failed to decode proof as hex; %s", err.Error())
+		common.Log.Debugf("failed to decode proof as hex; %s", err.Error())
 		_proof = []byte(proof)
 	}
 
@@ -329,7 +329,7 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 		return false, err
 	}
 
-	if c.nullifierStore != nil && store {
+	if store {
 		err = c.updateState(string(_proof), witness)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{

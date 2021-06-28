@@ -209,6 +209,7 @@ func (tree *MemoryMerkleTree) RawAdd(val []byte) (index int, hash string) {
 // Returns the index of the leaf and the node
 func (tree *MemoryMerkleTree) RawInsert(hash string) (index int, insertedLeaf MerkleTreeNode) {
 	tree.Mutex.RLock()
+	defer tree.Mutex.RUnlock()
 	index = len(tree.Nodes[0])
 
 	_hash, _ := hex.DecodeString(hash)
@@ -220,8 +221,6 @@ func (tree *MemoryMerkleTree) RawInsert(hash string) (index int, insertedLeaf Me
 	}
 
 	tree.Nodes[0] = append(tree.Nodes[0], leaf)
-	tree.Mutex.RUnlock()
-
 	return index, leaf
 }
 
@@ -254,6 +253,8 @@ func (tree *MemoryMerkleTree) Recalculate() (treeRoot string) {
 // Returns the index it was inserted at
 func (tree *MemoryMerkleTree) Insert(val string) (index int) {
 	tree.Mutex.RLock()
+	defer tree.Mutex.RUnlock()
+
 	index, leaf := tree.RawInsert(val)
 
 	if index == 0 {
@@ -263,7 +264,6 @@ func (tree *MemoryMerkleTree) Insert(val string) (index int) {
 		tree.RootNode = tree.propagateChange()
 	}
 
-	tree.Mutex.RUnlock()
 	return index
 }
 

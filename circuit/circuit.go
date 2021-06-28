@@ -191,8 +191,8 @@ func (c *Circuit) NoteStoreLength() (*int, error) {
 	return &length, nil
 }
 
-// ProofStoreLength returns the underlying proof store length
-func (c *Circuit) ProofStoreLength() (*int, error) {
+// NullifierStoreLength returns the underlying nullifier store length
+func (c *Circuit) NullifierStoreLength() (*int, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
@@ -205,8 +205,32 @@ func (c *Circuit) ProofStoreLength() (*int, error) {
 	return &length, nil
 }
 
-// StoreRoot returns the underlying store root
-func (c *Circuit) StoreRoot() (*string, error) {
+// NoteValueAt returns the decrypted note from the underlying note storage provider
+func (c *Circuit) NoteValueAt(index uint64) (*string, error) {
+	if c.noteStore == nil && c.NoteStoreID != nil {
+		c.noteStore = storage.Find(*c.NoteStoreID)
+	}
+
+	if c.noteStore == nil {
+		return nil, fmt.Errorf("failed to resolve note store value at index %d for circuit %s", index, c.ID)
+	}
+
+	val, err := c.noteStore.ValueAt(index)
+	if err != nil {
+		return nil, err
+	}
+
+	// rawval, err := base64.RawStdEncoding.DecodeString(*val)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// *val = string(rawval)
+	return val, nil
+}
+
+// NullifierStoreRoot returns the underlying nullifier store root
+func (c *Circuit) NullifierStoreRoot() (*string, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
@@ -218,21 +242,8 @@ func (c *Circuit) StoreRoot() (*string, error) {
 	return c.nullifierStore.Root()
 }
 
-// NoteValueAt returns the decrypted note from the underlying note storage provider
-func (c *Circuit) NoteValueAt(index uint64) (*string, error) {
-	if c.noteStore == nil && c.NoteStoreID != nil {
-		c.noteStore = storage.Find(*c.NoteStoreID)
-	}
-
-	if c.noteStore == nil {
-		return nil, fmt.Errorf("failed to resolve note store value at index %d for circuit %s", index, c.ID)
-	}
-
-	return c.noteStore.ValueAt(index)
-}
-
-// StoreValueAt returns the hashed proof from the underlying proof storage provider
-func (c *Circuit) StoreValueAt(index uint64) (*string, error) {
+// NullifierValueAt returns the hashed proof from the underlying nullifier proof storage provider
+func (c *Circuit) NullifierValueAt(index uint64) (*string, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
@@ -274,8 +285,8 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
-	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
-	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
+	_proof := common.StringOrNil(string(buf.Bytes()))
+	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, hex.EncodeToString(buf.Bytes()))
 
 	err = c.updateState(*_proof, witness)
 	if err != nil {
@@ -285,6 +296,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
+	*_proof = hex.EncodeToString([]byte(*_proof))
 	return _proof, nil
 }
 
@@ -571,18 +583,14 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 // for the circuit instance; no-op for each store type if it has already been initialized
 func (c *Circuit) initStorage() error {
 	if c.NoteStoreID == nil {
-		if c.EncryptionKeyID == nil {
-
-		}
-
 		err := c.initNoteStorage()
 		if err != nil {
 			return err
 		}
 	}
 
-	if c.NullifierStoreID != nil {
-		return c.initProofStorage()
+	if c.NullifierStoreID == nil {
+		return c.initNullifierStorage()
 	}
 
 	return nil
@@ -616,8 +624,8 @@ func (c *Circuit) initNoteStorage() error {
 	return nil
 }
 
-// initProofStorage initializes sparse merkle tree storage for hashed proofs for the circuit instance
-func (c *Circuit) initProofStorage() error {
+// initNullifierStorage initializes sparse merkle tree storage for hashed proofs for the circuit instance
+func (c *Circuit) initNullifierStorage() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -875,7 +883,7 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			common.Log.Warningf("failed to insert proof; %s", err.Error())
 			return err
 		} else {
-			common.Log.Debugf("inserted nullifier proof at location %d for circuit %s: %s", *idx, c.ID, proof)
+			common.Log.Debugf("inserted nullifier proof at location %d for circuit %s: %s", *idx, c.ID, hex.EncodeToString([]byte(proof)))
 		}
 	}
 

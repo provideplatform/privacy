@@ -42,7 +42,7 @@ func InstallAPI(r *gin.Engine) {
 	// r.GET("/api/v1/circuits/:id/verify/:verifyId", proofDetailsHandler)
 
 	r.GET("/api/v1/circuits/:id/notes/:index", circuitNoteStoreValueHandler)
-	r.GET("/api/v1/circuits/:id/proofs/:index", circuitProofStoreValueHandler)
+	r.GET("/api/v1/circuits/:id/nullifiers/:index", circuitNullifierStoreValueHandler)
 }
 
 // list/query available circuits in the registry
@@ -352,7 +352,7 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 }
 
 // circuit proof store value hanbdler
-func circuitProofStoreValueHandler(c *gin.Context) {
+func circuitNullifierStoreValueHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -394,22 +394,27 @@ func circuitProofStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	length, err := circuit.ProofStoreLength()
+	length, err := circuit.NullifierStoreLength()
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
 		return
 	}
 
-	value, err := circuit.StoreValueAt(index)
-	if err != nil {
-		provide.RenderError(err.Error(), 500, c)
-		return
-	}
+	var value *string
+	var root *string
 
-	root, err := circuit.StoreRoot()
-	if err != nil {
-		provide.RenderError(err.Error(), 500, c)
-		return
+	if *length > 0 {
+		value, err = circuit.NullifierValueAt(index)
+		if err != nil {
+			provide.RenderError(err.Error(), 500, c)
+			return
+		}
+
+		root, err = circuit.NullifierStoreRoot()
+		if err != nil {
+			provide.RenderError(err.Error(), 500, c)
+			return
+		}
 	}
 
 	provide.Render(map[string]interface{}{

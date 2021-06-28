@@ -182,8 +182,8 @@ func (tree *MemoryMerkleTree) getIntermediaryHashesByIndex(index int) (intermedi
 func (tree *MemoryMerkleTree) Add(val []byte) (index int, hash string) {
 	if tree.HashFunc != nil {
 		h := tree.HashFunc(val)
-		hash = string(h)
-		index = tree.Insert(string(hash))
+		hash = hex.EncodeToString(h)
+		index = tree.Insert(hash)
 	} else {
 		index = tree.Insert(string(val))
 	}
@@ -211,8 +211,10 @@ func (tree *MemoryMerkleTree) RawInsert(hash string) (index int, insertedLeaf Me
 	tree.Mutex.RLock()
 	index = len(tree.Nodes[0])
 
+	_hash, _ := hex.DecodeString(hash)
+
 	leaf := &Node{
-		[]byte(hash),
+		[]byte(_hash),
 		index,
 		nil,
 	}

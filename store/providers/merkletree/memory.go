@@ -250,9 +250,9 @@ func (tree *MemoryMerkleTree) Recalculate() (treeRoot string) {
 // Insert creates node out of the hash and pushes it into the tree
 // Also recalculates and recalibrates the tree
 // Returns the index it was inserted at
-func (tree *MemoryMerkleTree) Insert(hash string) (index int) {
+func (tree *MemoryMerkleTree) Insert(val string) (index int) {
 	tree.Mutex.RLock()
-	index, leaf := tree.RawInsert(hash)
+	index, leaf := tree.RawInsert(val)
 
 	if index == 0 {
 		rootNode, _ := leaf.(*Node)
@@ -321,7 +321,7 @@ func (tree *MemoryMerkleTree) ValidateExistence(original []byte, index int, inte
 
 }
 
-// Root returns the hash of the root of the tree
+// Root returns the root of the tree
 func (tree *MemoryMerkleTree) Root() (*string, error) {
 	if tree.RootNode == nil {
 		return nil, fmt.Errorf("nil root node")

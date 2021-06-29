@@ -32,6 +32,7 @@ import (
 	"github.com/consensys/gnark-crypto/signature"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/plonk"
 
 	// "github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
@@ -280,6 +281,73 @@ func TestKeySizesGroth16(t *testing.T) {
 				fmt.Printf("circuit: %21s | curve: %9s | pk size: %8d | vk size: %d\n", circuitName, conf.i.String(), pkSize, buf.Len())
 
 				err = groth16.Verify(proof, vk, witness)
+				assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
+			}
+		}
+	}
+
+}
+
+func TestKeySizesPlonk(t *testing.T) {
+	assert := plonk.NewAssert(t)
+
+	signature.Register(signature.EDDSA_BN254, eddsabn254.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS12_381, eddsabls12381.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
+	signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
+
+	confs := []confSig{
+		{ecc.BN254, hash.MIMC_BN254, signature.EDDSA_BN254},
+		{ecc.BLS12_381, hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
+		{ecc.BLS12_377, hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
+		{ecc.BW6_761, hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
+		{ecc.BLS24_315, hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+	}
+
+	circuits := []string{
+		"cubic",
+		"mimc",
+		"purchase_order",
+		"sales_order",
+		"shipment_notification",
+		"goods_receipt",
+		"invoice",
+		"proof_eddsa",
+	}
+
+	for _, circuitName := range circuits {
+		for _, conf := range confs {
+			circuit := keySizeTestWitnessFactory(&circuitName, conf.i, conf.h, conf.s, false)
+			r1cs, err := frontend.Compile(conf.i, backend.PLONK, circuit)
+			assert.NoError(err)
+
+			{
+				witness := keySizeTestWitnessFactory(&circuitName, conf.i, conf.h, conf.s, true)
+				pk, vk, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
+				assert.NoError(err, "Generating public data should not have failed")
+
+				proof, err := plonk.Prove(r1cs, pk, witness)
+				assert.NoError(err, "Proving with good witness should not output an error")
+
+				var buf *bytes.Buffer
+				buf = new(bytes.Buffer)
+				_, err = pk.(io.WriterTo).WriteTo(buf)
+				if err != nil {
+					t.Errorf("failed to write proving key to buffer")
+				}
+
+				pkSize := buf.Len()
+
+				buf.Reset()
+				_, err = vk.(io.WriterTo).WriteTo(buf)
+				if err != nil {
+					t.Errorf("failed to write verifying key to buffer")
+				}
+
+				fmt.Printf("circuit: %21s | curve: %9s | pk size: %8d | vk size: %d\n", circuitName, conf.i.String(), pkSize, buf.Len())
+
+				err = plonk.Verify(proof, vk, witness)
 				assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 			}
 		}

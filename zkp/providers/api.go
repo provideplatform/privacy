@@ -30,9 +30,6 @@ const GnarkCircuitIdentifierGoodsReceiptCircuit = "goods_receipt"
 // GnarkCircuitIdentifierInvoiceCircuit gnark circuit
 const GnarkCircuitIdentifierInvoiceCircuit = "invoice"
 
-// GnarkCircuitIdentifierInvoiceSubdividedCircuit gnark circuit
-const GnarkCircuitIdentifierInvoiceSubdividedCircuit = "invoice_sub"
-
 // GnarkCircuitIdentifierProofHashCircuit gnark circuit
 const GnarkCircuitIdentifierProofHashCircuit = "proof_hash"
 

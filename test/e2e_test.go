@@ -314,7 +314,8 @@ func TestProcurement(t *testing.T) {
 
 	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	index, h := tr.RawAdd([]byte(*proof.Proof))
+	proofString, _ := hex.DecodeString(*proof.Proof)
+	index, h := tr.RawAdd(proofString)
 	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	storeID := circuit.StoreID
@@ -336,7 +337,7 @@ func TestProcurement(t *testing.T) {
 	hFunc.Write(globalPurchaseOrderNumber)
 	hFunc.Write(globalSalesOrderNumber)
 	hFunc.Write(createdOn)
-	hFunc.Write([]byte(*proof.Proof))
+	hFunc.Write(proofString)
 	preImage = hFunc.Sum(nil)
 
 	preImageString = i.SetBytes(preImage).String()
@@ -372,7 +373,8 @@ func TestProcurement(t *testing.T) {
 
 	t.Logf("sales order proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	index, h = tr.RawAdd([]byte(*proof.Proof))
+	proofString, _ = hex.DecodeString(*proof.Proof)
+	index, h = tr.RawAdd(proofString)
 	t.Logf("added sales order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	params = circuitParamsFactory("gnark", "shipment_notification", testProvingSchemeGroth16)
@@ -429,7 +431,8 @@ func TestProcurement(t *testing.T) {
 
 	t.Logf("shipment notification proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	index, h = tr.RawAdd([]byte(*proof.Proof))
+	proofString, _ = hex.DecodeString(*proof.Proof)
+	index, h = tr.RawAdd(proofString)
 	t.Logf("added shipment notification proof to merkle tree, index/hash: %v / %v", index, h)
 
 	params = circuitParamsFactory("gnark", "goods_receipt", testProvingSchemeGroth16)
@@ -584,7 +587,8 @@ func TestProcurement(t *testing.T) {
 
 	t.Logf("invoice proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	index, h = tr.RawAdd([]byte(*proof.Proof))
+	proofString, _ = hex.DecodeString(*proof.Proof)
+	index, h = tr.RawAdd(proofString)
 	t.Logf("added invoice proof to merkle tree, index/hash: %v / %v", index, h)
 
 	root := tr.Recalculate()
@@ -672,7 +676,8 @@ func TestProofVerifyMerkle(t *testing.T) {
 
 	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	index, h := tr.RawAdd([]byte(*proof.Proof))
+	proofString, _ := hex.DecodeString(*proof.Proof)
+	index, h := tr.RawAdd(proofString)
 	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	root := tr.Recalculate()
@@ -771,9 +776,10 @@ func TestDuplicateProofVerifyMerkle(t *testing.T) {
 
 	t.Logf("purchase order proof/verification: %v / %v", proof.Proof, verification.Result)
 
-	index, h := tr.RawAdd([]byte(*proof.Proof))
+	proofString, _ := hex.DecodeString(*proof.Proof)
+	index, h := tr.RawAdd(proofString)
 	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
-	index, h = tr.RawAdd([]byte(*proof.Proof))
+	index, h = tr.RawAdd(proofString)
 	t.Logf("added duplicate purchase order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	root := tr.Recalculate()
@@ -1071,7 +1077,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 	var provideStore, financierStore *privacy.StoreValueResponse
 	var err error
 
-	proofString := ""
+	proofString := []byte{}
 	creditRating := "AAA"
 	hashIndex := uint64(0)
 	var buf bytes.Buffer
@@ -1081,7 +1087,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 		for stage := PURCHASE; stage <= INVOICE; stage++ {
 			setAliceEnv()
 
-			identifier, witness := getProcurementWitness(stage, hFunc, proofString, creditRating)
+			identifier, witness := getProcurementWitness(stage, hFunc, string(proofString), creditRating)
 			provideParams := circuitParamsFactory("gnark", identifier, testProvingSchemeGroth16)
 			if provideCircuit != nil && provideCircuit.StoreID != nil {
 				provideParams["store_id"] = provideCircuit.StoreID
@@ -1183,10 +1189,10 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 				return
 			}
 
-			proofString = *proof.Proof
-			proofHash, _ := mimc.Sum("seed", []byte(proofString))
+			proofString, _ = hex.DecodeString(*proof.Proof)
+			proofHash, _ := mimc.Sum("seed", proofString)
 			buf.Write(proofHash)
-			index, h := tr.RawAdd([]byte(proofString))
+			index, h := tr.RawAdd(proofString)
 			t.Logf("added %s proof to merkle tree, index/hash: %v / %v", identifier, index, h)
 		}
 	}

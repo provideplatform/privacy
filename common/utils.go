@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"strings"
 	"time"
+
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/backend"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -57,4 +61,57 @@ func RandomBytes(length int) ([]byte, error) {
 		return nil, fmt.Errorf("error generating random bytes %s", err.Error())
 	}
 	return b, nil
+}
+
+// GnarkCurveIDFactory returns an ecc curve id corresponding to the input name
+func GnarkCurveIDFactory(curveID *string) ecc.ID {
+	if curveID == nil {
+		return ecc.UNKNOWN
+	}
+
+	switch strings.ToLower(*curveID) {
+	case ecc.BLS12_377.String():
+		return ecc.BLS12_377
+	case ecc.BLS12_381.String():
+		return ecc.BLS12_381
+	case ecc.BN254.String():
+		return ecc.BN254
+	case ecc.BW6_761.String():
+		return ecc.BW6_761
+	case ecc.BLS24_315.String():
+		return ecc.BLS24_315
+	default:
+		return ecc.UNKNOWN
+	}
+}
+
+const gnarkProvingSchemeGroth16 = "groth16"
+const gnarkProvingSchemePlonk = "plonk"
+
+func GnarkProvingSchemeFactory(provingScheme *string) backend.ID {
+	if provingScheme == nil {
+		return backend.UNKNOWN
+	}
+
+	switch strings.ToLower(*provingScheme) {
+	case gnarkProvingSchemeGroth16:
+		return backend.GROTH16
+	case gnarkProvingSchemePlonk:
+		return backend.PLONK
+	default:
+		return backend.UNKNOWN
+	}
+}
+
+// NextPowerOfTwo returns the next power of two greater than or equal to the input number
+func NextPowerOfTwo(_n int) int {
+	n := uint64(_n)
+	p := uint64(1)
+	if (n & (n - 1)) == 0 {
+		return _n
+	}
+	for p < n {
+		p <<= 1
+	}
+	return int(p)
 }

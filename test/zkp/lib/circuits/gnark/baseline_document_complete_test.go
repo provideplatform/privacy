@@ -38,6 +38,7 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
+	"github.com/provideplatform/privacy/common"
 	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
@@ -145,18 +146,6 @@ func parseSkScalar(id ecc.ID, buf []byte) []byte {
 	}
 }
 
-func nextPowerOfTwo(_n int) int {
-	n := uint64(_n)
-	p := uint64(1)
-	if (n & (n - 1)) == 0 {
-		return _n
-	}
-	for p < n {
-		p <<= 1
-	}
-	return int(p)
-}
-
 func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
 	nbConstraints := r1cs.GetNbConstraints()
 	internal, secret, public := r1cs.GetNbVariables()
@@ -167,7 +156,7 @@ func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
 	} else {
 		s = nbVariables
 	}
-	size = nextPowerOfTwo(s)
+	size = common.NextPowerOfTwo(s)
 	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	alpha := new(big.Int).SetUint64(seededRand.Uint64())
 

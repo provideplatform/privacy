@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/big"
-	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/kzg"
@@ -20,12 +17,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/provideplatform/privacy/common"
 	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
-
-	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
-	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
-	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
-	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
-	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
 const providersProvingSchemeGroth16 = "groth16"
@@ -40,8 +31,8 @@ type GnarkCircuitProvider struct {
 // InitGnarkCircuitProvider initializes and configures a new GnarkCircuitProvider instance
 func InitGnarkCircuitProvider(curveID *string, provingScheme *string) *GnarkCircuitProvider {
 	return &GnarkCircuitProvider{
-		curveID:         curveIDFactory(curveID),
-		provingSchemeID: provingSchemeFactory(provingScheme),
+		curveID:         common.GnarkCurveIDFactory(curveID),
+		provingSchemeID: common.GnarkProvingSchemeFactory(provingScheme),
 	}
 }
 
@@ -113,7 +104,7 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 		}
 
 		buf = new(bytes.Buffer)
-		_, err := witness.WriteFullTo(buf, curveIDFactory(&curve), w.(frontend.Circuit))
+		_, err := witness.WriteFullTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
 		if err != nil {
 			common.Log.Warningf("failed to serialize witness for %s circuit; %s", identifier, err.Error())
 			return nil, err
@@ -123,49 +114,6 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 	}
 
 	return nil, fmt.Errorf("failed to serialize witness for %s circuit", identifier)
-}
-
-func curveIDFactory(curveID *string) ecc.ID {
-	if curveID == nil {
-		common.Log.Warning("no curve id provided")
-		return ecc.UNKNOWN
-	}
-
-	switch strings.ToLower(*curveID) {
-	case ecc.BLS12_377.String():
-		return ecc.BLS12_377
-	case ecc.BLS12_381.String():
-		return ecc.BLS12_381
-	case ecc.BN254.String():
-		return ecc.BN254
-	case ecc.BW6_761.String():
-		return ecc.BW6_761
-	case ecc.BLS24_315.String():
-		return ecc.BLS24_315
-	default:
-		common.Log.Warningf("failed to resolve elliptic curve; unknown curve: %s", *curveID)
-
-	}
-
-	return ecc.UNKNOWN
-}
-
-func provingSchemeFactory(provingScheme *string) backend.ID {
-	if provingScheme == nil {
-		common.Log.Warning("no proving scheme provided")
-		return backend.UNKNOWN
-	}
-
-	switch strings.ToLower(*provingScheme) {
-	case providersProvingSchemeGroth16:
-		return backend.GROTH16
-	case providersProvingSchemePlonk:
-		return backend.PLONK
-	default:
-		common.Log.Warningf("failed to resolve proving scheme; unknown scheme: %s", *provingScheme)
-	}
-
-	return backend.UNKNOWN
 }
 
 func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {
@@ -309,48 +257,6 @@ func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{},
 // GenerateProof generates a proof
 func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness interface{}, provingKey string) (interface{}, error) {
 	return nil, fmt.Errorf("gnark does not not implement GenerateProof()")
-}
-
-func nextPowerOfTwo(_n int) int {
-	n := uint64(_n)
-	p := uint64(1)
-	if (n & (n - 1)) == 0 {
-		return _n
-	}
-	for p < n {
-		p <<= 1
-	}
-	return int(p)
-}
-
-func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
-	nbConstraints := r1cs.GetNbConstraints()
-	internal, secret, public := r1cs.GetNbVariables()
-	nbVariables := internal + secret + public
-	var s, size int
-	if nbConstraints > nbVariables {
-		s = nbConstraints
-	} else {
-		s = nbVariables
-	}
-	size = nextPowerOfTwo(s)
-	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	alpha := new(big.Int).SetUint64(seededRand.Uint64())
-
-	switch r1cs.CurveID() {
-	case ecc.BN254:
-		return kzgbn254.NewSRS(size, alpha)
-	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size, alpha)
-	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size, alpha)
-	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2, alpha)
-	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size, alpha)
-	default:
-		return nil
-	}
 }
 
 // Setup runs the circuit setup; if srs is non-nil, it is intended to be

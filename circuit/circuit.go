@@ -19,6 +19,7 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/privacy/state"
 	storage "github.com/provideplatform/privacy/store"
 	storeprovider "github.com/provideplatform/privacy/store/providers"
 	zkp "github.com/provideplatform/privacy/zkp/providers"
@@ -92,6 +93,9 @@ type Circuit struct {
 
 	// artifacts
 	Artifacts map[string]interface{} `sql:"-" json:"artifacts,omitempty"`
+
+	// state
+	State *state.State `sql:"-" json:"state,omitempty"`
 
 	// optional on-chain artifact (i.e., verifier contract)
 	VerifierContract         map[string]interface{} `sql:"-" json:"verifier_contract,omitempty"`
@@ -488,6 +492,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 	return len(c.Errors) == 0
 }
 
+// canExportVerifier returns true if the circuit instance supports exporting a verifier smart contract
 func (c *Circuit) canExportVerifier() bool {
 	return c.VerifierContract == nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && *c.Curve == ecc.BN254.String()
 }
@@ -593,8 +598,20 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
+	// epoch := uint64(0) // FIXME-- resolve latest epoch
+	// c.exportState(epoch)
+
 	return nil
 }
+
+// // exportState exports the state of the circuit at the given epoch
+// func (c *Circuit) exportState(epoch uint64) (*state.State, error) {
+// 	noteState, _ := c.noteStore.StateAt(epoch)
+// 	nullifiedState, _ := c.nullifierStore.StateAt(epoch) // spent
+
+// 	common.Log.Debugf("resolved note and nullified state; %s; %s", noteState, nullifiedState)
+// 	return nullifiedState, nil
+// }
 
 func (c *Circuit) exportVerifier() error {
 	provider := c.circuitProviderFactory()
@@ -974,7 +991,10 @@ func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) 
 	return nil
 }
 
+// TODO-- add object, witness
 func (c *Circuit) updateState(proof string, witness map[string]interface{}) error {
+	var root []byte
+
 	if c.noteStore != nil {
 		// FIXME -- adopt proper Note structure
 		note, _ := json.Marshal(map[string]interface{}{
@@ -982,32 +1002,50 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			"witness": witness,
 		})
 
-		resp, err := vault.Encrypt(
+		encryptresp, err := vault.Encrypt(
 			util.DefaultVaultAccessJWT,
 			c.VaultID.String(),
 			c.EncryptionKeyID.String(),
 			string(note),
 		)
 		if err != nil {
-			common.Log.Warningf("failed to insert proof; failed to encrypt note; %s", err.Error())
+			common.Log.Warningf("failed to update state; failed to encrypt note for circuit %s; %s", c.ID, err.Error())
 			return err
 		}
 
-		root, err := c.noteStore.Insert(resp.Data)
+		root, err = c.noteStore.Insert(encryptresp.Data)
 		if err != nil {
-			common.Log.Warningf("failed to insert note; %s", err.Error())
+			common.Log.Warningf("failed to update state; note not inserted for circuit %s; %s", c.ID, err.Error())
+			return err
 		} else {
 			common.Log.Debugf("inserted %d-byte note for circuit %s; root: %s", len(note), c.ID, hex.EncodeToString(root))
 		}
 	}
 
 	if c.nullifierStore != nil {
+		if c.State == nil {
+			// TODO-- audit this for when the first note has not yet been spent
+			common.Log.Debugf("no notes spent for circuit %s; initializing sparse nullifier tree with %d-byte state root", c.ID, len(root))
+			_, err := c.nullifierStore.Insert("")
+			if err != nil {
+				common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
+				return err
+			}
+			common.Log.Debugf("initialized sparse nullifier tree with %d-byte state root for circuit %s", len(root), c.ID)
+			c.State = &state.State{}
+		}
+
 		root, err := c.nullifierStore.Insert(proof)
 		if err != nil {
-			common.Log.Warningf("failed to insert nullifier proof; %s", err.Error())
+			common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
 			return err
 		} else {
 			common.Log.Debugf("inserted nullifier proof for circuit %s: %s; root: %s", c.ID, hex.EncodeToString([]byte(proof)), hex.EncodeToString(root))
+			if !c.nullifierStore.Contains(proof) {
+				err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for proof: %s", c.ID, hex.EncodeToString([]byte(proof)))
+				common.Log.Warning(err.Error())
+				return err
+			}
 		}
 	}
 

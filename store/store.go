@@ -6,6 +6,7 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/privacy/state"
 	proofstorage "github.com/provideplatform/privacy/store/providers"
 	provide "github.com/provideplatform/provide-go/api"
 )
@@ -81,7 +82,7 @@ func (s *Store) Create() bool {
 	return false
 }
 
-// Contains returns true if the given hash exists in the store
+// Contains returns true if the given value exists in the store
 func (s *Store) Contains(val string) bool {
 	provider := s.storeProviderFactory()
 	if provider != nil {
@@ -122,7 +123,36 @@ func (s *Store) Root() (*string, error) {
 	return nil, fmt.Errorf("failed to resolve root in store %s", s.ID)
 }
 
-// ValueAt returns the store representation of value at the given index
+// State returns the state at the given epoch
+func (s *Store) StateAt(epoch uint64) (*state.State, error) {
+	claims := make([]*state.StateClaim, 0)
+
+	// FIXME
+	root, err := s.Root() // impl RootAt()
+	if err != nil {
+		return nil, err
+	}
+
+	claims = append(claims, &state.StateClaim{
+		Cardinality: uint64(0),
+		Path:        []string{},
+		Root:        root,
+		Values:      []string{},
+	})
+
+	// FIXME!!!
+	state := &state.State{
+		// ID        uuid.UUID  `json:"id"`
+		// AccountID *uuid.UUID `json:"account_id"`
+		// Address   *string    `json:"address"` // FIXME... int type this address
+		Epoch:       epoch,
+		StateClaims: claims,
+	}
+
+	return state, nil
+}
+
+// ValueAt returns the store representation for the given key
 func (s *Store) ValueAt(key []byte) ([]byte, error) {
 	provider := s.storeProviderFactory()
 	if provider != nil {

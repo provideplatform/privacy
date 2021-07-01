@@ -19,9 +19,6 @@ import (
 	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
-const providersProvingSchemeGroth16 = "groth16"
-const providersProvingSchemePlonk = "plonk"
-
 // GnarkCircuitProvider interacts with the go-native gnark package
 type GnarkCircuitProvider struct {
 	curveID         ecc.ID

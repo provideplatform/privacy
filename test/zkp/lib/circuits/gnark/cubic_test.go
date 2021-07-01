@@ -4,14 +4,18 @@ package gnark
 
 import (
 	"bytes"
+	"encoding/hex"
 	"io"
+	"math/big"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
+	"github.com/provideplatform/privacy/common"
 	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
@@ -147,6 +151,60 @@ func TestCubicEquationPlonkElaboratedWithMarshalling(t *testing.T) {
 
 		err = plonk.Verify(proof, vkCopy, &witness)
 		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
+	}
+
+}
+
+func TestCubicEquationPlonkSRSEntropy(t *testing.T) {
+	assert := plonk.NewAssert(t)
+
+	var cubicCircuit libgnark.CubicCircuit
+
+	// compiles our circuit into a R1CS
+	r1cs, err := frontend.Compile(ecc.BN254, backend.PLONK, &cubicCircuit)
+	assert.NoError(err)
+
+	{
+		var witness libgnark.CubicCircuit
+		witness.X.Assign(3)
+		witness.Y.Assign(35)
+
+		alpha := new(big.Int).SetUint64(42)
+		nbConstraints := r1cs.GetNbConstraints()
+		internal, secret, public := r1cs.GetNbVariables()
+		nbVariables := internal + secret + public
+		var s, size int
+		if nbConstraints > nbVariables {
+			s = nbConstraints
+		} else {
+			s = nbVariables
+		}
+		size = common.NextPowerOfTwo(s)
+
+		srs1 := kzg.NewSRS(size, alpha)
+
+		var buf1 *bytes.Buffer
+		buf1 = new(bytes.Buffer)
+		_, err := srs1.WriteTo(buf1)
+		assert.NoError(err)
+
+		bufString := hex.EncodeToString(buf1.Bytes())
+		t.Logf("%v", bufString)
+
+		var buf2 *bytes.Buffer
+		buf2 = new(bytes.Buffer)
+		srs2 := kzg.NewSRS(size, alpha)
+		_, err = srs2.WriteTo(buf2)
+		assert.NoError(err)
+
+		bufString = hex.EncodeToString(buf2.Bytes())
+		t.Logf("%v", bufString)
+
+		if bytes.Compare(buf1.Bytes(), buf2.Bytes()) == 0 {
+			t.Log("srs objects initialized with same value are equal")
+		} else {
+			t.Log("srs objects initialized with same value are NOT equal")
+		}
 	}
 
 }

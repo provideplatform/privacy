@@ -79,6 +79,13 @@ func createCircuitHandler(c *gin.Context) {
 		return
 	}
 
+	params := map[string]interface{}
+	err = json.Unmarshal(buf, &params)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
 	circuit := &Circuit{}
 	err = json.Unmarshal(buf, circuit)
 	if err != nil {
@@ -96,6 +103,10 @@ func createCircuitHandler(c *gin.Context) {
 
 	if userID != nil {
 		circuit.UserID = userID
+	}
+
+	if srs, srsOk := params["srs"].(string); srsOk {
+		circuit.srs = []byte(srs)
 	}
 
 	if circuit.Create() {

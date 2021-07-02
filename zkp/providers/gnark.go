@@ -68,8 +68,6 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 		return nil, fmt.Errorf("failed to serialize witness; %s circuit not resolved", identifier)
 	}
 
-	var buf *bytes.Buffer
-
 	if witmap, witmapOk := inputs.(map[string]interface{}); witmapOk {
 		witval := reflect.Indirect(reflect.ValueOf(w))
 		for k := range witmap {
@@ -100,7 +98,7 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 			field.Set(reflect.ValueOf(v))
 		}
 
-		buf = new(bytes.Buffer)
+		buf := new(bytes.Buffer)
 		_, err := witness.WriteFullTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
 		if err != nil {
 			common.Log.Warningf("failed to serialize witness for %s circuit; %s", identifier, err.Error())

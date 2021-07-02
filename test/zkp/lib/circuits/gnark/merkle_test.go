@@ -98,8 +98,7 @@ func TestBaselineRollupMerkleCircuit(t *testing.T) {
 
 	// log size of proving key to evaluate requirements of vault
 	// size of proving key grows roughly linearly with size of proof set
-	var provingKeyBuf *bytes.Buffer
-	provingKeyBuf = new(bytes.Buffer)
+	provingKeyBuf := new(bytes.Buffer)
 	_, err = pk.(io.WriterTo).WriteTo(provingKeyBuf)
 	if err != nil {
 		t.Errorf("failed to write proving key to bytes buffer; %s", err.Error())

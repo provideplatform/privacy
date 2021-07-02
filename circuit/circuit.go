@@ -285,7 +285,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
-	_proof := common.StringOrNil(string(buf.Bytes()))
+	_proof := common.StringOrNil(buf.String())
 	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, hex.EncodeToString(buf.Bytes()))
 
 	err = c.updateState(*_proof, witness)
@@ -355,7 +355,6 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 		return false
 	}
 
-	var buf *bytes.Buffer
 	var artifacts interface{}
 	var err error
 
@@ -378,7 +377,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 		}
 	}
 
-	buf = new(bytes.Buffer)
+	buf := new(bytes.Buffer)
 	_, err = artifacts.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
@@ -793,26 +792,25 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 		return false
 	}
 
-	var buf *bytes.Buffer
-	buf = new(bytes.Buffer)
-	_, err = pk.(io.WriterTo).WriteTo(buf)
+	pkBuf := new(bytes.Buffer)
+	_, err = pk.(io.WriterTo).WriteTo(pkBuf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
-	c.provingKey = buf.Bytes()
+	c.provingKey = pkBuf.Bytes()
 
-	buf = new(bytes.Buffer)
-	_, err = vk.(io.WriterTo).WriteTo(buf)
+	vkBuf := new(bytes.Buffer)
+	_, err = vk.(io.WriterTo).WriteTo(vkBuf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
-	c.verifyingKey = buf.Bytes()
+	c.verifyingKey = vkBuf.Bytes()
 
 	encryptionKeyPersisted := c.generateEncryptionKey()
 	keysPersisted := c.persistKeys()

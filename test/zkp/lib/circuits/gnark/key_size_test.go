@@ -263,8 +263,7 @@ func TestKeySizesGroth16(t *testing.T) {
 				proof, err := groth16.Prove(r1cs, pk, witness)
 				assert.NoError(err, "Proving with good witness should not output an error")
 
-				var buf *bytes.Buffer
-				buf = new(bytes.Buffer)
+				buf := new(bytes.Buffer)
 				_, err = pk.(io.WriterTo).WriteTo(buf)
 				if err != nil {
 					t.Errorf("failed to write proving key to buffer")
@@ -330,8 +329,7 @@ func TestKeySizesPlonk(t *testing.T) {
 				proof, err := plonk.Prove(r1cs, pk, witness)
 				assert.NoError(err, "Proving with good witness should not output an error")
 
-				var buf *bytes.Buffer
-				buf = new(bytes.Buffer)
+				buf := new(bytes.Buffer)
 				_, err = pk.(io.WriterTo).WriteTo(buf)
 				if err != nil {
 					t.Errorf("failed to write proving key to buffer")

@@ -115,8 +115,7 @@ func TestCubicEquationPlonkElaboratedWithMarshalling(t *testing.T) {
 		pk, vk, err := plonk.Setup(sparseR1cs, kzgSRS)
 		assert.NoError(err, "Generating public data should not have failed")
 
-		var buf *bytes.Buffer
-		buf = new(bytes.Buffer)
+		buf := new(bytes.Buffer)
 		_, err = pk.(io.WriterTo).WriteTo(buf)
 		if err != nil {
 			t.Errorf("failed to write proving key to buffer")
@@ -183,16 +182,14 @@ func TestCubicEquationPlonkSRSEntropy(t *testing.T) {
 
 		srs1 := kzg.NewSRS(size, alpha)
 
-		var buf1 *bytes.Buffer
-		buf1 = new(bytes.Buffer)
+		buf1 := new(bytes.Buffer)
 		_, err := srs1.WriteTo(buf1)
 		assert.NoError(err)
 
 		bufString := hex.EncodeToString(buf1.Bytes())
 		t.Logf("%v", bufString)
 
-		var buf2 *bytes.Buffer
-		buf2 = new(bytes.Buffer)
+		buf2 := new(bytes.Buffer)
 		srs2 := kzg.NewSRS(size, alpha)
 		_, err = srs2.WriteTo(buf2)
 		assert.NoError(err)

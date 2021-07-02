@@ -79,7 +79,7 @@ func createCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	params := map[string]interface{}
+	var params map[string]interface{}
 	err = json.Unmarshal(buf, &params)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)

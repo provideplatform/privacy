@@ -6,16 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
-	"math/rand"
 	"sync"
-	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/kzg"
-	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/gnark/frontend"
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -27,12 +20,6 @@ import (
 	provide "github.com/provideplatform/provide-go/api"
 	vault "github.com/provideplatform/provide-go/api/vault"
 	util "github.com/provideplatform/provide-go/common/util"
-
-	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
-	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
-	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
-	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
-	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
 const circuitProvingSchemeGroth16 = "groth16"
@@ -777,13 +764,6 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 	}
 
 	if c.srsRequired() {
-		if err != nil {
-			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to generate SRS for circuit with identifier %s; %s", *c.Identifier, err.Error())),
-			})
-			return false
-		}
-
 		if c.srs == nil || len(c.srs) == 0 {
 			c.Errors = append(c.Errors, &provide.Error{
 				Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),

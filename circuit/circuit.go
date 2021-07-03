@@ -158,6 +158,22 @@ func (c *Circuit) Create() bool {
 					}
 				}
 
+				if c.srsRequired() {
+					if c.srs == nil || len(c.srs) == 0 {
+						c.Errors = append(c.Errors, &provide.Error{
+							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),
+						})
+						return false
+					}
+
+					if !c.persistSRS() {
+						c.Errors = append(c.Errors, &provide.Error{
+							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; SRS not persisted", *c.ProvingScheme, *c.Identifier)),
+						})
+						return false
+					}
+				}
+
 				if c.setupRequired() {
 					c.updateStatus(db, circuitStatusPendingSetup, nil)
 
@@ -760,22 +776,6 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 			Message: common.StringOrNil("failed to resolve circuit provider"),
 		})
 		return false
-	}
-
-	if c.srsRequired() {
-		if c.srs == nil || len(c.srs) == 0 {
-			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),
-			})
-			return false
-		}
-
-		if !c.persistSRS() {
-			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; SRS not persisted", *c.ProvingScheme, *c.Identifier)),
-			})
-			return false
-		}
 	}
 
 	pk, vk, err := provider.Setup(c.Binary, c.srs)

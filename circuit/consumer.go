@@ -85,6 +85,8 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 		return
 	}
 
+	circuit.enrich()
+
 	if circuit.setup(db) {
 		common.Log.Debugf("setup completed for circuit: %s", circuit.ID)
 		circuit.updateStatus(db, circuitStatusProvisioned, nil)

@@ -1,6 +1,7 @@
 package circuit
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 
@@ -106,7 +107,11 @@ func createCircuitHandler(c *gin.Context) {
 	}
 
 	if srs, srsOk := params["srs"].(string); srsOk {
-		circuit.srs = []byte(srs)
+		circuit.srs, err = hex.DecodeString(srs)
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
 	}
 
 	if circuit.Create() {

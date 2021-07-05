@@ -9,12 +9,16 @@ import (
 	"hash"
 	"math/big"
 	"math/rand"
+
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/frontend"
+
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	mimc "github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
@@ -23,6 +27,7 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/store/providers/merkletree"
 
+	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 	privacy "github.com/provideplatform/provide-go/api/privacy"
 )
 
@@ -156,6 +161,12 @@ func TestCreateCircuitPlonkCubic(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
 	params := circuitParamsFactory("gnark", "cubic", testProvingSchemePlonk)
+
+	var cubicCircuit libgnark.CubicCircuit
+	r1cs, err := frontend.Compile(curveID, backend.PLONK, &cubicCircuit)
+	srs := generateSRSForTest(r1cs)
+
+	params["srs"] = hex.EncodeToString(srs)
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {

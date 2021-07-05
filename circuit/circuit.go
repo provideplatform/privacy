@@ -767,6 +767,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup circuit with identifier %s; no compiled artifacts", *c.Identifier)),
 		})
+		common.Log.Warningf("failed to setup circuit with identifier %s; no compiled artifacts", *c.Identifier)
 		return false
 	}
 
@@ -778,17 +779,26 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 		return false
 	}
 
+	if c.srsRequired() && (c.srs == nil || len(c.srs) == 0) {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to acquire srs before setup for circuit with identifier %s", *c.Identifier)),
+		})
+		common.Log.Warningf("failed to acquire srs before Setup for circuit with identifier %s", *c.Identifier)
+		return false
+	}
 	pk, vk, err := provider.Setup(c.Binary, c.srs)
 
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("error during setup of verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
+		common.Log.Warningf("error during setup of verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	} else if vk == nil || pk == nil {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s", *c.Identifier)),
 		})
+		common.Log.Warningf("failed to setup verifier and proving keys for circuit with identifier %s", *c.Identifier)
 		return false
 	}
 
@@ -798,6 +808,7 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
+		common.Log.Warningf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	}
 	c.provingKey = pkBuf.Bytes()
@@ -808,19 +819,54 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 		c.Errors = append(c.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
 		})
+		common.Log.Warningf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	}
 	c.verifyingKey = vkBuf.Bytes()
 
-	encryptionKeyPersisted := c.generateEncryptionKey()
-	keysPersisted := c.persistKeys()
-	success := len(c.Errors) == 0 && encryptionKeyPersisted && keysPersisted
-	if success {
-		c.enrich()
-		c.updateStatus(db, circuitStatusProvisioned, nil)
+	if len(c.Errors) != 0 {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("errors found while setting up circuit with identifier %s", *c.Identifier)),
+		})
+		common.Log.Warningf("errors found while setting up circuit with identifier %s", *c.Identifier)
+		return false
 	}
 
-	return success
+	if !c.generateEncryptionKey() {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to persist encryption key for circuit with identifier %s", *c.Identifier)),
+		})
+		common.Log.Warningf("failed to persist encryption key for circuit with identifier %s", *c.Identifier)
+		return false
+	}
+
+	if !c.persistKeys() {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to persist proving and verifying keys for circuit with identifier %s", *c.Identifier)),
+		})
+		common.Log.Warningf("failed to persist proving and verifying keys for circuit with identifier %s", *c.Identifier)
+		return false
+	}
+
+	err = c.enrich()
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to enrich circuit with identifier %s; %s", *c.Identifier, err.Error())),
+		})
+		common.Log.Warningf("failed to enrich circuit with identifier %s; %s", *c.Identifier, err.Error())
+		return false
+	}
+
+	err = c.updateStatus(db, circuitStatusProvisioned, nil)
+	if err != nil {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to update status of circuit with identifier %s; %s", *c.Identifier, err.Error())),
+		})
+		common.Log.Warningf("failed to update status of circuit with identifier %s; %s", *c.Identifier, err.Error())
+		return false
+	}
+
+	return true
 }
 
 func (c *Circuit) srsRequired() bool {

@@ -2,6 +2,7 @@ package circuit
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -85,7 +86,10 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 		return
 	}
 
-	circuit.enrich()
+	err = circuit.enrich()
+	if err != nil {
+		common.Log.Warningf("failed to enrich circuit; %s", err.Error())
+	}
 
 	if circuit.setup(db) {
 		common.Log.Debugf("setup completed for circuit: %s", circuit.ID)
@@ -94,6 +98,7 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 		msg.Ack()
 	} else {
 		common.Log.Warningf("setup failed for circuit: %s", circuit.ID)
+		err = fmt.Errorf("unspecified error")
 		circuit.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
 		natsutil.NatsStreamingPublish(natsCircuitSetupFailedSubject, msg.Data)
 		natsutil.AttemptNack(msg, createCircuitTimeout)

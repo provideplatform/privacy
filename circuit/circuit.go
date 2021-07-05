@@ -6,9 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/kzg"
+	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/plonk"
+	"github.com/consensys/gnark/frontend"
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -20,6 +25,12 @@ import (
 	provide "github.com/provideplatform/provide-go/api"
 	vault "github.com/provideplatform/provide-go/api/vault"
 	util "github.com/provideplatform/provide-go/common/util"
+
+	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
+	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
+	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
+	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
+	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
 const circuitProvingSchemeGroth16 = "groth16"
@@ -39,8 +50,9 @@ type Circuit struct {
 	provide.Model
 
 	// Artifacts, i.e., r1cs, ABI, etc
-	ABI    []byte `json:"abi,omitempty"`
-	Binary []byte `gorm:"column:bin" json:"-"`
+	ABI      []byte `json:"abi,omitempty"`
+	Binary   []byte `gorm:"column:bin" json:"-"`
+	SRSAlpha []byte `sql:"-" json:"-"`
 
 	// Vault and the vault secret identifiers for the encryption/decryption key and proving/verifying keys, SRS
 	VaultID         *uuid.UUID `json:"vault_id"`
@@ -109,6 +121,65 @@ func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
 	return nil
 }
 
+func getKzgScheme(r1cs frontend.CompiledConstraintSystem, alpha *big.Int) kzg.SRS {
+	nbConstraints := r1cs.GetNbConstraints()
+	internal, secret, public := r1cs.GetNbVariables()
+	nbVariables := internal + secret + public
+	var s, size int
+	if nbConstraints > nbVariables {
+		s = nbConstraints
+	} else {
+		s = nbVariables
+	}
+	size = common.NextPowerOfTwo(s)
+
+	switch r1cs.CurveID() {
+	case ecc.BN254:
+		return kzgbn254.NewSRS(size, alpha)
+	case ecc.BLS12_381:
+		return kzgbls12381.NewSRS(size, alpha)
+	case ecc.BLS12_377:
+		return kzgbls12377.NewSRS(size, alpha)
+	case ecc.BW6_761:
+		return kzgbw6761.NewSRS(size*2, alpha)
+	case ecc.BLS24_315:
+		return kzgbls24315.NewSRS(size, alpha)
+	default:
+		return nil
+	}
+}
+
+// generateSRS generates a KZG SRS for testing and will be replaced with proper MPC ceremony
+func (c *Circuit) generateSRS() error {
+	var r1cs frontend.CompiledConstraintSystem
+
+	switch *c.ProvingScheme {
+	case circuitProvingSchemeGroth16:
+		r1cs = groth16.NewCS(common.GnarkCurveIDFactory(c.Curve))
+	case circuitProvingSchemePlonk:
+		r1cs = plonk.NewCS(common.GnarkCurveIDFactory(c.Curve))
+	default:
+		return fmt.Errorf("invalid proving scheme %s", *c.ProvingScheme)
+	}
+
+	_, err := r1cs.ReadFrom(bytes.NewReader(c.Binary))
+	if err != nil {
+		return fmt.Errorf("failed to read r1cs for circuit with identifier %s; %s", *c.Identifier, err.Error())
+	}
+
+	alpha := new(big.Int).SetBytes(c.SRSAlpha)
+	srs := getKzgScheme(r1cs, alpha)
+	buf := new(bytes.Buffer)
+	_, err = srs.WriteTo(buf)
+	if err != nil {
+		return fmt.Errorf("failed to write srs for circuit with identifier %s; %s", *c.Identifier, err.Error())
+	}
+
+	c.srs = buf.Bytes()
+
+	return nil
+}
+
 // Create a circuit
 func (c *Circuit) Create() bool {
 	if !c.validate() {
@@ -159,6 +230,16 @@ func (c *Circuit) Create() bool {
 				}
 
 				if c.srsRequired() {
+					if c.SRSAlpha != nil && (c.srs == nil || len(c.srs) == 0) {
+						err := c.generateSRS()
+						if err != nil {
+							c.Errors = append(c.Errors, &provide.Error{
+								Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required alpha for SRS was not present", *c.ProvingScheme, *c.Identifier)),
+							})
+							return false
+						}
+					}
+
 					if c.srs == nil || len(c.srs) == 0 {
 						c.Errors = append(c.Errors, &provide.Error{
 							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),

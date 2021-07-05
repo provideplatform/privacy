@@ -3,6 +3,7 @@ package circuit
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -111,6 +112,12 @@ func createCircuitHandler(c *gin.Context) {
 		if err != nil {
 			provide.RenderError(err.Error(), 422, c)
 			return
+		}
+	}
+
+	if alphaString, alphaStringOk := params["alpha"].(string); alphaStringOk {
+		if alpha, alphaOk := new(big.Int).SetString(alphaString, 10); alphaOk {
+			circuit.SRSAlpha = alpha.Bytes()
 		}
 	}
 

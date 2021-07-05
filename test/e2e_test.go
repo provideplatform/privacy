@@ -157,7 +157,7 @@ func TestCreateCircuitGroth16Cubic(t *testing.T) {
 	t.Logf("proof/verification: %v / %v", proof.Proof, verification.Result)
 }
 
-func TestCreateCircuitPlonkCubic(t *testing.T) {
+func TestCreateCircuitPlonkCubicWithSRS(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
 	params := circuitParamsFactory("gnark", "cubic", testProvingSchemePlonk)
@@ -167,6 +167,50 @@ func TestCreateCircuitPlonkCubic(t *testing.T) {
 	srs := generateSRSForTest(r1cs)
 
 	params["srs"] = hex.EncodeToString(srs)
+
+	circuit, err := privacy.CreateCircuit(*token, params)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created circuit %v", circuit)
+
+	waitForAsync()
+
+	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"X": "3",
+			"Y": "35",
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"X": "3",
+			"Y": "35",
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("proof/verification: %v / %v", proof.Proof, verification.Result)
+}
+
+func TestCreateCircuitPlonkCubicWithAlpha(t *testing.T) {
+	testUserID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(testUserID)
+	params := circuitParamsFactory("gnark", "cubic", testProvingSchemePlonk)
+
+	alpha := new(big.Int).SetUint64(42)
+	params["alpha"] = alpha.String()
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {

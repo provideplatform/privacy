@@ -1369,7 +1369,7 @@ func TestProofEddsaWithApi(t *testing.T) {
 		t.Errorf("failed to decode proof string")
 	}
 
-	chunks := 6
+	chunks := 32
 	chunkSize := fr.Bytes
 	witness := map[string]interface{}{}
 	for index := 0; index < chunks; index++ {
@@ -1455,4 +1455,160 @@ func TestProofEddsaWithApi(t *testing.T) {
 	}
 
 	t.Logf("financier root signature proof/verification: %v / %v", proof.Proof, verification.Result)
+}
+
+func TestRecursivePlonk(t *testing.T) {
+	userID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(userID)
+	identifier := "cubic"
+
+	params := circuitParamsFactory("gnark", identifier, testProvingSchemePlonk)
+
+	alpha := new(big.Int).SetUint64(42)
+	params["alpha"] = alpha.String()
+
+	circuit, err := privacy.CreateCircuit(*token, params)
+	if err != nil {
+		t.Errorf("failed to create circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created %s circuit %v", identifier, circuit)
+
+	waitForAsync()
+
+	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"X": "3",
+			"Y": "35",
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"X": "3",
+			"Y": "35",
+		},
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("proof/verification: %v / %v", proof.Proof, verification.Result)
+
+	hFunc := mimc.NewMiMC("seed")
+	financierUserID, _ := uuid.NewV4()
+	financierToken, _ := userTokenFactory(financierUserID)
+	financierIdentifier := "proof_eddsa"
+
+	financierParams := circuitParamsFactory("gnark", financierIdentifier, testProvingSchemeGroth16)
+	financierCircuit, err := privacy.CreateCircuit(*financierToken, financierParams)
+	if err != nil {
+		t.Errorf("failed to create financier's %s circuit; %s", financierIdentifier, err.Error())
+		return
+	}
+
+	t.Logf("created financier's %s circuit %v", financierIdentifier, financierCircuit)
+
+	waitForAsync()
+	waitForAsync()
+
+	proofString := *proof.Proof
+	proofBytes, err := hex.DecodeString(proofString)
+	if err != nil {
+		t.Errorf("failed to decode proof string")
+	}
+
+	chunks := 32
+	chunkSize := fr.Bytes
+	witness := map[string]interface{}{}
+	for index := 0; index < chunks; index++ {
+		var elem fr.Element
+		if index*chunkSize < len(proofBytes) {
+			elem.SetBytes(proofBytes[index*chunkSize : (index+1)*chunkSize])
+		}
+		b := elem.Bytes()
+		hFunc.Write(b[:])
+		msgStr := fmt.Sprintf("Msg[%d]", index)
+		witness[msgStr] = elem.String()
+	}
+	hash := hFunc.Sum(nil)
+
+	src := rand.NewSource(0)
+	r := rand.New(src)
+
+	privKey, _ := eddsa.GenerateKey(r)
+	pubKey := privKey.PublicKey
+
+	sigBytes, err := privKey.Sign(hash, hFunc)
+	if err != nil {
+		t.Error("failed to sign invoice data")
+		return
+	}
+
+	verified, err := pubKey.Verify(sigBytes, hash, hFunc)
+	if err != nil || !verified {
+		t.Error("failed to verify invoice data")
+		return
+	}
+
+	var sig eddsa.Signature
+	var i big.Int
+	var point twistededwards.PointAffine
+
+	sig.SetBytes(sigBytes)
+	pubKeyBytes := pubKey.Bytes()
+	point.SetBytes(pubKeyBytes)
+	xKey := point.X.Bytes()
+	xKeyString := i.SetBytes(xKey[:]).String()
+	yKey := point.Y.Bytes()
+	yKeyString := i.SetBytes(yKey[:]).String()
+
+	point.SetBytes(sigBytes)
+	xSig := point.X.Bytes()
+	xSigString := i.SetBytes(xSig[:]).String()
+	ySig := point.Y.Bytes()
+	ySigString := i.SetBytes(ySig[:]).String()
+	sigLen := len(sigBytes) / 2
+	sigS1String := i.SetBytes(sigBytes[sigLen : sigLen+sigLen/2]).String()
+	sigS2String := i.SetBytes(sigBytes[sigLen+sigLen/2:]).String()
+
+	witness["PubKey.A.X"] = xKeyString
+	witness["PubKey.A.Y"] = yKeyString
+	witness["Sig.R.X"] = xSigString
+	witness["Sig.R.Y"] = ySigString
+	witness["Sig.S1"] = sigS1String
+	witness["Sig.S2"] = sigS2String
+
+	financierProof, err := privacy.Prove(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
+		"witness": witness,
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("generated proof for financier's %s circuit", financierIdentifier)
+
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
+	waitForAsync()
+
+	financierVerification, err := privacy.Verify(*financierToken, financierCircuit.ID.String(), map[string]interface{}{
+		"proof":   financierProof.Proof,
+		"witness": witness,
+	})
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("financier root signature proof/verification: %v / %v", proof.Proof, financierVerification.Result)
 }

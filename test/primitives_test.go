@@ -222,7 +222,7 @@ func TestProofHash(t *testing.T) {
 		var i big.Int
 		hFunc := mimc.NewMiMC("seed")
 
-		chunks := 6
+		chunks := len(publicWitness.Proof)
 		chunkSize := fr.Bytes
 		proofLen := len(proofBytes)
 		for index := 0; index < chunks; index++ {
@@ -258,7 +258,7 @@ func TestProofEddsa(t *testing.T) {
 		var publicWitness gnark.ProofEddsaCircuit
 		hFunc := mimc.NewMiMC("seed")
 
-		chunks := 6
+		chunks := len(publicWitness.Msg)
 		chunkSize := fr.Bytes
 		for index := 0; index < chunks; index++ {
 			var elem fr.Element

@@ -5,7 +5,6 @@ package gnark
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"math/big"
 	"math/rand"
@@ -190,7 +189,7 @@ func keySizeTestWitnessFactory(name *string, id ecc.ID, h hash.Hash, s signature
 			pubkeyAx, pubkeyAy := parsePoint(id, pubKey.Bytes())
 
 			hFunc := h.New("seed")
-			chunks := 6
+			chunks := len(witness.Msg)
 			chunkSize := 32
 			if id == ecc.BW6_761 {
 				chunkSize = 48
@@ -277,7 +276,15 @@ func TestKeySizesGroth16(t *testing.T) {
 					t.Errorf("failed to write verifying key to buffer")
 				}
 
-				fmt.Printf("circuit: %21s | curve: %9s | pk size: %8d | vk size: %d\n", circuitName, conf.i.String(), pkSize, buf.Len())
+				vkSize := buf.Len()
+
+				buf.Reset()
+				_, err = proof.(io.WriterTo).WriteTo(buf)
+				if err != nil {
+					t.Errorf("failed to write proof to buffer")
+				}
+
+				t.Logf("circuit: %21s | curve: %9s | pk size: %8d | vk size: %4d | pf size: %4d\n", circuitName, conf.i.String(), pkSize, vkSize, buf.Len())
 
 				err = groth16.Verify(proof, vk, witness)
 				assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
@@ -343,7 +350,15 @@ func TestKeySizesPlonk(t *testing.T) {
 					t.Errorf("failed to write verifying key to buffer")
 				}
 
-				fmt.Printf("circuit: %21s | curve: %9s | pk size: %8d | vk size: %d\n", circuitName, conf.i.String(), pkSize, buf.Len())
+				vkSize := buf.Len()
+
+				buf.Reset()
+				_, err = proof.(io.WriterTo).WriteTo(buf)
+				if err != nil {
+					t.Errorf("failed to write proof to buffer")
+				}
+
+				t.Logf("circuit: %21s | curve: %9s | pk size: %8d | vk size: %4d | pf size: %4d\n", circuitName, conf.i.String(), pkSize, vkSize, buf.Len())
 
 				err = plonk.Verify(proof, vk, witness)
 				assert.NoError(err, "Verifying correct proof with correct witness should not output an error")

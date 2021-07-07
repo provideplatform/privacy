@@ -51,9 +51,8 @@ type Circuit struct {
 	provide.Model
 
 	// Artifacts, i.e., r1cs, ABI, etc
-	ABI      []byte `json:"abi,omitempty"`
-	Binary   []byte `gorm:"column:bin" json:"-"`
-	SRSAlpha []byte `sql:"-" json:"-"`
+	ABI    []byte `json:"abi,omitempty"`
+	Binary []byte `gorm:"column:bin" json:"-"`
 
 	// Vault and the vault secret identifiers for the encryption/decryption key and proving/verifying keys, SRS
 	VaultID         *uuid.UUID `json:"vault_id"`
@@ -87,6 +86,7 @@ type Circuit struct {
 	nullifierStore   *storage.Store
 
 	// ephemeral fields
+	alpha        []byte `sql:"-" json:"-"`
 	srs          []byte
 	provingKey   []byte
 	verifyingKey []byte
@@ -121,65 +121,6 @@ func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
 	default:
 		common.Log.Warningf("failed to initialize circuit provider; unknown provider: %s", *c.Provider)
 	}
-
-	return nil
-}
-
-func getKzgScheme(r1cs frontend.CompiledConstraintSystem, alpha *big.Int) kzg.SRS {
-	nbConstraints := r1cs.GetNbConstraints()
-	internal, secret, public := r1cs.GetNbVariables()
-	nbVariables := internal + secret + public
-	var s, size int
-	if nbConstraints > nbVariables {
-		s = nbConstraints
-	} else {
-		s = nbVariables
-	}
-	size = common.NextPowerOfTwo(s)
-
-	switch r1cs.CurveID() {
-	case ecc.BN254:
-		return kzgbn254.NewSRS(size, alpha)
-	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size, alpha)
-	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size, alpha)
-	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2, alpha)
-	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size, alpha)
-	default:
-		return nil
-	}
-}
-
-// generateSRS generates a KZG SRS for testing and will be replaced with proper MPC ceremony
-func (c *Circuit) generateSRS() error {
-	var r1cs frontend.CompiledConstraintSystem
-
-	switch *c.ProvingScheme {
-	case circuitProvingSchemeGroth16:
-		r1cs = groth16.NewCS(common.GnarkCurveIDFactory(c.Curve))
-	case circuitProvingSchemePlonk:
-		r1cs = plonk.NewCS(common.GnarkCurveIDFactory(c.Curve))
-	default:
-		return fmt.Errorf("invalid proving scheme %s", *c.ProvingScheme)
-	}
-
-	_, err := r1cs.ReadFrom(bytes.NewReader(c.Binary))
-	if err != nil {
-		return fmt.Errorf("failed to read r1cs for circuit with identifier %s; %s", *c.Identifier, err.Error())
-	}
-
-	alpha := new(big.Int).SetBytes(c.SRSAlpha)
-	srs := getKzgScheme(r1cs, alpha)
-	buf := new(bytes.Buffer)
-	_, err = srs.WriteTo(buf)
-	if err != nil {
-		return fmt.Errorf("failed to write srs for circuit with identifier %s; %s", *c.Identifier, err.Error())
-	}
-
-	c.srs = buf.Bytes()
 
 	return nil
 }
@@ -234,7 +175,7 @@ func (c *Circuit) Create() bool {
 				}
 
 				if c.srsRequired() {
-					if c.SRSAlpha != nil && (c.srs == nil || len(c.srs) == 0) {
+					if c.alpha != nil && (c.srs == nil || len(c.srs) == 0) {
 						err := c.generateSRS()
 						if err != nil {
 							c.Errors = append(c.Errors, &provide.Error{
@@ -574,6 +515,10 @@ func (c *Circuit) enrich() error {
 			"verifying_key": hex.EncodeToString(c.verifyingKey),
 		}
 
+		if c.alpha != nil && len(c.alpha) > 0 {
+			c.Artifacts["alpha"] = new(big.Int).SetBytes(c.alpha).Uint64()
+		}
+
 		if c.srs != nil && len(c.srs) > 0 {
 			c.Artifacts["srs"] = hex.EncodeToString(c.srs)
 		}
@@ -590,7 +535,7 @@ func (c *Circuit) enrich() error {
 	if c.canExportVerifier() {
 		err := c.exportVerifier()
 		if err != nil {
-			common.Log.Debugf("failed to export verifier contract for circuit; %s", err.Error())
+			common.Log.Debugf("failed to export verifier contract for circuit %s; %s", c.ID, err.Error())
 		} else if c.verifierContractSource != nil && len(c.verifierContractSource) > 0 {
 			c.VerifierContract = map[string]interface{}{
 				"source": string(c.verifierContractSource),
@@ -628,10 +573,82 @@ func (c *Circuit) exportVerifier() error {
 	return nil
 }
 
+// generateSRS enriches the ephemeral in-memory circuit SRS value;
+// this method is deterministic per alpha
+func (c *Circuit) generateSRS() error {
+	var r1cs frontend.CompiledConstraintSystem
+
+	switch *c.ProvingScheme {
+	case circuitProvingSchemeGroth16:
+		r1cs = groth16.NewCS(common.GnarkCurveIDFactory(c.Curve))
+	case circuitProvingSchemePlonk:
+		r1cs = plonk.NewCS(common.GnarkCurveIDFactory(c.Curve))
+	default:
+		return fmt.Errorf("failed to read r1cs for circuit %s; invalid proving scheme %s", c.ID, *c.ProvingScheme)
+	}
+
+	_, err := r1cs.ReadFrom(bytes.NewReader(c.Binary))
+	if err != nil {
+		return fmt.Errorf("failed to read r1cs for circuit %s; %s", c.ID, err.Error())
+	}
+
+	srs, err := c.getKZGScheme(r1cs)
+	if err != nil {
+		return fmt.Errorf("failed to write srs for circuit %s; %s", c.ID, err.Error())
+	}
+
+	buf := new(bytes.Buffer)
+	_, err = srs.WriteTo(buf)
+	if err != nil {
+		return fmt.Errorf("failed to write srs for circuit %s; %s", c.ID, err.Error())
+	}
+
+	c.srs = buf.Bytes()
+
+	return nil
+}
+
+// getKZGScheme resolves the Kate-Zaverucha-Goldberg (KZG) constant-sized polynomial
+// commitment scheme for te given r1cs, using the ephemeral in-memory circuit alpha
+func (c *Circuit) getKZGScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
+	if c.alpha == nil || len(c.alpha) == 0 {
+		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; nil alpha", c.ID)
+	}
+
+	alpha := new(big.Int).SetBytes(c.alpha)
+	nbConstraints := r1cs.GetNbConstraints()
+	internal, secret, public := r1cs.GetNbVariables()
+	nbVariables := internal + secret + public
+
+	var s int
+	if nbConstraints > nbVariables {
+		s = nbConstraints
+	} else {
+		s = nbVariables
+	}
+
+	size := common.NextPowerOfTwo(s)
+
+	switch r1cs.CurveID() {
+	case ecc.BN254:
+		return kzgbn254.NewSRS(size, alpha), nil
+	case ecc.BLS12_381:
+		return kzgbls12381.NewSRS(size, alpha), nil
+	case ecc.BLS12_377:
+		return kzgbls12377.NewSRS(size, alpha), nil
+	case ecc.BW6_761:
+		return kzgbw6761.NewSRS(size*2, alpha), nil
+	case ecc.BLS24_315:
+		return kzgbls24315.NewSRS(size, alpha), nil
+	default:
+		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; unsupported curve type: %s", c.ID, r1cs.CurveID().String())
+	}
+}
+
 // importArtifacts attempts to import the circuit from existing artifacts
 func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 	if c.Artifacts == nil {
-		common.Log.Tracef("short-circuiting the creation of circuit %s from binary artifacts", *c.Identifier)
+		common.Log.Tracef("short-circuiting the creation of circuit %s from binary artifacts", c.ID)
 		return false
 	}
 
@@ -641,7 +658,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.Binary, err = hex.DecodeString(binary)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import binary artifact for circuit %s; %s", *c.Identifier, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import binary artifact for circuit %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}
@@ -651,7 +668,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.provingKey, err = hex.DecodeString(provingKey)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import proving key for circuit %s; %s", *c.Identifier, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import proving key for circuit %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}
@@ -661,7 +678,27 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.verifyingKey, err = hex.DecodeString(verifyingKey)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import verifying key for circuit %s; %s", *c.Identifier, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import verifying key for circuit %s; %s", c.ID, err.Error())),
+			})
+			return false
+		}
+	}
+
+	_, alphaOk := c.Artifacts["alpha"]
+	_, srsOk := c.Artifacts["srs"]
+
+	if alphaOk && srsOk {
+		c.Errors = append(c.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to import artifacts for circuit %s; %s", c.ID, err.Error())),
+		})
+		return false
+	}
+
+	if alpha, alphaOk := c.Artifacts["alpha"].(float64); alphaOk {
+		c.alpha = new(big.Int).SetUint64(uint64(alpha)).Bytes()
+		if err != nil {
+			c.Errors = append(c.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to import alpha for circuit %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}
@@ -671,7 +708,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.srs, err = hex.DecodeString(srs)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import SRS for circuit %s; %s", *c.Identifier, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import SRS for circuit %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}

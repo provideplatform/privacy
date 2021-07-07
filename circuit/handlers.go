@@ -106,7 +106,15 @@ func createCircuitHandler(c *gin.Context) {
 		circuit.UserID = userID
 	}
 
-	if srs, srsOk := params["srs"].(string); srsOk {
+	_, srsOk := params["srs"]
+	_, alphaOk := params["alpha"]
+
+	if srsOk && alphaOk {
+		provide.RenderError("srs and alpha params are mutually exclusive", 422, c)
+		return
+	}
+
+	if srs, ok := params["srs"].(string); ok {
 		circuit.srs, err = hex.DecodeString(srs)
 		if err != nil {
 			provide.RenderError(err.Error(), 422, c)
@@ -114,10 +122,12 @@ func createCircuitHandler(c *gin.Context) {
 		}
 	}
 
-	if alphaString, alphaStringOk := params["alpha"].(string); alphaStringOk {
-		if alpha, alphaOk := new(big.Int).SetString(alphaString, 10); alphaOk {
-			circuit.SRSAlpha = alpha.Bytes()
+	if alphaStr, alphaStrOk := params["alpha"].(string); alphaStrOk {
+		if alpha, alphaOk := new(big.Int).SetString(alphaStr, 10); alphaOk {
+			circuit.alpha = alpha.Bytes()
 		}
+	} else if alpha, ok := params["alpha"].(float64); ok {
+		circuit.alpha = new(big.Int).SetUint64(uint64(alpha)).Bytes()
 	}
 
 	if circuit.Create() {
@@ -437,7 +447,6 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 		provide.RenderError(err.Error(), 500, c)
 		return
 	}
-	// }
 
 	provide.Render(map[string]interface{}{
 		"height": height,

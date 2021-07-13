@@ -2,7 +2,6 @@ package providers
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -232,7 +231,7 @@ func (p *GnarkCircuitProvider) ComputeWitness(artifacts interface{}, argv ...int
 // ExportVerifier exports the verifier contract, if supported; returns nil if the `Verify` method should be called
 func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{}, error) {
 	if p.provingSchemeID != backend.GROTH16 {
-		return nil, errors.New("export verifier not supported for proving scheme")
+		return nil, fmt.Errorf("export verifier not supported for proving scheme %s", p.provingSchemeID.String())
 	}
 	vk, err := p.decodeVerifyingKey([]byte(verifyingKey))
 	if err != nil {

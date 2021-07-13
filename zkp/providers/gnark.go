@@ -226,7 +226,7 @@ func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error)
 
 // ComputeWitness computes a witness for the given inputs
 func (p *GnarkCircuitProvider) ComputeWitness(artifacts interface{}, argv ...interface{}) (interface{}, error) {
-	return nil, fmt.Errorf("gnark does not not implement ComputeWitness()")
+	return nil, fmt.Errorf("gnark does not implement ComputeWitness()")
 }
 
 // ExportVerifier exports the verifier contract, if supported; returns nil if the `Verify` method should be called
@@ -251,7 +251,7 @@ func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{},
 
 // GenerateProof generates a proof
 func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness interface{}, provingKey string) (interface{}, error) {
-	return nil, fmt.Errorf("gnark does not not implement GenerateProof()")
+	return nil, fmt.Errorf("gnark does not implement GenerateProof()")
 }
 
 // Setup runs the circuit setup; if srs is non-nil, it is intended to be

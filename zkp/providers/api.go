@@ -53,5 +53,5 @@ type ZKSnarkCircuitProvider interface {
 	Verify(proof, verifyingKey []byte, witness interface{}, srs []byte) error
 
 	CircuitFactory(identifier string) interface{}
-	WitnessFactory(identifier string, curve string, inputs interface{}) (interface{}, error)
+	WitnessFactory(identifier string, curve string, inputs interface{}, isPublic bool) (interface{}, error)
 }

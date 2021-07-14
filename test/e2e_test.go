@@ -145,7 +145,6 @@ func TestCreateCircuitGroth16Cubic(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"X": "3",
 			"Y": "35",
 		},
 	})
@@ -192,7 +191,6 @@ func TestCreateCircuitPlonkCubicWithSRS(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"X": "3",
 			"Y": "35",
 		},
 	})
@@ -236,7 +234,6 @@ func TestCreateCircuitPlonkCubicWithAlpha(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"X": "3",
 			"Y": "35",
 		},
 	})
@@ -290,8 +287,7 @@ func TestBaselineDocument(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Preimage": preImageString,
-			"Hash":     hashString,
+			"Hash": hashString,
 		},
 	})
 	if err != nil {
@@ -358,8 +354,7 @@ func TestProcurement(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.Preimage": preImageString,
-			"Document.Hash":     hashString,
+			"Document.Hash": hashString,
 		},
 	})
 	if err != nil {
@@ -417,8 +412,7 @@ func TestProcurement(t *testing.T) {
 	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.Preimage": preImageString,
-			"Document.Hash":     hashString,
+			"Document.Hash": hashString,
 		},
 	})
 	if err != nil {
@@ -475,8 +469,7 @@ func TestProcurement(t *testing.T) {
 	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.Preimage": preImageString,
-			"Document.Hash":     hashString,
+			"Document.Hash": hashString,
 		},
 	})
 	if err != nil {
@@ -533,8 +526,7 @@ func TestProcurement(t *testing.T) {
 	verification, err = privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.Preimage": preImageString,
-			"Document.Hash":     hashString,
+			"Document.Hash": hashString,
 		},
 	})
 	if err != nil {
@@ -719,8 +711,7 @@ func TestProofVerifyMerkle(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.Preimage": preImageString,
-			"Document.Hash":     hashString,
+			"Document.Hash": hashString,
 		},
 		"store": false,
 	})
@@ -819,8 +810,7 @@ func TestDuplicateProofVerifyMerkle(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"Document.Preimage": preImageString,
-			"Document.Hash":     hashString,
+			"Document.Hash": hashString,
 		},
 		"store": true,
 	})
@@ -1491,7 +1481,6 @@ func TestRecursivePlonk(t *testing.T) {
 	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
-			"X": "3",
 			"Y": "35",
 		},
 	})

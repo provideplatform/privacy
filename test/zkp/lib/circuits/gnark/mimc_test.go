@@ -80,7 +80,7 @@ func TestPreimagePlonk(t *testing.T) {
 			hFunc.Write(preimage.Bytes())
 			hash := hFunc.Sum(nil)
 
-			var witness libgnark.MimcCircuit
+			var witness, publicWitness libgnark.MimcCircuit
 			witness.Preimage.Assign(preimage)
 			witness.Hash.Assign(hash)
 
@@ -90,7 +90,8 @@ func TestPreimagePlonk(t *testing.T) {
 			proof, err := plonk.Prove(r1cs, pk, &witness)
 			assert.NoError(err, "Proving with good witness should not output an error")
 
-			err = plonk.Verify(proof, vk, &witness)
+			publicWitness.Hash.Assign(hash)
+			err = plonk.Verify(proof, vk, &publicWitness)
 			assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 		}
 

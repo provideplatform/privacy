@@ -61,7 +61,7 @@ func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
 }
 
 // WitnessFactory generates a valid witness for the given circuit identifier, curve and named inputs
-func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, inputs interface{}) (interface{}, error) {
+func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, inputs interface{}, isPublic bool) (interface{}, error) {
 	w := p.CircuitFactory(identifier)
 	if w == nil {
 		return nil, fmt.Errorf("failed to serialize witness; %s circuit not resolved", identifier)
@@ -98,10 +98,15 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 		}
 
 		buf := new(bytes.Buffer)
-		_, err := witness.WriteFullTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
-		if err != nil {
-			common.Log.Warningf("failed to serialize witness for %s circuit; %s", identifier, err.Error())
-			return nil, err
+		var errWrite error
+		if isPublic {
+			_, errWrite = witness.WritePublicTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
+		} else {
+			_, errWrite = witness.WriteFullTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
+		}
+		if errWrite != nil {
+			common.Log.Warningf("failed to serialize witness for %s circuit; %s", identifier, errWrite.Error())
+			return nil, errWrite
 		}
 
 		return w, nil

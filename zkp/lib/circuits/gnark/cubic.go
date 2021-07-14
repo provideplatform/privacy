@@ -10,7 +10,7 @@ import (
 type CubicCircuit struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
-	X frontend.Variable `gnark:"x"`
+	X frontend.Variable
 	Y frontend.Variable `gnark:",public"`
 }
 

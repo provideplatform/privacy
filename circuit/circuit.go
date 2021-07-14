@@ -306,7 +306,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, fmt.Errorf("failed to resolve circuit provider")
 	}
 
-	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness)
+	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness, false)
 	if err != nil {
 		common.Log.Warningf("failed to read serialize witness; %s", err.Error())
 		return nil, err
@@ -360,7 +360,7 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 		_proof = []byte(proof)
 	}
 
-	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness)
+	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness, true)
 	if err != nil {
 		common.Log.Warningf("failed to read serialize witness; %s", err.Error())
 		return false, err

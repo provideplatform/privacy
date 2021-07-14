@@ -81,7 +81,7 @@ func TestCubicEquationPlonkElaborated(t *testing.T) {
 	assert.NoError(err)
 
 	{
-		var witness libgnark.CubicCircuit
+		var witness, publicWitness libgnark.CubicCircuit
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
@@ -91,7 +91,10 @@ func TestCubicEquationPlonkElaborated(t *testing.T) {
 		proof, err := plonk.Prove(sparseR1cs, pk, &witness)
 		assert.NoError(err, "Proving with good witness should not output an error")
 
-		err = plonk.Verify(proof, vk, &witness)
+		// assign only public variable for verification
+		publicWitness.Y.Assign(35)
+
+		err = plonk.Verify(proof, vk, &publicWitness)
 		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 	}
 
@@ -107,7 +110,7 @@ func TestCubicEquationPlonkElaboratedWithMarshalling(t *testing.T) {
 	assert.NoError(err)
 
 	{
-		var witness libgnark.CubicCircuit
+		var witness, publicWitness libgnark.CubicCircuit
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
@@ -148,7 +151,10 @@ func TestCubicEquationPlonkElaboratedWithMarshalling(t *testing.T) {
 
 		vkCopy.InitKZG(kzgSRS)
 
-		err = plonk.Verify(proof, vkCopy, &witness)
+		// assign only public variable for verification
+		publicWitness.Y.Assign(35)
+
+		err = plonk.Verify(proof, vkCopy, &publicWitness)
 		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
 	}
 

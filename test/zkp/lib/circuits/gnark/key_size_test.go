@@ -329,10 +329,13 @@ func TestKeySizesPlonk(t *testing.T) {
 			assert.NoError(err)
 
 			{
-				witness := keySizeTestWitnessFactory(&circuitName, conf.i, conf.h, conf.s, true)
-				pk, vk, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
+				kzgSRS, err := getKzgScheme(r1cs)
+				assert.NoError(err, "Getting KZG scheme should not have failed")
+
+				pk, vk, err := plonk.Setup(r1cs, kzgSRS)
 				assert.NoError(err, "Generating public data should not have failed")
 
+				witness := keySizeTestWitnessFactory(&circuitName, conf.i, conf.h, conf.s, true)
 				proof, err := plonk.Prove(r1cs, pk, witness)
 				assert.NoError(err, "Proving with good witness should not output an error")
 

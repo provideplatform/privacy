@@ -85,7 +85,10 @@ func TestCubicEquationPlonkElaborated(t *testing.T) {
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
-		pk, vk, err := plonk.Setup(sparseR1cs, getKzgScheme(sparseR1cs))
+		kzgSRS, err := getKzgScheme(sparseR1cs)
+		assert.NoError(err, "Getting KZG scheme should not have failed")
+
+		pk, vk, err := plonk.Setup(sparseR1cs, kzgSRS)
 		assert.NoError(err, "Generating public data should not have failed")
 
 		proof, err := plonk.Prove(sparseR1cs, pk, &witness)
@@ -114,7 +117,9 @@ func TestCubicEquationPlonkElaboratedWithMarshalling(t *testing.T) {
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
-		kzgSRS := getKzgScheme(sparseR1cs)
+		kzgSRS, err := getKzgScheme(sparseR1cs)
+		assert.NoError(err, "Getting KZG scheme should not have failed")
+
 		pk, vk, err := plonk.Setup(sparseR1cs, kzgSRS)
 		assert.NoError(err, "Generating public data should not have failed")
 
@@ -186,17 +191,20 @@ func TestCubicEquationPlonkSRSEntropy(t *testing.T) {
 		}
 		size = common.NextPowerOfTwo(s)
 
-		srs1 := kzg.NewSRS(size, alpha)
+		srs1, err := kzg.NewSRS(size, alpha)
+		assert.NoError(err, "Getting KZG scheme should not have failed")
 
 		buf1 := new(bytes.Buffer)
-		_, err := srs1.WriteTo(buf1)
+		_, err = srs1.WriteTo(buf1)
 		assert.NoError(err)
 
 		bufString := hex.EncodeToString(buf1.Bytes())
 		t.Logf("%v", bufString)
 
 		buf2 := new(bytes.Buffer)
-		srs2 := kzg.NewSRS(size, alpha)
+		srs2, err := kzg.NewSRS(size, alpha)
+		assert.NoError(err, "Getting KZG scheme should not have failed")
+
 		_, err = srs2.WriteTo(buf2)
 		assert.NoError(err)
 

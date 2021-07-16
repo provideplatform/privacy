@@ -5,8 +5,8 @@ go 1.16
 require (
 	github.com/aergoio/aergo v1.11.1
 	github.com/aergoio/aergo-lib v1.0.2
-	github.com/consensys/gnark v0.4.1-0.20210624004101-a04ca221b112
-	github.com/consensys/gnark-crypto v0.4.1-0.20210624003951-09d9ee4f5ca5
+	github.com/consensys/gnark v0.4.1-0.20210707173417-42f8d1956a43
+	github.com/consensys/gnark-crypto v0.4.1-0.20210630161642-1bfa1bfa95a0
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jinzhu/gorm v1.9.16

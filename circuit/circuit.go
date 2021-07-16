@@ -631,15 +631,15 @@ func (c *Circuit) getKZGScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS,
 
 	switch r1cs.CurveID() {
 	case ecc.BN254:
-		return kzgbn254.NewSRS(size, alpha), nil
+		return kzgbn254.NewSRS(size, alpha)
 	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size, alpha), nil
+		return kzgbls12381.NewSRS(size, alpha)
 	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size, alpha), nil
+		return kzgbls12377.NewSRS(size, alpha)
 	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2, alpha), nil
+		return kzgbw6761.NewSRS(size*2, alpha)
 	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size, alpha), nil
+		return kzgbls24315.NewSRS(size, alpha)
 	default:
 		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; unsupported curve type: %s", c.ID, r1cs.CurveID().String())
 	}

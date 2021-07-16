@@ -84,7 +84,10 @@ func TestPreimagePlonk(t *testing.T) {
 			witness.Preimage.Assign(preimage)
 			witness.Hash.Assign(hash)
 
-			pk, vk, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
+			kzgSRS, err := getKzgScheme(r1cs)
+			assert.NoError(err, "Getting KZG scheme should not have failed")
+
+			pk, vk, err := plonk.Setup(r1cs, kzgSRS)
 			assert.NoError(err, "Generating public data should not have failed")
 
 			proof, err := plonk.Prove(r1cs, pk, &witness)
@@ -100,7 +103,10 @@ func TestPreimagePlonk(t *testing.T) {
 			witness.Hash.Assign(42) // these are nonsense values for this circuit
 			witness.Preimage.Assign(42)
 
-			pk, _, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
+			kzgSRS, err := getKzgScheme(r1cs)
+			assert.NoError(err, "Getting KZG scheme should not have failed")
+
+			pk, _, err := plonk.Setup(r1cs, kzgSRS)
 			assert.NoError(err, "Generating public data should not have failed")
 
 			_, err = plonk.Prove(r1cs, pk, &witness)

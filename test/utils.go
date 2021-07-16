@@ -63,7 +63,7 @@ func userTokenFactory(testID uuid.UUID) (*string, error) {
 	return token.AccessToken, nil
 }
 
-func getKzgSchemeForTest(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
+func getKzgSchemeForTest(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
 	nbConstraints := r1cs.GetNbConstraints()
 	internal, secret, public := r1cs.GetNbVariables()
 	nbVariables := internal + secret + public
@@ -89,7 +89,7 @@ func getKzgSchemeForTest(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
 	case ecc.BLS24_315:
 		return kzgbls24315.NewSRS(size, alpha)
 	default:
-		return nil
+		return nil, fmt.Errorf("invalid curve id")
 	}
 }
 
@@ -98,9 +98,12 @@ const circuitProvingSchemePlonk = "plonk"
 
 // generateSRSForTest generates a KZG SRS for testing and will be replaced with proper MPC ceremony
 func generateSRSForTest(r1cs frontend.CompiledConstraintSystem) []byte {
-	srs := getKzgSchemeForTest(r1cs)
+	srs, err := getKzgSchemeForTest(r1cs)
+	if err != nil {
+		return nil
+	}
 	buf := new(bytes.Buffer)
-	_, err := srs.WriteTo(buf)
+	_, err = srs.WriteTo(buf)
 	if err != nil {
 		return nil
 	}

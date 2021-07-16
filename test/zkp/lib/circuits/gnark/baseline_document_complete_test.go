@@ -146,7 +146,7 @@ func parseSkScalar(id ecc.ID, buf []byte) []byte {
 	}
 }
 
-func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
+func getKzgScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
 	nbConstraints := r1cs.GetNbConstraints()
 	internal, secret, public := r1cs.GetNbVariables()
 	nbVariables := internal + secret + public
@@ -163,17 +163,17 @@ func getKzgScheme(r1cs frontend.CompiledConstraintSystem) kzg.SRS {
 	// fmt.Println("size", size, "s", s, "id", r1cs.CurveID().String())
 	switch r1cs.CurveID() {
 	case ecc.BN254:
-		return kzgbn254.NewSRS(size, alpha)
+		return kzgbn254.NewSRS(size+3, alpha)
 	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size, alpha)
+		return kzgbls12381.NewSRS(size+3, alpha)
 	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size, alpha)
+		return kzgbls12377.NewSRS(size+3, alpha)
 	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2, alpha)
+		return kzgbw6761.NewSRS(size*2+3, alpha)
 	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size, alpha)
+		return kzgbls24315.NewSRS(size+3, alpha)
 	default:
-		return nil
+		return nil, fmt.Errorf("invalid curve id")
 	}
 }
 
@@ -323,7 +323,10 @@ func TestBaselineDocumentCompletePlonk(t *testing.T) {
 			witness.Sig.S1.Assign(sigS1)
 			witness.Sig.S2.Assign(sigS2)
 
-			pk, vk, err := plonk.Setup(r1cs, getKzgScheme(r1cs))
+			kzgSRS, err := getKzgScheme(r1cs)
+			assert.NoError(err, "Getting KZG scheme should not have failed")
+
+			pk, vk, err := plonk.Setup(r1cs, kzgSRS)
 			assert.NoError(err, "Generating public data should not have failed")
 
 			proof, err := plonk.Prove(r1cs, pk, &witness)

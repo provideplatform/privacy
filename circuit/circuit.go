@@ -609,7 +609,7 @@ func (c *Circuit) generateSRS() error {
 }
 
 // getKZGScheme resolves the Kate-Zaverucha-Goldberg (KZG) constant-sized polynomial
-// commitment scheme for te given r1cs, using the ephemeral in-memory circuit alpha
+// commitment scheme for the given r1cs, using the ephemeral in-memory circuit alpha
 func (c *Circuit) getKZGScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
 	if c.alpha == nil || len(c.alpha) == 0 {
 		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; nil alpha", c.ID)
@@ -631,15 +631,15 @@ func (c *Circuit) getKZGScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS,
 
 	switch r1cs.CurveID() {
 	case ecc.BN254:
-		return kzgbn254.NewSRS(size, alpha)
+		return kzgbn254.NewSRS(size+3, alpha)
 	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size, alpha)
+		return kzgbls12381.NewSRS(size+3, alpha)
 	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size, alpha)
+		return kzgbls12377.NewSRS(size+3, alpha)
 	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2, alpha)
+		return kzgbw6761.NewSRS(size*2+3, alpha)
 	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size, alpha)
+		return kzgbls24315.NewSRS(size+3, alpha)
 	default:
 		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; unsupported curve type: %s", c.ID, r1cs.CurveID().String())
 	}
@@ -1059,32 +1059,32 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 		}
 	}
 
-	if c.nullifierStore != nil {
-		if c.State == nil {
-			// TODO-- audit this for when the first note has not yet been spent
-			common.Log.Debugf("no notes spent for circuit %s; initializing sparse nullifier tree with %d-byte state root", c.ID, len(root))
-			_, err := c.nullifierStore.Insert("")
-			if err != nil {
-				common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
-				return err
-			}
-			common.Log.Debugf("initialized sparse nullifier tree with %d-byte state root for circuit %s", len(root), c.ID)
-			c.State = &state.State{}
-		}
+	// if c.nullifierStore != nil {
+	// 	if c.State == nil {
+	// 		// TODO-- audit this for when the first note has not yet been spent
+	// 		common.Log.Debugf("no notes spent for circuit %s; initializing sparse nullifier tree with %d-byte state root", c.ID, len(root))
+	// 		_, err := c.nullifierStore.Insert("")
+	// 		if err != nil {
+	// 			common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
+	// 			return err
+	// 		}
+	// 		common.Log.Debugf("initialized sparse nullifier tree with %d-byte state root for circuit %s", len(root), c.ID)
+	// 		c.State = &state.State{}
+	// 	}
 
-		root, err := c.nullifierStore.Insert(proof)
-		if err != nil {
-			common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
-			return err
-		} else {
-			common.Log.Debugf("inserted nullifier proof for circuit %s: %s; root: %s", c.ID, hex.EncodeToString([]byte(proof)), hex.EncodeToString(root))
-			if !c.nullifierStore.Contains(proof) {
-				err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for proof: %s", c.ID, hex.EncodeToString([]byte(proof)))
-				common.Log.Warning(err.Error())
-				return err
-			}
-		}
-	}
+	// 	root, err := c.nullifierStore.Insert(proof)
+	// 	if err != nil {
+	// 		common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
+	// 		return err
+	// 	} else {
+	// 		common.Log.Debugf("inserted nullifier proof for circuit %s: %s; root: %s", c.ID, hex.EncodeToString([]byte(proof)), hex.EncodeToString(root))
+	// 		if !c.nullifierStore.Contains(proof) {
+	// 			err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for proof: %s", c.ID, hex.EncodeToString([]byte(proof)))
+	// 			common.Log.Warning(err.Error())
+	// 			return err
+	// 		}
+	// 	}
+	// }
 
 	return nil
 }

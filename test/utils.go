@@ -63,6 +63,8 @@ func userTokenFactory(testID uuid.UUID) (*string, error) {
 	return token.AccessToken, nil
 }
 
+// getKzgSchemeForTest resolves the Kate-Zaverucha-Goldberg (KZG) constant-sized polynomial
+// commitment scheme for the given r1cs, using constant (insecure) alpha
 func getKzgSchemeForTest(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
 	nbConstraints := r1cs.GetNbConstraints()
 	internal, secret, public := r1cs.GetNbVariables()
@@ -79,22 +81,19 @@ func getKzgSchemeForTest(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error
 	alpha := new(big.Int).SetUint64(42)
 	switch r1cs.CurveID() {
 	case ecc.BN254:
-		return kzgbn254.NewSRS(size, alpha)
+		return kzgbn254.NewSRS(size+3, alpha)
 	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size, alpha)
+		return kzgbls12381.NewSRS(size+3, alpha)
 	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size, alpha)
+		return kzgbls12377.NewSRS(size+3, alpha)
 	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2, alpha)
+		return kzgbw6761.NewSRS(size*2+3, alpha)
 	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size, alpha)
+		return kzgbls24315.NewSRS(size+3, alpha)
 	default:
 		return nil, fmt.Errorf("invalid curve id")
 	}
 }
-
-const circuitProvingSchemeGroth16 = "groth16"
-const circuitProvingSchemePlonk = "plonk"
 
 // generateSRSForTest generates a KZG SRS for testing and will be replaced with proper MPC ceremony
 func generateSRSForTest(r1cs frontend.CompiledConstraintSystem) []byte {

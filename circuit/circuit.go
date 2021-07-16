@@ -1059,32 +1059,32 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 		}
 	}
 
-	// if c.nullifierStore != nil {
-	// 	if c.State == nil {
-	// 		// TODO-- audit this for when the first note has not yet been spent
-	// 		common.Log.Debugf("no notes spent for circuit %s; initializing sparse nullifier tree with %d-byte state root", c.ID, len(root))
-	// 		_, err := c.nullifierStore.Insert("")
-	// 		if err != nil {
-	// 			common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
-	// 			return err
-	// 		}
-	// 		common.Log.Debugf("initialized sparse nullifier tree with %d-byte state root for circuit %s", len(root), c.ID)
-	// 		c.State = &state.State{}
-	// 	}
+	if c.nullifierStore != nil {
+		if c.State == nil {
+			// TODO-- audit this for when the first note has not yet been spent
+			common.Log.Debugf("no notes spent for circuit %s; initializing sparse nullifier tree with %d-byte state root", c.ID, len(root))
+			_, err := c.nullifierStore.Insert("")
+			if err != nil {
+				common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
+				return err
+			}
+			common.Log.Debugf("initialized sparse nullifier tree with %d-byte state root for circuit %s", len(root), c.ID)
+			c.State = &state.State{}
+		}
 
-	// 	root, err := c.nullifierStore.Insert(proof)
-	// 	if err != nil {
-	// 		common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
-	// 		return err
-	// 	} else {
-	// 		common.Log.Debugf("inserted nullifier proof for circuit %s: %s; root: %s", c.ID, hex.EncodeToString([]byte(proof)), hex.EncodeToString(root))
-	// 		if !c.nullifierStore.Contains(proof) {
-	// 			err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for proof: %s", c.ID, hex.EncodeToString([]byte(proof)))
-	// 			common.Log.Warning(err.Error())
-	// 			return err
-	// 		}
-	// 	}
-	// }
+		root, err := c.nullifierStore.Insert(proof)
+		if err != nil {
+			common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
+			return err
+		} else {
+			common.Log.Debugf("inserted nullifier proof for circuit %s: %s; root: %s", c.ID, hex.EncodeToString([]byte(proof)), hex.EncodeToString(root))
+			if !c.nullifierStore.Contains(proof) {
+				err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for proof: %s", c.ID, hex.EncodeToString([]byte(proof)))
+				common.Log.Warning(err.Error())
+				return err
+			}
+		}
+	}
 
 	return nil
 }

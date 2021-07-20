@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
 
@@ -157,8 +156,9 @@ func getKzgScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
 		s = nbVariables
 	}
 	size = common.NextPowerOfTwo(s)
-	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	alpha := new(big.Int).SetUint64(seededRand.Uint64())
+	// seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// alpha := new(big.Int).SetUint64(seededRand.Uint64())
+	alpha := new(big.Int).SetUint64(42)
 
 	// fmt.Println("size", size, "s", s, "id", r1cs.CurveID().String())
 	switch r1cs.CurveID() {

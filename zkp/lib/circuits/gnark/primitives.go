@@ -125,7 +125,6 @@ func (circuit *ProofEddsaCircuit) Define(curveID ecc.ID, cs *frontend.Constraint
 		return err
 	}
 
-	// hash := hFunc.Hash(cs, circuit.Msg[0], circuit.Msg[1], circuit.Msg[2], circuit.Msg[3], circuit.Msg[4], circuit.Msg[5])
 	hash := hFunc.Hash(cs, circuit.Msg[:]...)
 	eddsa.Verify(cs, circuit.Sig, hash, circuit.PubKey)
 

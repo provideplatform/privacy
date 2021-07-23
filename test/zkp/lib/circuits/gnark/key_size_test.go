@@ -375,14 +375,111 @@ func TestKeySizesPlonk(t *testing.T) {
 
 }
 
-type ProofSizeTestCircuit struct {
+type ProofHashSizeTestCircuit struct {
+	Proof []frontend.Variable
+	Hash  frontend.Variable `gnark:",public"`
+}
+
+// Define declares the circuit constraints
+func (circuit *ProofHashSizeTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+	hFunc, err := mimc.NewMiMC("seed", curveID)
+	if err != nil {
+		return err
+	}
+
+	hash := hFunc.Hash(cs, circuit.Proof[:]...)
+	cs.AssertIsEqual(hash, circuit.Hash)
+
+	return nil
+}
+
+func TestKeySizesByHashWitnessSize(t *testing.T) {
+	assert := plonk.NewAssert(t)
+
+	// in testing, proving keys increased in size for count == 1, 2, 3, 4, 6, 8, 11, 16, 22, 31, 44, 62
+	// then go test errored on 72
+	for count := 70; count <= 100; count++ {
+		id, h := ecc.BN254, hash.MIMC_BN254
+
+		var circuit, witness ProofHashSizeTestCircuit
+
+		circuit.Proof = make([]frontend.Variable, count)
+
+		r1cs, err := frontend.Compile(id, backend.PLONK, &circuit)
+		assert.NoError(err)
+
+		kzgSRS, err := getKzgScheme(r1cs)
+		assert.NoError(err, "Getting KZG scheme should not have failed")
+
+		pk, vk, err := plonk.Setup(r1cs, kzgSRS)
+		assert.NoError(err, "Generating public data should not have failed")
+
+		buf := new(bytes.Buffer)
+		_, err = pk.(io.WriterTo).WriteTo(buf)
+		if err != nil {
+			t.Errorf("failed to write proving key to buffer")
+		}
+
+		pkSize := buf.Len()
+
+		witness.Proof = make([]frontend.Variable, count)
+
+		proofString := "9f3aac14a60502ce8a8084d876e9da3ac85191aadc25003d3f81a41eff1f5a389b1177672ca50ee865a9a0563479ea316571d3f3895ab914a4312378f6e89e781dd0447826aebeb42335ec2ab89cd41fea4d797a376d621bf139b5030f873e3487eb40948f4c58dab967ea2e890c722e2ba85d8caa0afdb6301d360d27d966c0"
+		proofBytes, _ := hex.DecodeString(proofString)
+
+		var i big.Int
+
+		hFunc := h.New("seed")
+		chunks := len(witness.Proof)
+		chunkSize := 32
+		if id == ecc.BW6_761 {
+			chunkSize = 48
+		}
+		for index := 0; index < chunks; index++ {
+			var b []byte
+			b = make([]byte, chunkSize)
+			if index*chunkSize < len(proofBytes) {
+				b = bytesToFieldElementBytes(id, proofBytes[index*chunkSize:(index+1)*chunkSize], &witness.Proof[index])
+			} else {
+				b = bytesToFieldElementBytes(id, b, &witness.Proof[index])
+			}
+			hFunc.Write(b[:])
+		}
+		i.SetBytes(hFunc.Sum(nil))
+		witness.Hash.Assign(i)
+
+		proof, err := plonk.Prove(r1cs, pk, &witness)
+		assert.NoError(err, "Proving with good witness should not output an error")
+
+		buf.Reset()
+		_, err = vk.(io.WriterTo).WriteTo(buf)
+		if err != nil {
+			t.Errorf("failed to write verifying key to buffer")
+		}
+
+		vkSize := buf.Len()
+
+		buf.Reset()
+		_, err = proof.(io.WriterTo).WriteTo(buf)
+		if err != nil {
+			t.Errorf("failed to write proof to buffer")
+		}
+
+		t.Logf("chunks: %5d | bytes: %5d | curve: %9s | pk size: %10d | vk size: %4d | pf size: %4d\n", count, chunkSize*count, id.String(), pkSize, vkSize, buf.Len())
+
+		err = plonk.Verify(proof, vk, &witness)
+		assert.NoError(err, "Verifying correct proof with correct witness should not output an error")
+	}
+}
+
+type ProofEddsaSizeTestCircuit struct {
 	Msg    []frontend.Variable
 	PubKey eddsa.PublicKey `gnark:",public"`
 	Sig    eddsa.Signature `gnark:",public"`
 }
 
 // Define declares the ProofEddsaCircuit circuit constraints
-func (circuit *ProofSizeTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (circuit *ProofEddsaSizeTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	curve, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {
 		return err
@@ -408,7 +505,7 @@ func TestKeySizesByEddsaWitnessSize(t *testing.T) {
 	for count := 1; count <= 86; count++ {
 		id, h, s := ecc.BN254, hash.MIMC_BN254, signature.EDDSA_BN254
 
-		var circuit, witness ProofSizeTestCircuit
+		var circuit, witness ProofEddsaSizeTestCircuit
 
 		circuit.Msg = make([]frontend.Variable, count)
 

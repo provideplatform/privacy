@@ -1,0 +1,1 @@
+ALTER TABLE ONLY hashes DROP COLUMN value;

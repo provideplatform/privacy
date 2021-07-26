@@ -54,21 +54,6 @@ type MemoryMerkleTree struct {
 }
 
 func (tree *MemoryMerkleTree) init() {
-	if tree.HashFunc == nil {
-		tree.HashFunc = func(data ...[]byte) []byte {
-			digest := tree.Digest
-			digest.Reset()
-			for i := range data {
-				_, err := digest.Write(data[i])
-				if err != nil {
-					return nil
-				}
-			}
-
-			return digest.Sum(nil)
-		}
-	}
-
 	tree.Nodes = make([][]*Node, 1)
 }
 
@@ -176,9 +161,8 @@ func (tree *MemoryMerkleTree) getIntermediaryHashesByIndex(index int) (intermedi
 	return intermediaryHashes
 }
 
-// Add hashes and inserts data on the next available slot in the tree.
-// Also recalculates and recalibrates the tree.
-// Returns the index it was inserted and the hash of the new data
+// Add the given value to the next available slot, recalculate and
+// recalibrate the tree; returns the index it was inserted and the hash of the new data
 func (tree *MemoryMerkleTree) Add(val []byte) (index int, hash string) {
 	return tree.RawAdd(val)
 }
@@ -188,8 +172,8 @@ func (tree *MemoryMerkleTree) Add(val []byte) (index int, hash string) {
 func (tree *MemoryMerkleTree) RawAdd(val []byte) (index int, hash string) {
 	if tree.HashFunc != nil {
 		h := tree.HashFunc(val)
-		hash = hex.EncodeToString(h)
-		index, _ = tree.RawInsert(hash)
+		_val := hex.EncodeToString(h)
+		index, _ = tree.RawInsert(_val)
 	} else {
 		index, _ = tree.RawInsert(string(val))
 	}
@@ -197,17 +181,17 @@ func (tree *MemoryMerkleTree) RawAdd(val []byte) (index int, hash string) {
 	return index, hash
 }
 
-// RawInsert creates node out of the hash and pushes it into the tree without recalculating the tree
-// Returns the index of the leaf and the node
-func (tree *MemoryMerkleTree) RawInsert(hash string) (index int, insertedLeaf MerkleTreeNode) {
+// RawInsert creates node out of the given value and pushes it into the tree
+// without recalculating the tree; returns the index of the leaf and the node
+func (tree *MemoryMerkleTree) RawInsert(val string) (index int, insertedLeaf MerkleTreeNode) {
 	tree.Mutex.RLock()
 	defer tree.Mutex.RUnlock()
 	index = len(tree.Nodes[0])
 
-	_hash, _ := hex.DecodeString(hash)
+	_val, _ := hex.DecodeString(val)
 
 	leaf := &Node{
-		[]byte(_hash),
+		_val,
 		index,
 		nil,
 	}
@@ -369,6 +353,18 @@ func (tree *MemoryMerkleTree) MarshalJSON() ([]byte, error) {
 func NewMerkleTree(h hash.Hash) *MemoryMerkleTree {
 	var tree MemoryMerkleTree
 	tree.Digest = h
+	tree.HashFunc = func(data ...[]byte) []byte {
+		digest := tree.Digest
+		digest.Reset()
+		for i := range data {
+			_, err := digest.Write(data[i])
+			if err != nil {
+				return nil
+			}
+		}
+
+		return digest.Sum(nil)
+	}
 	tree.init()
 	return &tree
 }

@@ -247,27 +247,34 @@ func (c *Circuit) NullifierStoreHeight() (*int, error) {
 	return &height, nil
 }
 
-// NoteValueAt returns the decrypted note from the underlying note storage provider
-func (c *Circuit) NoteValueAt(key []byte) ([]byte, error) {
+// NoteStoreRoot returns the underlying note store root
+func (c *Circuit) NoteStoreRoot() (*string, error) {
 	if c.noteStore == nil && c.NoteStoreID != nil {
 		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
 	if c.noteStore == nil {
-		return nil, fmt.Errorf("failed to resolve note store value for key %s for circuit %s", key, c.ID)
+		return nil, fmt.Errorf("failed to resolve note store root for circuit %s", c.ID)
 	}
 
-	val, err := c.noteStore.ValueAt(key)
+	return c.noteStore.Root()
+}
+
+// NoteValueAt returns the decrypted note from the underlying note storage provider
+func (c *Circuit) NoteValueAt(index uint64) ([]byte, error) {
+	if c.noteStore == nil && c.NoteStoreID != nil {
+		c.noteStore = storage.Find(*c.NoteStoreID)
+	}
+
+	if c.noteStore == nil {
+		return nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s", index, c.ID)
+	}
+
+	val, err := c.noteStore.ValueAt(new(big.Int).SetUint64(index).Bytes())
 	if err != nil {
 		return nil, err
 	}
 
-	// rawval, err := base64.RawStdEncoding.DecodeString(*val)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// *val = string(rawval)
 	return val, nil
 }
 
@@ -278,13 +285,13 @@ func (c *Circuit) NullifierStoreRoot() (*string, error) {
 	}
 
 	if c.nullifierStore == nil {
-		return nil, fmt.Errorf("failed to resolve store root for circuit %s", c.ID)
+		return nil, fmt.Errorf("failed to resolve nullifier store root for circuit %s", c.ID)
 	}
 
 	return c.nullifierStore.Root()
 }
 
-// NullifierValueAt returns the hashed proof from the underlying nullifier proof storage provider
+// NullifierValueAt returns the hashed note from the underlying nullifier proof storage provider
 func (c *Circuit) NullifierValueAt(key []byte) ([]byte, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
@@ -729,7 +736,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 	return len(c.Errors) == 0
 }
 
-// initStorage attempts to initialize storage for notes (dense) and hashed proofs (sparse)
+// initStorage attempts to initialize storage for notes (dense) and nullifiers (sparse)
 // for the circuit instance; no-op for each store type if it has already been initialized
 func (c *Circuit) initStorage() error {
 	if c.NoteStoreID == nil {
@@ -758,7 +765,7 @@ func (c *Circuit) initNoteStorage() error {
 	common.Log.Debugf("attempting to initialize notes storage for circuit %s", c.ID)
 
 	store := &storage.Store{
-		Name:     common.StringOrNil(fmt.Sprintf("dense merkle tree notes storage for circuit %s", c.ID)),
+		Name:     common.StringOrNil(fmt.Sprintf("notes merkle tree storage for circuit %s", c.ID)),
 		Provider: common.StringOrNil(storeprovider.StoreProviderMerkleTree),
 		Curve:    common.StringOrNil(*c.Curve),
 	}
@@ -786,7 +793,7 @@ func (c *Circuit) initNullifierStorage() error {
 	common.Log.Debugf("attempting to initialize proof storage for circuit %s", c.ID)
 
 	store := &storage.Store{
-		Name:     common.StringOrNil(fmt.Sprintf("merkle tree proof storage for circuit %s", c.ID)),
+		Name:     common.StringOrNil(fmt.Sprintf("nullifiers merkle tree storage for circuit %s", c.ID)),
 		Provider: common.StringOrNil(storeprovider.StoreProviderSparseMerkleTree),
 		Curve:    common.StringOrNil(*c.Curve),
 	}
@@ -1030,15 +1037,15 @@ func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) 
 
 // TODO-- add object, witness
 func (c *Circuit) updateState(proof string, witness map[string]interface{}) error {
-	var root []byte
+	var note []byte
+
+	// FIXME -- adopt proper Note structure
+	note, _ = json.Marshal(map[string]interface{}{
+		"proof":   proof,
+		"witness": witness,
+	})
 
 	if c.noteStore != nil {
-		// FIXME -- adopt proper Note structure
-		note, _ := json.Marshal(map[string]interface{}{
-			"proof":   proof,
-			"witness": witness,
-		})
-
 		encryptresp, err := vault.Encrypt(
 			util.DefaultVaultAccessJWT,
 			c.VaultID.String(),
@@ -1050,36 +1057,30 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
-		root, err = c.noteStore.Insert(encryptresp.Data)
+		_, err = c.noteStore.Insert(encryptresp.Data)
 		if err != nil {
 			common.Log.Warningf("failed to update state; note not inserted for circuit %s; %s", c.ID, err.Error())
 			return err
 		} else {
-			common.Log.Debugf("inserted %d-byte note for circuit %s; root: %s", len(note), c.ID, hex.EncodeToString(root))
+			common.Log.Debugf("inserted %d-byte note for circuit %s", len(note), c.ID)
 		}
 	}
 
 	if c.nullifierStore != nil {
-		if c.State == nil {
-			// TODO-- audit this for when the first note has not yet been spent
-			common.Log.Debugf("no notes spent for circuit %s; initializing sparse nullifier tree with %d-byte state root", c.ID, len(root))
-			_, err := c.nullifierStore.Insert("")
-			if err != nil {
-				common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
-				return err
-			}
-			common.Log.Debugf("initialized sparse nullifier tree with %d-byte state root for circuit %s", len(root), c.ID)
-			c.State = &state.State{}
+		if c.nullifierStore.Contains(string(note)) {
+			err := fmt.Errorf("attempt to double-spend %d-byte note for circuit %s", len(note), c.ID)
+			common.Log.Warning(err.Error())
+			return err
 		}
 
-		root, err := c.nullifierStore.Insert(proof)
+		root, err := c.nullifierStore.Insert(string(note))
 		if err != nil {
 			common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
 			return err
 		} else {
-			common.Log.Debugf("inserted nullifier proof for circuit %s: %s; root: %s", c.ID, hex.EncodeToString([]byte(proof)), hex.EncodeToString(root))
-			if !c.nullifierStore.Contains(proof) {
-				err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for proof: %s", c.ID, hex.EncodeToString([]byte(proof)))
+			common.Log.Debugf("inserted %d-byte nullifier proof for circuit %s: root: %s", len(note), c.ID, hex.EncodeToString(root))
+			if !c.nullifierStore.Contains(string(note)) {
+				err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for %d-byte note", c.ID, len(note))
 				common.Log.Warning(err.Error())
 				return err
 			}

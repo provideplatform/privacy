@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math/big"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -366,20 +367,28 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	// index, err := strconv.ParseUint(c.Param("index"), 10, 64)
-	// if err != nil {
-	// 	provide.RenderError(err.Error(), 400, c)
-	// 	return
-	// }
+	index, err := strconv.ParseUint(c.Param("index"), 10, 64)
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
 
-	// value, err := circuit.NoteValueAt(index)
-	// if err != nil {
-	// 	provide.RenderError(err.Error(), 500, c)
-	// 	return
-	// }
+	root, err := circuit.NoteStoreRoot()
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
+	value, err := circuit.NoteValueAt(index)
+	if err != nil {
+		common.Log.Warningf("failed to retrieve note value at index: %d; %s", index, err.Error())
+		provide.RenderError(err.Error(), 404, c)
+		return
+	}
 
 	provide.Render(map[string]interface{}{
-		// "value": value,
+		"root":  root,
+		"value": value,
 	}, 200, c)
 }
 
@@ -420,37 +429,21 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	// index, err := strconv.ParseUint(c.Param("index"), 10, 64)
-	// if err != nil {
-	// 	provide.RenderError(err.Error(), 400, c)
-	// 	return
-	// }
-
-	height, err := circuit.NullifierStoreHeight()
+	root, err := circuit.NullifierStoreRoot()
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
 		return
 	}
 
-	var value *string
-	var root *string
-
-	// if *length > 0 {
-	// value, err = circuit.NullifierValueAt(index)
-	// if err != nil {
-	// 	provide.RenderError(err.Error(), 500, c)
-	// 	return
-	// }
-
-	root, err = circuit.NullifierStoreRoot()
+	value, err := circuit.NullifierValueAt([]byte(c.Param("index")))
 	if err != nil {
-		provide.RenderError(err.Error(), 500, c)
+		provide.RenderError(err.Error(), 404, c)
 		return
 	}
 
 	provide.Render(map[string]interface{}{
-		"height": height,
-		"root":   root,
-		"value":  value,
+		// "height": height,
+		"root":  root,
+		"value": string(value),
 	}, 200, c)
 }

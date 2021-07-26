@@ -368,9 +368,12 @@ func TestProcurement(t *testing.T) {
 	index, h := tr.RawAdd(proofString)
 	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
 
-	storeID := circuit.StoreID
+	noteStoreID := circuit.NoteStoreID
+	nullifierStoreID := circuit.NoteStoreID
+
 	params = circuitParamsFactory("gnark", "sales_order", testProvingSchemeGroth16)
-	params["store_id"] = storeID
+	params["note_store_id"] = noteStoreID
+	params["nullifier_store_id"] = nullifierStoreID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -427,7 +430,8 @@ func TestProcurement(t *testing.T) {
 	t.Logf("added sales order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	params = circuitParamsFactory("gnark", "shipment_notification", testProvingSchemeGroth16)
-	params["store_id"] = storeID
+	params["note_store_id"] = noteStoreID
+	params["nullifier_store_id"] = nullifierStoreID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -484,7 +488,8 @@ func TestProcurement(t *testing.T) {
 	t.Logf("added shipment notification proof to merkle tree, index/hash: %v / %v", index, h)
 
 	params = circuitParamsFactory("gnark", "goods_receipt", testProvingSchemeGroth16)
-	params["store_id"] = storeID
+	params["note_store_id"] = noteStoreID
+	params["nullifier_store_id"] = nullifierStoreID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -560,7 +565,8 @@ func TestProcurement(t *testing.T) {
 	}
 
 	params = circuitParamsFactory("gnark", "invoice", testProvingSchemeGroth16)
-	params["store_id"] = storeID
+	params["note_store_id"] = noteStoreID
+	params["nullifier_store_id"] = nullifierStoreID
 
 	circuit, err = privacy.CreateCircuit(*token, params)
 	if err != nil {
@@ -642,7 +648,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("calculated root: %s", root)
 
 	hashIndex := uint64(0)
-	store, err := privacy.GetNullifierValue(*token, circuit.ID.String(), hashIndex)
+	store, err := privacy.GetNoteValue(*token, circuit.ID.String(), hashIndex)
 	if err != nil {
 		t.Errorf("failed to get store value; %s", err.Error())
 		return
@@ -730,7 +736,7 @@ func TestProofVerifyMerkle(t *testing.T) {
 	t.Logf("calculated root: %s", root)
 
 	hashIndex := uint64(0)
-	store, err := privacy.GetNullifierValue(*token, circuit.ID.String(), hashIndex)
+	store, err := privacy.GetNoteValue(*token, circuit.ID.String(), hashIndex)
 	if err != nil {
 		t.Errorf("failed to get store value; %s", err.Error())
 		return
@@ -831,7 +837,7 @@ func TestDuplicateProofVerifyMerkle(t *testing.T) {
 	t.Logf("calculated root: %s", root)
 
 	hashIndex := uint64(0)
-	store, err := privacy.GetNullifierValue(*token, circuit.ID.String(), hashIndex)
+	store, err := privacy.GetNoteValue(*token, circuit.ID.String(), hashIndex)
 	if err != nil {
 		t.Errorf("failed to get store value; %s", err.Error())
 		return
@@ -854,7 +860,7 @@ func TestDuplicateProofVerifyMerkle(t *testing.T) {
 		return
 	}
 
-	store, err = privacy.GetNullifierValue(*token, circuit.ID.String(), hashIndex)
+	store, err = privacy.GetNoteValue(*token, circuit.ID.String(), hashIndex)
 	if err != nil {
 		t.Errorf("failed to get store value; %s", err.Error())
 		return
@@ -1006,8 +1012,9 @@ func TestTwoPartyProofVerification(t *testing.T) {
 
 		identifier, witness := getProcurementWitness(stage, hFunc, proofString, "")
 		aliceParams := circuitParamsFactory("gnark", identifier, testProvingSchemeGroth16)
-		if aliceCircuit != nil && aliceCircuit.StoreID != nil {
-			aliceParams["store_id"] = aliceCircuit.StoreID
+		if aliceCircuit != nil && aliceCircuit.NoteStoreID != nil && aliceCircuit.NullifierStoreID != nil {
+			aliceParams["note_store_id"] = aliceCircuit.NoteStoreID
+			aliceParams["nullifier_store_id"] = aliceCircuit.NullifierStoreID
 		}
 		aliceCircuit, err = privacy.CreateCircuit(*aliceToken, aliceParams)
 		if err != nil {
@@ -1045,7 +1052,7 @@ func TestTwoPartyProofVerification(t *testing.T) {
 
 		t.Logf("alice's proof: %s", *proof.Proof)
 
-		aliceStore, err = privacy.GetNullifierValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
+		aliceStore, err = privacy.GetNoteValue(*aliceToken, aliceCircuit.ID.String(), hashIndex)
 		if err != nil {
 			t.Errorf("failed to get store value; %s", err.Error())
 			return
@@ -1055,8 +1062,9 @@ func TestTwoPartyProofVerification(t *testing.T) {
 		setBobEnv()
 
 		bobParams := circuitParamsFactory(*aliceCircuit.Provider, *aliceCircuit.Identifier, testProvingSchemeGroth16)
-		if bobCircuit != nil && bobCircuit.StoreID != nil {
-			bobParams["store_id"] = bobCircuit.StoreID
+		if bobCircuit != nil && bobCircuit.NoteStoreID != nil && bobCircuit.NullifierStoreID != nil {
+			bobParams["note_store_id"] = bobCircuit.NoteStoreID
+			bobParams["nullifier_store_id"] = bobCircuit.NullifierStoreID
 		}
 		bobParams["artifacts"] = aliceCircuit.Artifacts
 		bobParams["verifier_contract"] = aliceCircuit.VerifierContract
@@ -1088,7 +1096,7 @@ func TestTwoPartyProofVerification(t *testing.T) {
 
 		t.Logf("bob's verification: %v", verification.Result)
 
-		bobStore, err := privacy.GetNullifierValue(*bobToken, bobCircuit.ID.String(), hashIndex)
+		bobStore, err := privacy.GetNoteValue(*bobToken, bobCircuit.ID.String(), hashIndex)
 		if err != nil {
 			t.Errorf("failed to get store value; %s", err.Error())
 			return
@@ -1134,8 +1142,9 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 
 			identifier, witness := getProcurementWitness(stage, hFunc, string(proofString), creditRating)
 			provideParams := circuitParamsFactory("gnark", identifier, testProvingSchemeGroth16)
-			if provideCircuit != nil && provideCircuit.StoreID != nil {
-				provideParams["store_id"] = provideCircuit.StoreID
+			if provideCircuit != nil && provideCircuit.NoteStoreID != nil && provideCircuit.NullifierStoreID != nil {
+				provideParams["note_store_id"] = provideCircuit.NoteStoreID
+				provideParams["nullifier_store_id"] = provideCircuit.NullifierStoreID
 			}
 			provideCircuit, err = privacy.CreateCircuit(*provideToken, provideParams)
 			if err != nil {
@@ -1173,7 +1182,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 
 			t.Logf("provide's proof: %s", *proof.Proof)
 
-			provideStore, err = privacy.GetNullifierValue(*provideToken, provideCircuit.ID.String(), hashIndex)
+			provideStore, err = privacy.GetNoteValue(*provideToken, provideCircuit.ID.String(), hashIndex)
 			if err != nil {
 				t.Errorf("failed to get store value; %s", err.Error())
 				return
@@ -1183,8 +1192,9 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 			setBobEnv()
 
 			financierParams := circuitParamsFactory(*provideCircuit.Provider, *provideCircuit.Identifier, testProvingSchemeGroth16)
-			if financierCircuit != nil && financierCircuit.StoreID != nil {
-				financierParams["store_id"] = financierCircuit.StoreID
+			if financierCircuit != nil && financierCircuit.NoteStoreID != nil && financierCircuit.NullifierStoreID != nil {
+				financierParams["note_store_id"] = financierCircuit.NoteStoreID
+				financierParams["nullifier_store_id"] = financierCircuit.NullifierStoreID
 			}
 			financierParams["artifacts"] = provideCircuit.Artifacts
 			financierParams["verifier_contract"] = provideCircuit.VerifierContract
@@ -1216,7 +1226,7 @@ func TestTwoPartyProcurementIterated(t *testing.T) {
 
 			t.Logf("financier's verification: %v", verification.Result)
 
-			financierStore, err = privacy.GetNullifierValue(*financierToken, financierCircuit.ID.String(), hashIndex)
+			financierStore, err = privacy.GetNoteValue(*financierToken, financierCircuit.ID.String(), hashIndex)
 			if err != nil {
 				t.Errorf("failed to get store value; %s", err.Error())
 				return

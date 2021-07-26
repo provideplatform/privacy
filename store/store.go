@@ -31,7 +31,7 @@ func (s *Store) storeProviderFactory() proofstorage.StoreProvider {
 	case proofstorage.StoreProviderMerkleTree:
 		return proofstorage.InitMerkleTreeStoreProvider(s.ID, s.Curve)
 	case proofstorage.StoreProviderSparseMerkleTree:
-		return proofstorage.InitSparseMerkleTreeStoreProvider(&s.ID)
+		return proofstorage.InitSparseMerkleTreeStoreProvider(s.ID, s.Curve)
 	default:
 		common.Log.Warningf("failed to initialize store provider; unknown provider: %s", *s.Provider)
 	}
@@ -91,14 +91,17 @@ func (s *Store) Contains(val string) bool {
 	return false
 }
 
-// Insert a proof into the state of the configured storage provider
+// Insert a value into the state of the configured storage provider
 func (s *Store) Insert(val string) (root []byte, err error) {
 	provider := s.storeProviderFactory()
 	if provider != nil {
-		root, _ := provider.Insert(val)
+		root, err := provider.Insert(val)
+		if err != nil {
+			return nil, fmt.Errorf("failed to insert value in store %s; %s", s.ID, err.Error())
+		}
 		return root, nil
 	}
-	return nil, fmt.Errorf("failed to insert proof in store %s", s.ID)
+	return nil, fmt.Errorf("failed to insert value in store %s", s.ID)
 }
 
 // Height returns the height of the underlying store
@@ -134,7 +137,7 @@ func (s *Store) StateAt(epoch uint64) (*state.State, error) {
 	}
 
 	claims = append(claims, &state.StateClaim{
-		Cardinality: uint64(0),
+		Cardinality: uint64(1),
 		Path:        []string{},
 		Root:        root,
 		Values:      []string{},

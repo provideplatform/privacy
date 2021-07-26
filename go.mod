@@ -3,8 +3,6 @@ module github.com/provideplatform/privacy
 go 1.16
 
 require (
-	github.com/aergoio/aergo v1.11.1
-	github.com/aergoio/aergo-lib v1.0.2
 	github.com/consensys/gnark v0.4.1-0.20210719184735-6798147db95f
 	github.com/consensys/gnark-crypto v0.4.1-0.20210719182852-60136fac2da3
 	github.com/gin-gonic/gin v1.6.3
@@ -19,8 +17,9 @@ require (
 	github.com/nats-io/stan.go v0.9.0
 	github.com/onsi/ginkgo v1.16.3 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
+	github.com/providenetwork/smt v0.2.1-0.20210726073919-123ac1f043b8
 	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
-	github.com/provideplatform/provide-go v0.0.0-20210628091214-f166e0225afb
+	github.com/provideplatform/provide-go v0.0.0-20210726092427-952b0a36af58
 	github.com/stretchr/testify v1.7.0
 )
 

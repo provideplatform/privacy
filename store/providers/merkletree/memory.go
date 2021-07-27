@@ -174,6 +174,7 @@ func (tree *MemoryMerkleTree) RawAdd(val []byte) (index int, hash string) {
 		h := tree.HashFunc(val)
 		_val := hex.EncodeToString(h)
 		index, _ = tree.RawInsert(_val)
+		hash = _val
 	} else {
 		index, _ = tree.RawInsert(string(val))
 	}

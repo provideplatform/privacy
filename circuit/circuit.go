@@ -275,7 +275,19 @@ func (c *Circuit) NoteValueAt(index uint64) ([]byte, error) {
 		return nil, err
 	}
 
-	return val, nil
+	decryptresp, err := vault.Decrypt(
+		util.DefaultVaultAccessJWT,
+		c.VaultID.String(),
+		c.EncryptionKeyID.String(),
+		map[string]interface{}{
+			"data": hex.EncodeToString(val),
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s; failed to decrypt note; %s", index, c.ID, err.Error())
+	}
+
+	return []byte(decryptresp.Data), nil
 }
 
 // NullifierStoreRoot returns the underlying nullifier store root
@@ -1057,7 +1069,13 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
-		_, err = c.noteStore.Insert(encryptresp.Data)
+		data, err := hex.DecodeString(encryptresp.Data)
+		if err != nil {
+			common.Log.Warningf("failed to update state; failed to encrypt note for circuit %s; %s", c.ID, err.Error())
+			return err
+		}
+
+		_, err = c.noteStore.Insert(string(data))
 		if err != nil {
 			common.Log.Warningf("failed to update state; note not inserted for circuit %s; %s", c.ID, err.Error())
 			return err

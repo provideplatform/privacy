@@ -31,7 +31,7 @@ func (node Node) BigInt() *big.Int {
 
 // Hash returns the string representation of the hash of the node
 func (node *Node) Hash() string {
-	return hex.EncodeToString(node.val)
+	return string(node.val)
 }
 
 // Index returns the index of this node in its level
@@ -170,13 +170,16 @@ func (tree *MemoryMerkleTree) Add(val []byte) (index int, hash string) {
 // RawAdd adds data to the tree without recalculating the tree
 // Returns the index of the leaf and the node
 func (tree *MemoryMerkleTree) RawAdd(val []byte) (index int, hash string) {
+	var leaf MerkleTreeNode
+
 	if tree.HashFunc != nil {
 		h := tree.HashFunc(val)
 		_val := hex.EncodeToString(h)
-		index, _ = tree.RawInsert(_val)
-		hash = _val
+		index, leaf = tree.RawInsert(_val)
+		hash = leaf.Hash()
 	} else {
-		index, _ = tree.RawInsert(string(val))
+		index, leaf = tree.RawInsert(string(val))
+		hash = leaf.Hash()
 	}
 
 	return index, hash
@@ -189,10 +192,10 @@ func (tree *MemoryMerkleTree) RawInsert(val string) (index int, insertedLeaf Mer
 	defer tree.Mutex.RUnlock()
 	index = len(tree.Nodes[0])
 
-	_val, _ := hex.DecodeString(val)
+	//_val, _ := hex.DecodeString(val)
 
 	leaf := &Node{
-		_val,
+		[]byte(val),
 		index,
 		nil,
 	}

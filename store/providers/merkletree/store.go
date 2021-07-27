@@ -106,7 +106,7 @@ func (tree *DurableMerkleTree) Get(key []byte) (val []byte, err error) {
 }
 
 func (tree *DurableMerkleTree) Height() int {
-	return -1 // FIXME
+	return tree.Length()
 }
 
 // Length returns the count of hashes in the store

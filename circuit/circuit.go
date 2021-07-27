@@ -1057,6 +1057,8 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 		"witness": witness,
 	})
 
+	var data []byte
+
 	if c.noteStore != nil {
 		encryptresp, err := vault.Encrypt(
 			util.DefaultVaultAccessJWT,
@@ -1069,7 +1071,7 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
-		data, err := hex.DecodeString(encryptresp.Data)
+		data, err = hex.DecodeString(encryptresp.Data)
 		if err != nil {
 			common.Log.Warningf("failed to update state; failed to encrypt note for circuit %s; %s", c.ID, err.Error())
 			return err
@@ -1084,27 +1086,41 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 		}
 	}
 
-	if c.nullifierStore != nil {
-		if c.nullifierStore.Contains(string(note)) {
+	nullifiedIndex := c.noteStore.Height() - 1 // HACK!! this is really just the dense length... i.e., length - 1...
+
+	if nullifiedIndex >= 0 && c.nullifierStore != nil {
+		nullifiedNote, err := c.noteStore.ValueAt(new(big.Int).SetUint64(uint64(nullifiedIndex)).Bytes())
+		if err != nil {
+			common.Log.Warningf("failed to update state; nullifier not inserted for circuit %s; %s", c.ID, err.Error())
+			return err
+		}
+
+		if c.nullifierStore.Contains(string(nullifiedNote)) {
 			err := fmt.Errorf("attempt to double-spend %d-byte note for circuit %s", len(note), c.ID)
 			common.Log.Warning(err.Error())
 			return err
 		}
 
-		root, err := c.nullifierStore.Insert(string(note))
+		root, err := c.nullifierStore.Insert(string(nullifiedNote))
 		if err != nil {
-			common.Log.Warningf("failed to insert nullifier proof for circuit %s; %s", c.ID, err.Error())
+			common.Log.Warningf("failed to insert nullifier for circuit %s; %s", c.ID, err.Error())
 			return err
 		} else {
-			common.Log.Debugf("inserted %d-byte nullifier proof for circuit %s: root: %s", len(note), c.ID, hex.EncodeToString(root))
-			if !c.nullifierStore.Contains(string(note)) {
-				err := fmt.Errorf("inserted nullifier proof for circuit %s resulted in internal inconsistency for %d-byte note", c.ID, len(note))
+			common.Log.Debugf("inserted %d-byte nullifier for circuit %s: root: %s", len(data), c.ID, hex.EncodeToString(root))
+			if !c.nullifierStore.Contains(string(nullifiedNote)) {
+				err := fmt.Errorf("inserted nullifier for circuit %s resulted in internal inconsistency for %d-byte note", c.ID, len(note))
 				common.Log.Warning(err.Error())
 				return err
 			}
 		}
 	}
 
+	return nil
+}
+
+// exit the given circuit by nullifying its final valid state
+func (c *Circuit) exit() error {
+	// TODO: check to ensure an exit is possible...
 	return nil
 }
 

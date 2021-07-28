@@ -8,7 +8,6 @@ import (
 	"math/big"
 
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/privacy/common"
 	provide "github.com/provideplatform/provide-go/api/ident"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -69,16 +68,18 @@ func getKzgSchemeForTest(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error
 	nbConstraints := r1cs.GetNbConstraints()
 	internal, secret, public := r1cs.GetNbVariables()
 	nbVariables := internal + secret + public
-	var s, size int
+
+	var s int
+	var size uint64
 	if nbConstraints > nbVariables {
 		s = nbConstraints
 	} else {
 		s = nbVariables
 	}
-	size = common.NextPowerOfTwo(s)
-	// seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// alpha := new(big.Int).SetUint64(seededRand.Uint64())
+
+	size = ecc.NextPowerOfTwo(uint64(s))
 	alpha := new(big.Int).SetUint64(42)
+
 	switch r1cs.CurveID() {
 	case ecc.BN254:
 		return kzgbn254.NewSRS(size+3, alpha)

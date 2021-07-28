@@ -640,13 +640,14 @@ func (c *Circuit) getKZGScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS,
 	nbVariables := internal + secret + public
 
 	var s int
+	var size uint64
 	if nbConstraints > nbVariables {
 		s = nbConstraints
 	} else {
 		s = nbVariables
 	}
 
-	size := common.NextPowerOfTwo(s)
+	size = ecc.NextPowerOfTwo(uint64(s))
 
 	switch r1cs.CurveID() {
 	case ecc.BN254:

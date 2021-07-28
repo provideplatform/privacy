@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
-	"github.com/provideplatform/privacy/common"
 	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
@@ -174,17 +173,20 @@ func TestCubicEquationPlonkSRSEntropy(t *testing.T) {
 		witness.X.Assign(3)
 		witness.Y.Assign(35)
 
-		alpha := new(big.Int).SetUint64(42)
 		nbConstraints := r1cs.GetNbConstraints()
 		internal, secret, public := r1cs.GetNbVariables()
 		nbVariables := internal + secret + public
-		var s, size int
+
+		var s int
+		var size uint64
 		if nbConstraints > nbVariables {
 			s = nbConstraints
 		} else {
 			s = nbVariables
 		}
-		size = common.NextPowerOfTwo(s)
+
+		size = ecc.NextPowerOfTwo(uint64(s))
+		alpha := new(big.Int).SetUint64(42)
 
 		srs1, err := kzg.NewSRS(size, alpha)
 		assert.NoError(err, "Getting KZG scheme should not have failed")

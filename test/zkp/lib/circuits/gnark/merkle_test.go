@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"io"
-	"math"
 	"testing"
 
 	gnark_merkle "github.com/consensys/gnark-crypto/accumulator/merkletree"
@@ -17,6 +16,7 @@ import (
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/accumulator/merkle"
+	"github.com/provideplatform/privacy/common"
 	"github.com/provideplatform/privacy/store/providers/merkletree"
 	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
@@ -66,12 +66,12 @@ func TestBaselineRollupMerkleCircuit(t *testing.T) {
 		return
 	}
 
-	var baselineCircuit, publicWitness gnark.BaselineRollupCircuit
+	var circuit, witness, publicWitness gnark.BaselineRollupCircuit
 
 	// to compile the circuit, the witnesses must be allocated in the correct sizes
-	baselineCircuit.Proofs = make([]frontend.Variable, len(proofSet))
-	baselineCircuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	r1cs, err := frontend.Compile(curveID, backend.GROTH16, &baselineCircuit)
+	circuit.Proofs = make([]frontend.Variable, len(proofSet))
+	circuit.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	r1cs, err := frontend.Compile(curveID, backend.GROTH16, &circuit)
 	if err != nil {
 		t.Errorf("failed to compile circuit; %s", err.Error())
 		return
@@ -79,14 +79,14 @@ func TestBaselineRollupMerkleCircuit(t *testing.T) {
 
 	merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
 
-	publicWitness.Proofs = make([]frontend.Variable, len(proofSet))
-	publicWitness.Helpers = make([]frontend.Variable, len(proofSet)-1)
-	publicWitness.RootHash.Assign(merkleRoot)
+	witness.Proofs = make([]frontend.Variable, len(proofSet))
+	witness.Helpers = make([]frontend.Variable, len(proofSet)-1)
+	witness.RootHash.Assign(merkleRoot)
 	for i := 0; i < len(proofSet); i++ {
-		publicWitness.Proofs[i].Assign(proofSet[i])
+		witness.Proofs[i].Assign(proofSet[i])
 
 		if i < len(proofSet)-1 {
-			publicWitness.Helpers[i].Assign(merkleProofHelper[i])
+			witness.Helpers[i].Assign(merkleProofHelper[i])
 		}
 	}
 
@@ -107,11 +107,13 @@ func TestBaselineRollupMerkleCircuit(t *testing.T) {
 
 	t.Logf("proving key size in bytes: %d", provingKeyBuf.Len())
 
-	proof, err := groth16.Prove(r1cs, pk, &publicWitness)
+	proof, err := groth16.Prove(r1cs, pk, &witness)
 	if err != nil {
 		t.Errorf("failed to generate proof; %s", err.Error())
 		return
 	}
+
+	publicWitness.RootHash.Assign(merkleRoot)
 
 	err = groth16.Verify(proof, vk, &publicWitness)
 	if err != nil {
@@ -136,7 +138,7 @@ func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
 
 	// Pad out tree with default hashes if proof count is not a power of two
 	// This appears to be due to lack of auto-balancing in our merkle tree
-	paddedSize := int(math.Exp2(math.Ceil(math.Log2(float64(len(proofs))))))
+	paddedSize := common.NextPowerOfTwo(len(proofs))
 	for i := 0; i < len(proofs); i++ {
 		hFunc.Reset()
 		// mimc Write never returns an error

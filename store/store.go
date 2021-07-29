@@ -28,8 +28,8 @@ func (s *Store) storeProviderFactory() proofstorage.StoreProvider {
 	}
 
 	switch *s.Provider {
-	case proofstorage.StoreProviderMerkleTree:
-		return proofstorage.InitMerkleTreeStoreProvider(s.ID, s.Curve)
+	case proofstorage.StoreProviderDenseMerkleTree:
+		return proofstorage.InitDenseMerkleTreeStoreProvider(s.ID, s.Curve)
 	case proofstorage.StoreProviderSparseMerkleTree:
 		return proofstorage.InitSparseMerkleTreeStoreProvider(s.ID, s.Curve)
 	default:

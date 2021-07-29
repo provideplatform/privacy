@@ -779,7 +779,7 @@ func (c *Circuit) initNoteStorage() error {
 
 	store := &storage.Store{
 		Name:     common.StringOrNil(fmt.Sprintf("notes merkle tree storage for circuit %s", c.ID)),
-		Provider: common.StringOrNil(storeprovider.StoreProviderMerkleTree),
+		Provider: common.StringOrNil(storeprovider.StoreProviderDenseMerkleTree),
 		Curve:    common.StringOrNil(*c.Curve),
 	}
 

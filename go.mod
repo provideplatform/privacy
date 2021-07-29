@@ -3,9 +3,10 @@ module github.com/provideplatform/privacy
 go 1.16
 
 require (
+	github.com/cbergoon/merkletree v0.2.0
 	github.com/consensys/gnark v0.4.1-0.20210727143914-9bc74946a2e4
 	github.com/consensys/gnark-crypto v0.4.1-0.20210727142540-bc4b1c7132dc
-	github.com/gin-gonic/gin v1.6.3
+	github.com/gin-gonic/gin v1.7.0
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jinzhu/gorm v1.9.16
 	github.com/joho/godotenv v1.3.0

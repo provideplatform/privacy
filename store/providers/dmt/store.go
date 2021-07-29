@@ -26,64 +26,60 @@ type DMT struct {
 }
 
 func InitDMT(db *gorm.DB, id uuid.UUID, h hash.Hash) *DMT {
-	tree, err := loadTree(db, id, h)
+	tree, values, err := loadTree(db, id, h)
 	if err != nil {
 		return nil
 	}
 
 	if tree == nil {
+		values = make([]merkletree.Content, 0)
 		tree, err = merkletree.NewTreeWithHashStrategy(
-			make([]merkletree.Content, 0),
+			values,
 			func() hash.Hash {
 				return h
 			},
 		)
+		if err != nil {
+			return nil
+		}
 	}
 
 	instance := &DMT{
-		db:    db,
-		hash:  h,
-		id:    &id,
-		mutex: &sync.Mutex{},
-		tree:  tree,
+		db:     db,
+		hash:   h,
+		id:     &id,
+		mutex:  &sync.Mutex{},
+		tree:   tree,
+		values: values,
 	}
 
 	return instance
 }
 
-func loadTree(db *gorm.DB, id uuid.UUID, h hash.Hash) (*merkletree.MerkleTree, error) {
+func loadTree(db *gorm.DB, id uuid.UUID, h hash.Hash) (*merkletree.MerkleTree, []merkletree.Content, error) {
 	var tree *merkletree.MerkleTree
+	values := make([]merkletree.Content, 0)
 
-	rows, err := db.Raw("SELECT value from hashes WHERE store_id = ? ORDER BY id", id).Rows()
+	rows, err := db.Raw("SELECT values from trees WHERE store_id = ? ORDER BY id", id).Rows()
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve merkle tree from store: %s; %s", id, err.Error())
+		return nil, nil, fmt.Errorf("failed to resolve dense merkle tree from store: %s; %s", id, err.Error())
 	}
 
-	var values []merkletree.Content
-
 	for rows.Next() {
-		var nodesRaw json.RawMessage
 		var valuesRaw json.RawMessage
-		var root string
-
-		err = rows.Scan(&nodesRaw, &valuesRaw, &root)
+		err = rows.Scan(&valuesRaw)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan the store for dense merkle tree; %s", err.Error())
+			return nil, nil, fmt.Errorf("failed to scan the store for dense merkle tree; %s", err.Error())
 		}
 
-		// var nodes *smt.SimpleMap
-		// var values *smt.SimpleMap
+		var val *treeContent
+		err = json.Unmarshal(valuesRaw, &val)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal dense merkle tree for store %s; %s", id, err.Error())
+		}
+		val.hash = h
 
-		// json.Unmarshal(nodesRaw, &nodes)
-		// json.Unmarshal(valuesRaw, &values)
-		// rootBytes, _ := hex.DecodeString(root)
-
-		// tree = smt.ImportSparseMerkleTree(
-		// 	nodes,
-		// 	values,
-		// 	hash,
-		// 	rootBytes,
-		// )
+		values = append(values, val)
 	}
 
 	tree, err = merkletree.NewTreeWithHashStrategy(
@@ -93,25 +89,32 @@ func loadTree(db *gorm.DB, id uuid.UUID, h hash.Hash) (*merkletree.MerkleTree, e
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan the store for dense merkle tree; %s", err.Error())
+		return nil, nil, fmt.Errorf("failed to scan the store for dense merkle tree; %s", err.Error())
 	}
 
 	valid, err := tree.VerifyTree()
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify dense merkle tree; %s", err.Error())
+		return nil, nil, fmt.Errorf("failed to verify dense merkle tree; %s", err.Error())
 	}
 
 	if !valid {
-		return nil, fmt.Errorf("failed to verify dense merkle tree for store %s", id)
+		return nil, nil, fmt.Errorf("failed to verify dense merkle tree for store %s", id)
 	}
 
 	common.Log.Debugf("imported dense merkle tree for store %s; root: %s", id, tree.MerkleRoot())
 
-	if tree != nil {
-		return tree, nil
+	if tree != nil && values != nil {
+		return tree, values, nil
 	}
 
-	return nil, nil
+	return nil, nil, nil
+}
+
+func (s *DMT) contentFactory(val []byte) *treeContent {
+	return &treeContent{
+		hash:  s.hash,
+		value: val,
+	}
 }
 
 // commit the current state of the dense merkle tree to the database
@@ -135,7 +138,7 @@ func (s *DMT) commit() error {
 }
 
 func (s *DMT) Contains(val string) bool {
-	var v merkletree.Content
+	v := s.contentFactory([]byte(val))
 	incl, err := s.tree.VerifyContent(v)
 	if err != nil {
 		return false
@@ -152,7 +155,7 @@ func (s *DMT) Height() int {
 }
 
 func (s *DMT) Insert(val string) (root []byte, err error) {
-	var v merkletree.Content
+	v := s.contentFactory([]byte(val))
 	s.values = append(s.values, v)
 	err = s.tree.RebuildTreeWith(s.values)
 	if err != nil {

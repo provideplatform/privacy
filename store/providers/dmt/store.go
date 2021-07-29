@@ -25,10 +25,10 @@ type DMT struct {
 	values []merkletree.Content
 }
 
-func InitDMT(db *gorm.DB, id uuid.UUID, h hash.Hash) *DMT {
+func InitDMT(db *gorm.DB, id uuid.UUID, h hash.Hash) (*DMT, error) {
 	tree, values, err := loadTree(db, id, h)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("error loading tree: %v", err)
 	}
 
 	if tree == nil {
@@ -40,7 +40,7 @@ func InitDMT(db *gorm.DB, id uuid.UUID, h hash.Hash) *DMT {
 			},
 		)
 		if err != nil {
-			return nil
+			return nil, fmt.Errorf("error creating tree: %v", err)
 		}
 	}
 
@@ -53,7 +53,7 @@ func InitDMT(db *gorm.DB, id uuid.UUID, h hash.Hash) *DMT {
 		values: values,
 	}
 
-	return instance
+	return instance, nil
 }
 
 func loadTree(db *gorm.DB, id uuid.UUID, h hash.Hash) (*merkletree.MerkleTree, []merkletree.Content, error) {
@@ -155,6 +155,7 @@ func (s *DMT) Height() int {
 }
 
 func (s *DMT) Insert(val string) (root []byte, err error) {
+	common.Log.Debugf("dmt obj: %v", *s)
 	v := s.contentFactory([]byte(val))
 	s.values = append(s.values, v)
 	err = s.tree.RebuildTreeWith(s.values)

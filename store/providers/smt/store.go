@@ -24,10 +24,10 @@ type SMT struct {
 	tree  *smt.SparseMerkleTree
 }
 
-func InitSMT(db *gorm.DB, id uuid.UUID, hash hash.Hash) *SMT {
+func InitSMT(db *gorm.DB, id uuid.UUID, hash hash.Hash) (*SMT, error) {
 	tree, err := loadTree(db, id, hash)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	if tree == nil {
@@ -42,7 +42,7 @@ func InitSMT(db *gorm.DB, id uuid.UUID, hash hash.Hash) *SMT {
 		tree:  tree,
 	}
 
-	return instance
+	return instance, nil
 }
 
 func loadTree(db *gorm.DB, id uuid.UUID, hash hash.Hash) (*smt.SparseMerkleTree, error) {

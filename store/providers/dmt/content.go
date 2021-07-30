@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/cbergoon/merkletree"
+	"github.com/providenetwork/merkletree"
 )
 
 // treeContent represents an arbitrary value and the hash function configured

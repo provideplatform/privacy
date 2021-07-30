@@ -48,8 +48,6 @@ github.com/btcsuite/snappy-go v0.0.0-20151229074030-0bdef8d06723/go.mod h1:8woku
 github.com/btcsuite/snappy-go v1.0.0/go.mod h1:8woku9dyThutzjeg+3xrA5iCpBRH8XEEg3lh6TiUghc=
 github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792/go.mod h1:ghJtEyQwv5/p4Mg4C0fgbePVuGr935/5ddU9Z3TmDRY=
 github.com/btcsuite/winsvc v1.0.0/go.mod h1:jsenWakMcC0zFBFurPLEAyrnc/teJEM1O46fmI40EZs=
-github.com/cbergoon/merkletree v0.2.0 h1:Bttqr3OuoiZEo4ed1L7fTasHka9II+BF9fhBfbNEEoQ=
-github.com/cbergoon/merkletree v0.2.0/go.mod h1:5c15eckUgiucMGDOCanvalj/yJnD+KAZj1qyJtRW5aM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/cp v0.1.0/go.mod h1:SOGHArjBr4JWaSDEVpWpo/hNg6RoKrls6Oh40hiwW+s=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
@@ -349,6 +347,8 @@ github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a/go.mod h1:c3At6R
 github.com/prometheus/procfs v0.0.3 h1:CTwfnzjQ+8dS6MhHHu4YswVAD99sL2wjPqP+VkURmKE=
 github.com/prometheus/procfs v0.0.3/go.mod h1:4A/X28fw3Fc593LaREMrKMqOKvUAntwMDaekg4FpcdQ=
 github.com/prometheus/tsdb v0.6.2-0.20190402121629-4f204dcbc150/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
+github.com/providenetwork/merkletree v0.2.1-0.20210730011959-6de0bc93c512 h1:I65U50MAs1Ej/Pjng514bbRY1txSL9J+tiiVw9lXeu8=
+github.com/providenetwork/merkletree v0.2.1-0.20210730011959-6de0bc93c512/go.mod h1:gBciLIRwm3Vu1L6S9XQjNAXbo09Rrk/diSm6K2ERClU=
 github.com/providenetwork/smt v0.2.1-0.20210726073919-123ac1f043b8 h1:RpTWOXuy9aOpiLD3RsCaEun0nz37Xrn3aHA8LcF3PII=
 github.com/providenetwork/smt v0.2.1-0.20210726073919-123ac1f043b8/go.mod h1:GhL+0QgVT4dn1UtG07Yp2gKq5GBL9sduEqfMOrmBTtQ=
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=

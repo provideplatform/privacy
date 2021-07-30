@@ -8,9 +8,9 @@ import (
 	"hash"
 	"sync"
 
-	"github.com/cbergoon/merkletree"
 	"github.com/jinzhu/gorm"
 	uuid "github.com/kthomas/go.uuid"
+	"github.com/providenetwork/merkletree"
 	"github.com/provideplatform/privacy/common"
 	"github.com/provideplatform/privacy/state"
 )

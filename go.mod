@@ -3,7 +3,6 @@ module github.com/provideplatform/privacy
 go 1.16
 
 require (
-	github.com/cbergoon/merkletree v0.2.0
 	github.com/consensys/gnark v0.4.1-0.20210727143914-9bc74946a2e4
 	github.com/consensys/gnark-crypto v0.4.1-0.20210727142540-bc4b1c7132dc
 	github.com/gin-gonic/gin v1.7.0
@@ -18,6 +17,7 @@ require (
 	github.com/nats-io/stan.go v0.9.0
 	github.com/onsi/ginkgo v1.16.3 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
+	github.com/providenetwork/merkletree v0.2.1-0.20210730011959-6de0bc93c512
 	github.com/providenetwork/smt v0.2.1-0.20210726073919-123ac1f043b8
 	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
 	github.com/provideplatform/provide-go v0.0.0-20210726092427-952b0a36af58

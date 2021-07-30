@@ -369,7 +369,7 @@ func TestProcurement(t *testing.T) {
 	t.Logf("added purchase order proof to merkle tree, index/hash: %v / %v", index, h)
 
 	noteStoreID := circuit.NoteStoreID
-	nullifierStoreID := circuit.NoteStoreID
+	nullifierStoreID := circuit.NullifierStoreID
 
 	params = circuitParamsFactory("gnark", "sales_order", testProvingSchemeGroth16)
 	params["note_store_id"] = noteStoreID

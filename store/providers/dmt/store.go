@@ -145,13 +145,13 @@ func (s *DMT) commit() error {
 	return nil
 }
 
-func (s *DMT) Contains(val string) bool {
+func (s *DMT) Contains(val string) (bool, error) {
 	v := s.contentFactory([]byte(val))
 	incl, err := s.tree.VerifyContent(v)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return incl
+	return incl, nil
 }
 
 func (s *DMT) Get(key []byte) (val []byte, err error) {

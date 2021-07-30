@@ -91,11 +91,11 @@ func (s *Store) Create() bool {
 }
 
 // Contains returns true if the given value exists in the store
-func (s *Store) Contains(val string) bool {
+func (s *Store) Contains(val string) (bool, error) {
 	provider, err := s.storeProviderFactory()
 	if err != nil {
 		common.Log.Warningf("failed to check value existence in store %s; %s", s.ID, err.Error())
-		return false
+		return false, err
 	}
 
 	return provider.Contains(val)

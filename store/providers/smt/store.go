@@ -118,14 +118,14 @@ func (s *SMT) digest(val []byte) []byte {
 	return hash
 }
 
-func (s *SMT) Contains(val string) bool {
+func (s *SMT) Contains(val string) (bool, error) {
 	_val := []byte(val)
 	key := s.digest(_val)
 
 	proof, err := s.tree.Prove(key)
 	if err != nil {
 		common.Log.Warningf("failed to generate merkle proof; %s", err.Error())
-		return false
+		return false, err
 	}
 
 	siblingPath := make([]string, len(proof.SideNodes))
@@ -134,7 +134,7 @@ func (s *SMT) Contains(val string) bool {
 	}
 	common.Log.Debugf("sibling path: %v", siblingPath)
 
-	return smt.VerifyProof(proof, s.tree.Root(), key, _val, s.hash)
+	return smt.VerifyProof(proof, s.tree.Root(), key, _val, s.hash), nil
 }
 
 func (s *SMT) Get(key []byte) (val []byte, err error) {

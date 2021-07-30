@@ -21,7 +21,7 @@ const StoreProviderSparseMerkleTree = "smt"
 
 // StoreProvider provides a common interface to interact with proof storage facilities
 type StoreProvider interface {
-	Contains(val string) bool
+	Contains(val string) (bool, error)
 	Get(key []byte) (val []byte, err error)
 	Height() int
 	Insert(val string) (root []byte, err error)

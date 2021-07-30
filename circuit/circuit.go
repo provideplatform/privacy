@@ -1100,7 +1100,13 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
-		if c.nullifierStore.Contains(string(nullifiedNote)) {
+		nullifierExists, err := c.nullifierStore.Contains(string(nullifiedNote))
+		if err != nil {
+			common.Log.Warningf("failed to update state; unable to determine if nullifier exists for circuit %s; %s", c.ID, err.Error())
+			return err
+		}
+
+		if nullifierExists {
 			err := fmt.Errorf("attempt to double-spend %d-byte note for circuit %s", len(note), c.ID)
 			common.Log.Warning(err.Error())
 			return err
@@ -1111,12 +1117,18 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			common.Log.Warningf("failed to insert nullifier for circuit %s; %s", c.ID, err.Error())
 			return err
 		} else {
-			common.Log.Debugf("inserted %d-byte nullifier for circuit %s: root: %s", len(data), c.ID, hex.EncodeToString(root))
-			if !c.nullifierStore.Contains(string(nullifiedNote)) {
+			nullifierExists, err = c.nullifierStore.Contains(string(nullifiedNote))
+			if err != nil {
+				common.Log.Warningf("failed to update state; unable to determine if nullifier exists for circuit %s; %s", c.ID, err.Error())
+				return err
+			}
+
+			if !nullifierExists {
 				err := fmt.Errorf("inserted nullifier for circuit %s resulted in internal inconsistency for %d-byte note", c.ID, len(note))
 				common.Log.Warning(err.Error())
 				return err
 			}
+			common.Log.Debugf("inserted %d-byte nullifier for circuit %s: root: %s", len(data), c.ID, hex.EncodeToString(root))
 		}
 	}
 

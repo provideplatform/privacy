@@ -347,8 +347,8 @@ github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a/go.mod h1:c3At6R
 github.com/prometheus/procfs v0.0.3 h1:CTwfnzjQ+8dS6MhHHu4YswVAD99sL2wjPqP+VkURmKE=
 github.com/prometheus/procfs v0.0.3/go.mod h1:4A/X28fw3Fc593LaREMrKMqOKvUAntwMDaekg4FpcdQ=
 github.com/prometheus/tsdb v0.6.2-0.20190402121629-4f204dcbc150/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
-github.com/providenetwork/merkletree v0.2.1-0.20210730011959-6de0bc93c512 h1:I65U50MAs1Ej/Pjng514bbRY1txSL9J+tiiVw9lXeu8=
-github.com/providenetwork/merkletree v0.2.1-0.20210730011959-6de0bc93c512/go.mod h1:gBciLIRwm3Vu1L6S9XQjNAXbo09Rrk/diSm6K2ERClU=
+github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd h1:nVuWAJPkRjG6LUB0e8s13GZ/YKAakoaGOFI7CyzNXa4=
+github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd/go.mod h1:gBciLIRwm3Vu1L6S9XQjNAXbo09Rrk/diSm6K2ERClU=
 github.com/providenetwork/smt v0.2.1-0.20210726073919-123ac1f043b8 h1:RpTWOXuy9aOpiLD3RsCaEun0nz37Xrn3aHA8LcF3PII=
 github.com/providenetwork/smt v0.2.1-0.20210726073919-123ac1f043b8/go.mod h1:GhL+0QgVT4dn1UtG07Yp2gKq5GBL9sduEqfMOrmBTtQ=
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=

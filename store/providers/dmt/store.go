@@ -82,6 +82,10 @@ func loadTree(db *gorm.DB, id uuid.UUID, h hash.Hash) (*merkletree.MerkleTree, [
 		values = append(values, val)
 	}
 
+	if len(values) == 0 {
+		return nil, values, nil
+	}
+
 	tree, err = merkletree.NewTreeWithHashStrategy(
 		values,
 		func() hash.Hash {

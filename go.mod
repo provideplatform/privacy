@@ -18,7 +18,7 @@ require (
 	github.com/onsi/ginkgo v1.16.3 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd
-	github.com/providenetwork/smt v0.2.1-0.20210726073919-123ac1f043b8
+	github.com/providenetwork/smt v0.2.1-0.20210730053242-2e71de60adeb
 	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
 	github.com/provideplatform/provide-go v0.0.0-20210726092427-952b0a36af58
 	github.com/stretchr/testify v1.7.0

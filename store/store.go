@@ -19,22 +19,32 @@ type Store struct {
 	Description *string `json:"description"`
 	Provider    *string `json:"provider"`
 	Curve       *string `json:"curve"`
+
+	// cache for the underlying store provider
+	provider proofstorage.StoreProvider `sql:"-"`
 }
 
 func (s *Store) storeProviderFactory() (proofstorage.StoreProvider, error) {
+	if s.provider != nil {
+		return s.provider, nil
+	}
+
 	if s.Provider == nil {
 		return nil, fmt.Errorf("failed to initialize provider in store %s; no provider defined", s.ID)
 	}
 
+	var err error
+
 	switch *s.Provider {
 	case proofstorage.StoreProviderDenseMerkleTree:
-		return proofstorage.InitDenseMerkleTreeStoreProvider(s.ID, s.Curve)
+		s.provider, err = proofstorage.InitDenseMerkleTreeStoreProvider(s.ID, s.Curve)
 	case proofstorage.StoreProviderSparseMerkleTree:
-		return proofstorage.InitSparseMerkleTreeStoreProvider(s.ID, s.Curve)
+		s.provider, err = proofstorage.InitSparseMerkleTreeStoreProvider(s.ID, s.Curve)
 	default:
 		return nil, fmt.Errorf("failed to initialize store provider; unknown provider: %s", *s.Provider)
 	}
 
+	return s.provider, err
 }
 
 // Find loads a store by id
@@ -129,6 +139,17 @@ func (s *Store) Root() (*string, error) {
 	}
 	return root, nil
 
+}
+
+// Size returns the number of values in the underlying store
+func (s *Store) Size() int {
+	provider, err := s.storeProviderFactory()
+	if err != nil {
+		common.Log.Warningf("failed to calculate number of values in store %s; %s", s.ID, err.Error())
+		return 0
+	}
+
+	return provider.Size()
 }
 
 // State returns the state at the given epoch

@@ -1060,6 +1060,8 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 
 	var data []byte
 
+	nullifiedIndex := -1
+
 	if c.noteStore != nil {
 		encryptresp, err := vault.Encrypt(
 			util.DefaultVaultAccessJWT,
@@ -1078,6 +1080,8 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
+		nullifiedIndex = c.noteStore.Size() - 1
+
 		_, err = c.noteStore.Insert(string(data))
 		if err != nil {
 			common.Log.Warningf("failed to update state; note not inserted for circuit %s; %s", c.ID, err.Error())
@@ -1087,9 +1091,9 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 		}
 	}
 
-	nullifiedIndex := c.noteStore.Height() - 1 // HACK!! this is really just the dense length... i.e., length - 1...
-
 	if nullifiedIndex >= 0 && c.nullifierStore != nil {
+		common.Log.Debugf("state update nullified previous note at index %d", nullifiedIndex)
+
 		nullifiedNote, err := c.noteStore.ValueAt(new(big.Int).SetUint64(uint64(nullifiedIndex)).Bytes())
 		if err != nil {
 			common.Log.Warningf("failed to update state; nullifier not inserted for circuit %s; %s", c.ID, err.Error())

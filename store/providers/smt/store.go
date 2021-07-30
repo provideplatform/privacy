@@ -164,6 +164,10 @@ func (s *SMT) Root() (root *string, err error) {
 	return common.StringOrNil(string(s.tree.Root())), nil
 }
 
+func (s *SMT) Size() int {
+	return s.tree.Values().Size()
+}
+
 // StateAt returns the state at the given epoch
 func (s *SMT) StateAt(epoch uint64) (*state.State, error) {
 	claims := make([]*state.StateClaim, 0)

@@ -142,14 +142,13 @@ func (s *Store) Root() (*string, error) {
 }
 
 // Size returns the number of values in the underlying store
-func (s *Store) Size() int {
+func (s *Store) Size() (int, error) {
 	provider, err := s.storeProviderFactory()
 	if err != nil {
-		common.Log.Warningf("failed to calculate number of values in store %s; %s", s.ID, err.Error())
-		return 0
+		return 0, fmt.Errorf("failed to calculate number of values in store %s; %s", s.ID, err.Error())
 	}
 
-	return provider.Size()
+	return provider.Size(), nil
 }
 
 // State returns the state at the given epoch

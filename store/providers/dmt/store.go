@@ -37,6 +37,7 @@ func InitDMT(db *gorm.DB, id uuid.UUID, h hash.Hash) (*DMT, error) {
 		tree, err = merkletree.NewTreeWithHashStrategy(
 			values,
 			func() hash.Hash {
+				h.Reset()
 				return h
 			},
 		)
@@ -69,6 +70,7 @@ func loadTree(db *gorm.DB, id uuid.UUID, h hash.Hash) (*merkletree.MerkleTree, [
 	tree, err := merkletree.NewTreeWithHashStrategy(
 		values,
 		func() hash.Hash {
+			h.Reset()
 			return h
 		},
 	)
@@ -92,7 +94,7 @@ func loadTree(db *gorm.DB, id uuid.UUID, h hash.Hash) (*merkletree.MerkleTree, [
 func loadValues(db *gorm.DB, id uuid.UUID, h hash.Hash) ([]merkletree.Content, error) {
 	values := make([]merkletree.Content, 0)
 
-	rows, err := db.Raw("SELECT values from trees WHERE store_id = ? ORDER BY id", id).Rows()
+	rows, err := db.Raw("SELECT values from trees WHERE store_id = ? ORDER BY id DESC LIMIT 1", id).Rows()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve dense merkle tree from store: %s; %s", id, err.Error())
 	}
@@ -111,12 +113,16 @@ func loadValues(db *gorm.DB, id uuid.UUID, h hash.Hash) ([]merkletree.Content, e
 		}
 
 		for _, v := range vals {
+			common.Log.Debugf("appending value... %s", string(v.value))
 			values = append(values, &treeContent{
 				hash:  h,
 				value: v.value,
 			})
 		}
 	}
+
+	reconstitutedVals, _ := json.Marshal(values)
+	common.Log.Debugf("RECONSTITUTED VALUES: %v", reconstitutedVals)
 
 	return values, nil
 }
@@ -139,7 +145,7 @@ func (s *DMT) commit() error {
 
 	db := s.db.Exec("INSERT INTO trees (store_id, nodes, values, root) VALUES (?, ?, ?, ?)", s.id, []byte("{}"), values, hex.EncodeToString(root))
 	if db.RowsAffected == 0 {
-		return fmt.Errorf("failed to persist hash within dense merkle tree: %s", s.id)
+		return fmt.Errorf("failed to persist value within dense merkle tree: %s", s.id)
 	}
 
 	return nil
@@ -198,7 +204,7 @@ func (s *DMT) Root() (root *string, err error) {
 }
 
 func (s *DMT) Size() int {
-	return len(s.tree.Leafs)
+	return len(s.values)
 }
 
 // StateAt returns the state at the given epoch

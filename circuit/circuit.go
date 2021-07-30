@@ -1084,17 +1084,17 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 		if err != nil {
 			common.Log.Warningf("failed to get size of note store for circuit %s; %s", c.ID, err.Error())
 			return err
-		} else {
-			nullifiedIndex--
 		}
+
+		nullifiedIndex--
 
 		_, err = c.noteStore.Insert(string(data))
 		if err != nil {
 			common.Log.Warningf("failed to update state; note not inserted for circuit %s; %s", c.ID, err.Error())
 			return err
-		} else {
-			common.Log.Debugf("inserted %d-byte note for circuit %s", len(note), c.ID)
 		}
+
+		common.Log.Debugf("inserted %d-byte note for circuit %s", len(note), c.ID)
 	}
 
 	if nullifiedIndex >= 0 && c.nullifierStore != nil {

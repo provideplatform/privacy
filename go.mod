@@ -1,6 +1,6 @@
 module github.com/provideplatform/privacy
 
-go 1.16
+go 1.15
 
 require (
 	github.com/consensys/gnark v0.4.1-0.20210727143914-9bc74946a2e4

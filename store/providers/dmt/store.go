@@ -133,7 +133,7 @@ func (s *DMT) commit() error {
 	common.Log.Debugf("ROOT: %v", hex.EncodeToString(root))
 	common.Log.Debugf("VALUES: %v", values)
 
-	db := s.db.Exec("INSERT INTO trees (store_id, values, root) VALUES (?, ?, ?)", s.id, values, hex.EncodeToString(root))
+	db := s.db.Exec("INSERT INTO trees (store_id, nodes, values, root) VALUES (?, ?, ?, ?)", s.id, []byte("{}"), values, hex.EncodeToString(root))
 	if db.RowsAffected == 0 {
 		return fmt.Errorf("failed to persist hash within merkle tree: %s", s.id)
 	}

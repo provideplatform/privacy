@@ -4,7 +4,10 @@ package test
 
 import (
 	"bytes"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"hash"
 	"math/big"
 
 	uuid "github.com/kthomas/go.uuid"
@@ -18,6 +21,11 @@ import (
 	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 	"github.com/consensys/gnark-crypto/kzg"
 	"github.com/consensys/gnark/frontend"
+
+	vault "github.com/provideplatform/provide-go/api/vault"
+	util "github.com/provideplatform/provide-go/common/util"
+
+	newmerkletree "github.com/providenetwork/merkletree"
 )
 
 func getUserToken(email, password string) (*provide.Token, error) {
@@ -108,4 +116,60 @@ func generateSRSForTest(r1cs frontend.CompiledConstraintSystem) []byte {
 		return nil
 	}
 	return buf.Bytes()
+}
+
+func encryptNote(vaultID, keyID, note string) ([]byte, error) {
+	encryptresp, err := vault.Encrypt(
+		util.DefaultVaultAccessJWT,
+		vaultID,
+		keyID,
+		note,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := hex.DecodeString(encryptresp.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+type treeContent struct {
+	hash  hash.Hash
+	value []byte
+}
+
+// CalculateHash returns the hash of the underlying value using the configured hash function
+func (tc *treeContent) CalculateHash() ([]byte, error) {
+	if tc.hash == nil {
+		return nil, errors.New("tree content requires configured hash function")
+	}
+	tc.hash.Reset()
+	tc.hash.Write(tc.value)
+	return tc.hash.Sum(nil), nil
+}
+
+// Equals returns true if the given content matches the underlying value
+func (tc *treeContent) Equals(other newmerkletree.Content) (bool, error) {
+	h0, err := tc.CalculateHash()
+	if err != nil {
+		return false, err
+	}
+
+	h1, err := other.CalculateHash()
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(h0, h1), nil
+}
+
+func contentFactory(val []byte, hash hash.Hash) *treeContent {
+	return &treeContent{
+		hash:  hash,
+		value: val,
+	}
 }

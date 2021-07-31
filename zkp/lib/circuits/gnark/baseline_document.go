@@ -3,9 +3,7 @@ package gnark
 import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/gnark/std/signature/eddsa"
 )
 
 // PurchaseOrderCircuit defines a knowledge proof for purchase orders
@@ -30,9 +28,10 @@ type GoodsReceiptCircuit struct {
 
 // InvoiceCircuit defines a knowledge proof for invoices
 type InvoiceCircuit struct {
-	PubKey eddsa.PublicKey   `gnark:",public"`
-	Sig    eddsa.Signature   `gnark:",public"`
-	Msg    frontend.Variable `gnark:",public"`
+	Document MimcCircuit
+	// PubKey eddsa.PublicKey   `gnark:",public"`
+	// Sig    eddsa.Signature   `gnark:",public"`
+	// Msg    frontend.Variable `gnark:",public"`
 }
 
 // Define declares the PO circuit constraints
@@ -93,13 +92,28 @@ func (circuit *GoodsReceiptCircuit) Define(curveID ecc.ID, cs *frontend.Constrai
 
 // Define declares the Invoice circuit constraints
 func (circuit *InvoiceCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	curve, err := twistededwards.NewEdCurve(curveID)
+	// hash function
+	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
 		return err
 	}
-	circuit.PubKey.Curve = curve
 
-	eddsa.Verify(cs, circuit.Sig, circuit.Msg, circuit.PubKey)
+	hash := mimc.Hash(cs, circuit.Document.Preimage)
+	cs.AssertIsEqual(circuit.Document.Hash, hash)
 
 	return nil
 }
+
+// FIXME!! this fails...
+// // Define declares the Invoice circuit constraints
+// func (circuit *InvoiceCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// 	curve, err := twistededwards.NewEdCurve(curveID)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	circuit.PubKey.Curve = curve
+
+// 	eddsa.Verify(cs, circuit.Sig, circuit.Msg, circuit.PubKey)
+
+// 	return nil
+// }

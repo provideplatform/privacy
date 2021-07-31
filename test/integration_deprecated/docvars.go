@@ -1,3 +1,5 @@
+// +build integration-deprecated
+
 package test
 
 import (

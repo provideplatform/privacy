@@ -191,8 +191,8 @@ func (s *Store) ValueAt(key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve value for key %s in store %s; %s", string(key), s.ID, err.Error())
 	}
-	return val, nil
 
+	return val, nil
 }
 
 // validate the store params

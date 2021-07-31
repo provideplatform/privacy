@@ -275,7 +275,7 @@ func (c *Circuit) NoteValueAt(index uint64) ([]byte, error) {
 		return nil, err
 	}
 
-	decryptresp, err := vault.Decrypt(
+	resp, err := vault.Decrypt(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
 		c.EncryptionKeyID.String(),
@@ -287,7 +287,7 @@ func (c *Circuit) NoteValueAt(index uint64) ([]byte, error) {
 		return nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s; failed to decrypt note; %s", index, c.ID, err.Error())
 	}
 
-	return []byte(decryptresp.Data), nil
+	return []byte(resp.Data), nil
 }
 
 // NullifierStoreRoot returns the underlying nullifier store root
@@ -346,8 +346,8 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
-	_proof := common.StringOrNil(buf.String())
-	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, hex.EncodeToString(buf.Bytes()))
+	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
+	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
 
 	err = c.updateState(*_proof, witness)
 	if err != nil {
@@ -357,7 +357,6 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 		return nil, err
 	}
 
-	*_proof = hex.EncodeToString([]byte(*_proof))
 	return _proof, nil
 }
 
@@ -1063,7 +1062,7 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 	nullifiedIndex := -1
 
 	if c.noteStore != nil {
-		encryptresp, err := vault.Encrypt(
+		resp, err := vault.Encrypt(
 			util.DefaultVaultAccessJWT,
 			c.VaultID.String(),
 			c.EncryptionKeyID.String(),
@@ -1074,7 +1073,7 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
-		data, err = hex.DecodeString(encryptresp.Data)
+		data, err = hex.DecodeString(resp.Data)
 		if err != nil {
 			common.Log.Warningf("failed to update state; failed to encrypt note for circuit %s; %s", c.ID, err.Error())
 			return err

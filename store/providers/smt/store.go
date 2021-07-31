@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -48,7 +49,7 @@ func InitSMT(db *gorm.DB, id uuid.UUID, hash hash.Hash) (*SMT, error) {
 func loadTree(db *gorm.DB, id uuid.UUID, hash hash.Hash) (*smt.SparseMerkleTree, error) {
 	var tree *smt.SparseMerkleTree
 
-	rows, err := db.Raw("SELECT nodes, values, root from trees WHERE store_id = ? ORDER BY id", id).Rows()
+	rows, err := db.Raw("SELECT nodes, values, root from trees WHERE store_id = ? ORDER BY id DESC LIMIT 1", id).Rows()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve merkle tree from store: %s; %s", id, err.Error())
 	}
@@ -97,14 +98,12 @@ func (s *SMT) commit() error {
 	values, _ := json.Marshal(s.tree.Values())
 	root := s.tree.Root()
 
-	common.Log.Debugf("NODES: %v", nodes)
-	common.Log.Debugf("VALUES: %v", values)
-
 	db := s.db.Exec("INSERT INTO trees (store_id, nodes, values, root) VALUES (?, ?, ?, ?)", s.id, nodes, values, hex.EncodeToString(root))
 	if db.RowsAffected == 0 {
-		return fmt.Errorf("failed to persist hash within merkle tree: %s", s.id)
+		return fmt.Errorf("failed to persist hash within sparse merkle tree: %s", s.id)
 	}
 
+	common.Log.Debugf("committed state (%d nodes, %d values) within sparse merkle tree %s; root: %s", s.tree.Nodes().Size(), s.tree.Values().Size(), s.id, hex.EncodeToString(root))
 	return nil
 }
 
@@ -128,9 +127,12 @@ func (s *SMT) Contains(val string) (bool, error) {
 		return false, err
 	}
 
+	zeroVal := make([]byte, s.hash.Size())
 	siblingPath := make([]string, len(proof.SideNodes))
 	for i := range proof.SideNodes {
-		siblingPath = append(siblingPath, hex.EncodeToString(proof.SideNodes[i]))
+		if !bytes.Equal(proof.SideNodes[i], zeroVal) {
+			siblingPath = append(siblingPath, hex.EncodeToString(proof.SideNodes[i]))
+		}
 	}
 	common.Log.Debugf("sibling path: %v", siblingPath)
 
@@ -152,8 +154,13 @@ func (s *SMT) Insert(val string) (root []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	s.commit()
-	common.Log.Debugf("inserted key... %s; current root: %s", hex.EncodeToString(key), hex.EncodeToString(s.tree.Root()))
+
+	err = s.commit()
+	if err != nil {
+		return nil, err
+	}
+
+	common.Log.Debugf("inserted key in sparse merkle tree: %s; current root: %s", hex.EncodeToString(key), hex.EncodeToString(s.tree.Root()))
 	return root, nil
 }
 
@@ -161,7 +168,7 @@ func (s *SMT) Root() (root *string, err error) {
 	if s.tree.Root() == nil || len(s.tree.Root()) == 0 {
 		return nil, errors.New("tree does not contain a valid root")
 	}
-	return common.StringOrNil(string(s.tree.Root())), nil
+	return common.StringOrNil(hex.EncodeToString(s.tree.Root())), nil
 }
 
 func (s *SMT) Size() int {

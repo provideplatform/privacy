@@ -113,16 +113,12 @@ func loadValues(db *gorm.DB, id uuid.UUID, h hash.Hash) ([]merkletree.Content, e
 		}
 
 		for _, v := range vals {
-			common.Log.Debugf("appending value... %s", string(v.value))
 			values = append(values, &treeContent{
 				hash:  h,
 				value: v.value,
 			})
 		}
 	}
-
-	reconstitutedVals, _ := json.Marshal(values)
-	common.Log.Debugf("RECONSTITUTED VALUES: %v", reconstitutedVals)
 
 	return values, nil
 }
@@ -140,14 +136,12 @@ func (s *DMT) commit() error {
 	values, _ := json.Marshal(s.values)
 	root := s.tree.MerkleRoot()
 
-	common.Log.Debugf("ROOT: %v", hex.EncodeToString(root))
-	common.Log.Debugf("VALUES: %v", values)
-
 	db := s.db.Exec("INSERT INTO trees (store_id, nodes, values, root) VALUES (?, ?, ?, ?)", s.id, []byte("{}"), values, hex.EncodeToString(root))
 	if db.RowsAffected == 0 {
 		return fmt.Errorf("failed to persist value within dense merkle tree: %s", s.id)
 	}
 
+	common.Log.Debugf("committed state (%d values) within dense merkle tree %s; root: %s", len(s.values), s.id, hex.EncodeToString(root))
 	return nil
 }
 
@@ -193,6 +187,7 @@ func (s *DMT) Insert(val string) (root []byte, err error) {
 		return nil, err
 	}
 
+	common.Log.Debugf("inserted value in dense merkle tree at index %d; current root: %s", s.Size()-1, hex.EncodeToString(s.tree.MerkleRoot()))
 	return s.tree.MerkleRoot(), nil
 }
 

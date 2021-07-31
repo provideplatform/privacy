@@ -354,8 +354,8 @@ github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd/go.mod
 github.com/providenetwork/smt v0.2.1-0.20210730053242-2e71de60adeb h1:fdwFyZ9wBo0qTf++QTX8u+rmUYEIw9nVAY4J5fMuwE4=
 github.com/providenetwork/smt v0.2.1-0.20210730053242-2e71de60adeb/go.mod h1:GhL+0QgVT4dn1UtG07Yp2gKq5GBL9sduEqfMOrmBTtQ=
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
-github.com/provideplatform/provide-go v0.0.0-20210726092427-952b0a36af58 h1:/d2YMokAKelrt8KgJgO850Zz11ijzF4Y8ZZWDMHdnGY=
-github.com/provideplatform/provide-go v0.0.0-20210726092427-952b0a36af58/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
+github.com/provideplatform/provide-go v0.0.0-20210731103443-a1a11b739082 h1:oHGpA1fSEQP8gf4FTkT87v76w8BLQnfgYq6lq53770g=
+github.com/provideplatform/provide-go v0.0.0-20210731103443-a1a11b739082/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
 github.com/rjeczalik/notify v0.9.1/go.mod h1:rKwnCoCGeuQnwBtTSPL9Dad03Vh2n40ePRrjvIXnJho=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=

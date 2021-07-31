@@ -1,6 +1,7 @@
 package circuit
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"math/big"
@@ -388,7 +389,7 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 
 	provide.Render(map[string]interface{}{
 		"root":  root,
-		"value": value,
+		"value": base64.StdEncoding.EncodeToString(value),
 	}, 200, c)
 }
 
@@ -444,6 +445,6 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 	provide.Render(map[string]interface{}{
 		// "height": height,
 		"root":  root,
-		"value": string(value),
+		"value": base64.StdEncoding.EncodeToString(value),
 	}, 200, c)
 }

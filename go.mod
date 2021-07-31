@@ -20,7 +20,7 @@ require (
 	github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd
 	github.com/providenetwork/smt v0.2.1-0.20210730053242-2e71de60adeb
 	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
-	github.com/provideplatform/provide-go v0.0.0-20210726092427-952b0a36af58
+	github.com/provideplatform/provide-go v0.0.0-20210731103443-a1a11b739082
 	github.com/stretchr/testify v1.7.0
 )
 

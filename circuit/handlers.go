@@ -18,7 +18,7 @@ import (
 	"github.com/provideplatform/provide-go/common/util"
 )
 
-func resolveCircuitsQuery(db *gorm.DB, circuitID, orgID, appID *uuid.UUID) *gorm.DB {
+func resolveCircuitsQuery(db *gorm.DB, circuitID, orgID, appID, userID *uuid.UUID) *gorm.DB {
 	query := db.Select("circuits.*")
 	if circuitID != nil {
 		query = query.Where("circuits.id = ?", circuitID)
@@ -28,6 +28,9 @@ func resolveCircuitsQuery(db *gorm.DB, circuitID, orgID, appID *uuid.UUID) *gorm
 	}
 	if appID != nil {
 		query = query.Where("circuits.application_id = ?", appID)
+	}
+	if userID != nil {
+		query = query.Where("circuits.user_id = ?", userID)
 	}
 	return query
 }
@@ -59,7 +62,7 @@ func listCircuitsHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	query := resolveCircuitsQuery(db, nil, orgID, appID)
+	query := resolveCircuitsQuery(db, nil, orgID, appID, userID)
 
 	var circuits []*Circuit
 	provide.Paginate(c, query, &Circuit{}).Find(&circuits)
@@ -159,7 +162,7 @@ func circuitDetailsHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
 
 	if circuit == nil || circuit.ID == uuid.Nil {
 		provide.RenderError("circuit not found", 404, c)
@@ -213,7 +216,7 @@ func proveCircuitHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
 	if circuit == nil || circuit.ID == uuid.Nil {
 		provide.RenderError("circuit not found", 404, c)
 		return
@@ -282,7 +285,7 @@ func verifyCircuitHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
 	if circuit == nil || circuit.ID == uuid.Nil {
 		provide.RenderError("circuit not found", 404, c)
 		return
@@ -349,7 +352,7 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
 
 	if circuit == nil || circuit.ID == uuid.Nil {
 		provide.RenderError("circuit not found", 404, c)
@@ -411,7 +414,7 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 	}
 
 	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, nil, nil).Find(&circuit)
+	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
 
 	if circuit == nil || circuit.ID == uuid.Nil {
 		provide.RenderError("circuit not found", 404, c)

@@ -3,6 +3,8 @@
 package test
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"hash"
 	"math/big"
 	"math/rand"
@@ -18,6 +20,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/store/providers/merkletree"
+
+	"github.com/provideplatform/provide-go/api/privacy"
 )
 
 const requireCircuitTimeout = time.Minute * 5
@@ -53,6 +57,7 @@ func TestProcureToPayWorkflowGroth16(t *testing.T) {
 	circuits, err := createProcureToPayWorkflow(token, testProvingSchemeGroth16)
 	if err != nil {
 		t.Errorf("failed to create procure to pay workflow circuits%s", err.Error())
+		return
 	}
 
 	for _, circuit := range circuits {
@@ -91,6 +96,180 @@ func TestProcureToPayWorkflowGroth16(t *testing.T) {
 		"value": 55555555,
 		"hello": "world5",
 	})
+}
+
+func TestCircuitReuse(t *testing.T) {
+	hFunc := mimc.NewMiMC("seed")
+
+	testUserID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(testUserID)
+
+	circuit, err := privacy.CreateCircuit(
+		*token,
+		circuitParamsFactory(
+			"BN254",
+			"PO",
+			"purchase_order",
+			testProvingSchemeGroth16,
+			nil,
+			nil,
+		),
+	)
+	if err != nil {
+		t.Errorf("failed to deploy circuit; %s", err.Error())
+		return
+	}
+
+	payload := map[string]interface{}{
+		"value": 11111111,
+		"hello": "world1",
+	}
+
+	raw, _ := json.Marshal(payload)
+
+	hFunc.Reset()
+	hFunc.Write(raw)
+
+	var i big.Int
+
+	// preimage is itself a digest due to the field element size limitation of the curve
+	preImage := hFunc.Sum(nil)
+	preImageString := i.SetBytes(preImage).String()
+
+	hash, _ := mimc.Sum("seed", preImage)
+	hashString := i.SetBytes(hash).String()
+
+	witness := map[string]interface{}{
+		"Document.Preimage": preImageString,
+		"Document.Hash":     hashString,
+	}
+
+	t.Logf("proving witness Document.Hash: %s, Document.PreImage: %s", hashString, preImageString)
+
+	time.Sleep(time.Duration(5) * time.Second)
+
+	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": witness,
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	note := map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"Document.Hash": hashString,
+		},
+	}
+
+	time.Sleep(time.Duration(5) * time.Second)
+
+	verification, err := privacy.Verify(*token, circuit.ID.String(), note)
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("%s proof/verification: %s / %v", *circuit.Name, *proof.Proof, verification.Result)
+
+	time.Sleep(time.Duration(5) * time.Second)
+
+	circuitIndex := uint64(0)
+	resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
+	if err != nil {
+		t.Errorf("failed to fetch note value; %s", err.Error())
+	}
+
+	noteValue, err := base64.StdEncoding.DecodeString(*resp.Value)
+	if err != nil {
+		t.Errorf("failed to base64 decode note value; %s", err.Error())
+		return
+	}
+	t.Logf("retrieved %d-byte note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
+
+	t.Log("proving using new witness and same circuit")
+
+	payload = map[string]interface{}{
+		"value": 22222222,
+		"hello": "world2",
+	}
+
+	raw, _ = json.Marshal(payload)
+
+	hFunc.Reset()
+	hFunc.Write(raw)
+
+	// preimage is itself a digest due to the field element size limitation of the curve
+	preImage = hFunc.Sum(nil)
+	preImageString = i.SetBytes(preImage).String()
+
+	hash, _ = mimc.Sum("seed", preImage)
+	hashString = i.SetBytes(hash).String()
+
+	witness = map[string]interface{}{
+		"Document.Preimage": preImageString,
+		"Document.Hash":     hashString,
+	}
+
+	t.Logf("proving witness Document.Hash: %s, Document.PreImage: %s", hashString, preImageString)
+
+	time.Sleep(time.Duration(5) * time.Second)
+
+	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+		"witness": witness,
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+		return
+	}
+
+	note = map[string]interface{}{
+		"proof": proof.Proof,
+		"witness": map[string]interface{}{
+			"Document.Hash": hashString,
+		},
+	}
+
+	time.Sleep(time.Duration(5) * time.Second)
+
+	verification, err = privacy.Verify(*token, circuit.ID.String(), note)
+	if err != nil {
+		t.Errorf("failed to verify proof; %s", err.Error())
+		return
+	}
+
+	t.Logf("%s proof/verification: %s / %v", *circuit.Name, *proof.Proof, verification.Result)
+
+	circuitIndex++
+	resp, err = privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
+	if err != nil {
+		t.Errorf("failed to fetch note value; %s", err.Error())
+	}
+
+	noteValue, err = base64.StdEncoding.DecodeString(*resp.Value)
+	if err != nil {
+		t.Errorf("failed to base64 decode note value; %s", err.Error())
+		return
+	}
+	t.Logf("retrieved %d-byte note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
+
+	time.Sleep(time.Duration(5) * time.Second)
+
+	t.Log("attempting retrieval of original note")
+
+	circuitIndex--
+	resp, err = privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
+	if err != nil {
+		t.Errorf("failed to fetch note value; %s", err.Error())
+	}
+
+	noteValue, err = base64.StdEncoding.DecodeString(*resp.Value)
+	if err != nil {
+		t.Errorf("failed to base64 decode note value; %s", err.Error())
+		return
+	}
+	t.Logf("retrieved %d-byte note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
 }
 
 type STAGE uint16

@@ -334,11 +334,13 @@ func testCircuitLifecycle(
 	resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
 	if err != nil {
 		t.Errorf("failed to fetch note value; %s", err.Error())
+		return
 	}
 
 	noteValue, err := base64.StdEncoding.DecodeString(*resp.Value)
 	if err != nil {
 		t.Errorf("failed to base64 decode note value; %s", err.Error())
+		return
 	}
 	t.Logf("retrieved %d-byte note value: %s at index %d; root: %s", len(*resp.Value), string(*resp.Value), circuitIndex, *resp.Root)
 
@@ -348,11 +350,13 @@ func testCircuitLifecycle(
 		resp, err := privacy.GetNoteValue(*token, prevCircuit.ID.String(), nullifiedIndex)
 		if err != nil {
 			t.Errorf("failed to fetch nullified note value; %s", err.Error())
+			return
 		}
 
 		nullifiedNote, err := base64.StdEncoding.DecodeString(*resp.Value)
 		if err != nil {
 			t.Errorf("failed to base64 decode nullified note value; %s", err.Error())
+			return
 		}
 		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
 
@@ -363,11 +367,13 @@ func testCircuitLifecycle(
 		resp, err = privacy.GetNullifierValue(*token, prevCircuit.ID.String(), hex.EncodeToString(nullifierTreeKey))
 		if err != nil {
 			t.Errorf("failed to fetch nullified note from nullifier tree; %s", err.Error())
+			return
 		}
 
 		nullifiedValue, err := base64.StdEncoding.DecodeString(*resp.Value)
 		if err != nil {
 			t.Errorf("failed to base64 decode nullified note value; %s", err.Error())
+			return
 		}
 		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(nullifiedValue), string(nullifiedValue), *resp.Root)
 	}

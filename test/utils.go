@@ -279,6 +279,7 @@ func testCircuitLifecycle(
 	token *string,
 	circuitIndex uint64,
 	circuit *privacy.Circuit,
+	prevCircuit *privacy.Circuit,
 	payload map[string]interface{},
 ) {
 	raw, _ := json.Marshal(payload)
@@ -299,6 +300,8 @@ func testCircuitLifecycle(
 		"Document.Preimage": preImageString,
 		"Document.Hash":     hashString,
 	}
+
+	t.Logf("proving witness Document.Hash: %s, Document.PreImage: %s", hashString, preImageString)
 
 	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": witness,
@@ -339,10 +342,10 @@ func testCircuitLifecycle(
 	}
 	t.Logf("retrieved %d-byte note value: %s at index %d; root: %s", len(*resp.Value), string(*resp.Value), circuitIndex, *resp.Root)
 
-	if circuitIndex > 0 {
+	if circuitIndex > 0 && prevCircuit != nil {
 		nullifiedIndex := circuitIndex - 1
 
-		resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), nullifiedIndex)
+		resp, err := privacy.GetNoteValue(*token, prevCircuit.ID.String(), nullifiedIndex)
 		if err != nil {
 			t.Errorf("failed to fetch nullified note value; %s", err.Error())
 		}
@@ -356,8 +359,8 @@ func testCircuitLifecycle(
 		hFunc.Reset()
 		hFunc.Write(nullifiedNote)
 		nullifierTreeKey := hFunc.Sum(nil)
-		t.Logf("nullifier key: %s", string(nullifierTreeKey))
-		resp, err = privacy.GetNullifierValue(*token, circuit.ID.String(), string(nullifierTreeKey))
+		t.Logf("nullifier key: %s", hex.EncodeToString(nullifierTreeKey))
+		resp, err = privacy.GetNullifierValue(*token, prevCircuit.ID.String(), hex.EncodeToString(nullifierTreeKey))
 		if err != nil {
 			t.Errorf("failed to fetch nullified note from nullifier tree; %s", err.Error())
 		}

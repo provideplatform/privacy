@@ -67,27 +67,27 @@ func TestProcureToPayWorkflowGroth16(t *testing.T) {
 	goodsReceiptCircuit := circuits[3]
 	invoiceCircuit := circuits[4]
 
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(0), purchaseOrderCircuit, map[string]interface{}{
+	testCircuitLifecycle(t, tree, hFunc, token, uint64(0), purchaseOrderCircuit, nil, map[string]interface{}{
 		"value": 11111111,
 		"hello": "world1",
 	})
 
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(1), salesOrderCircuit, map[string]interface{}{
+	testCircuitLifecycle(t, tree, hFunc, token, uint64(1), salesOrderCircuit, purchaseOrderCircuit, map[string]interface{}{
 		"value": 22222222,
 		"hello": "world2",
 	})
 
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(2), shipmentNotificationCircuit, map[string]interface{}{
+	testCircuitLifecycle(t, tree, hFunc, token, uint64(2), shipmentNotificationCircuit, salesOrderCircuit, map[string]interface{}{
 		"value": 33333333,
 		"hello": "world3",
 	})
 
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(3), goodsReceiptCircuit, map[string]interface{}{
+	testCircuitLifecycle(t, tree, hFunc, token, uint64(3), goodsReceiptCircuit, shipmentNotificationCircuit, map[string]interface{}{
 		"value": 44444444,
 		"hello": "world4",
 	})
 
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(4), invoiceCircuit, map[string]interface{}{
+	testCircuitLifecycle(t, tree, hFunc, token, uint64(4), invoiceCircuit, goodsReceiptCircuit, map[string]interface{}{
 		"value": 55555555,
 		"hello": "world5",
 	})

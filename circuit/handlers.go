@@ -439,7 +439,13 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	value, err := circuit.NullifierValueAt([]byte(c.Param("index")))
+	key, err := hex.DecodeString(c.Param("index"))
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
+	value, err := circuit.NullifierValueAt(key)
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return

@@ -23,7 +23,6 @@ import (
 	mimc "github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
-	gnark_hash "github.com/consensys/gnark-crypto/hash"
 	uuid "github.com/kthomas/go.uuid"
 	newmerkletree "github.com/providenetwork/merkletree"
 	"github.com/provideplatform/privacy/store/providers/merkletree"
@@ -236,59 +235,6 @@ func TestCreateCircuitPlonkCubicWithAlpha(t *testing.T) {
 		"proof": proof.Proof,
 		"witness": map[string]interface{}{
 			"Y": "35",
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
-	}
-
-	t.Logf("proof/verification: %v / %v", proof.Proof, verification.Result)
-}
-
-func TestBaselineDocument(t *testing.T) {
-	testUserID, _ := uuid.NewV4()
-	token, _ := userTokenFactory(testUserID)
-	params := circuitParamsFactory("gnark", "mimc", testProvingSchemeGroth16)
-
-	circuit, err := privacy.CreateCircuit(*token, params)
-	if err != nil {
-		t.Errorf("failed to create circuit; %s", err.Error())
-		return
-	}
-
-	t.Logf("created circuit %v", circuit)
-
-	waitForAsync()
-
-	var dv DocVars
-	dv.val = 1234.5678
-	dv.text = "test"
-	dv.h = gnark_hash.MIMC_BN254
-	var i big.Int
-
-	preImage := dv.Digest()
-	preImageString := i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ := mimc.Sum("seed", preImage)
-	hashString := i.SetBytes(hash).String()
-
-	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
-		"witness": map[string]interface{}{
-			"Preimage": preImageString,
-			"Hash":     hashString,
-		},
-	})
-	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
-	}
-
-	verification, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
-		"proof": proof.Proof,
-		"witness": map[string]interface{}{
-			"Hash": hashString,
 		},
 	})
 	if err != nil {

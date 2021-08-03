@@ -39,7 +39,6 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
 
-	// "github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
@@ -158,28 +157,13 @@ func keySizeTestWitnessFactory(name *string, id ecc.ID, h hash.Hash, s signature
 	case "invoice":
 		var witness libgnark.InvoiceCircuit
 		if assignValues {
-			src := rand.NewSource(0)
-			r := rand.New(src)
-			privKey, _ := s.New(r)
-			pubKey := privKey.Public()
-			pubkeyAx, pubkeyAy := parsePoint(id, pubKey.Bytes())
-
-			var invoiceData big.Int
-			invoiceIntStr := "123456789123456789123456789123456789"
-			invoiceData.SetString(invoiceIntStr, 10)
-			invoiceDataBytes := invoiceData.Bytes()
-
 			hFunc := h.New("seed")
-			sig, _ := privKey.Sign(invoiceDataBytes, hFunc)
-			sigRx, sigRy, sigS1, sigS2 := parseSignature(id, sig)
-
-			witness.Msg.Assign(invoiceData)
-			witness.PubKey.A.X.Assign(pubkeyAx)
-			witness.PubKey.A.Y.Assign(pubkeyAy)
-			witness.Sig.R.X.Assign(sigRx)
-			witness.Sig.R.Y.Assign(sigRy)
-			witness.Sig.S1.Assign(sigS1)
-			witness.Sig.S2.Assign(sigS2)
+			var preImage big.Int
+			preImage.SetString("35", 10)
+			hFunc.Write(preImage.Bytes())
+			hash := hFunc.Sum(nil)
+			witness.Document.Preimage.Assign(preImage)
+			witness.Document.Hash.Assign(hash)
 		}
 		return &witness
 	case "proof_eddsa":

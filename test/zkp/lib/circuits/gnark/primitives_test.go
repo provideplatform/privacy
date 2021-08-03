@@ -1,6 +1,6 @@
 // +build unit
 
-package test
+package gnark
 
 import (
 	"encoding/hex"
@@ -17,18 +17,18 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
-	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
+	libgnark "github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
 func TestEq(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var eqCircuit gnark.EqualCircuit
+	var eqCircuit libgnark.EqualCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &eqCircuit)
 	assert.NoError(err)
 
 	{
-		var witness gnark.EqualCircuit
+		var witness libgnark.EqualCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(250)
 
@@ -36,7 +36,7 @@ func TestEq(t *testing.T) {
 	}
 
 	{
-		var witness gnark.EqualCircuit
+		var witness libgnark.EqualCircuit
 		witness.Vals.Val.Assign(254)
 		witness.Vals.RelVal.Assign(250)
 
@@ -47,12 +47,12 @@ func TestEq(t *testing.T) {
 func TestNotEq(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var eqCircuit gnark.NotEqualCircuit
+	var eqCircuit libgnark.NotEqualCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &eqCircuit)
 	assert.NoError(err)
 
 	{
-		var witness gnark.NotEqualCircuit
+		var witness libgnark.NotEqualCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(250)
 
@@ -60,7 +60,7 @@ func TestNotEq(t *testing.T) {
 	}
 
 	{
-		var witness gnark.NotEqualCircuit
+		var witness libgnark.NotEqualCircuit
 		witness.Vals.Val.Assign(254)
 		witness.Vals.RelVal.Assign(250)
 
@@ -68,7 +68,7 @@ func TestNotEq(t *testing.T) {
 	}
 
 	{
-		var witness gnark.NotEqualCircuit
+		var witness libgnark.NotEqualCircuit
 		witness.Vals.Val.Assign(249)
 		witness.Vals.RelVal.Assign(250)
 
@@ -79,26 +79,26 @@ func TestNotEq(t *testing.T) {
 func TestLessOrEqual(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var ltEqCircuit gnark.LessOrEqualCircuit
+	var ltEqCircuit libgnark.LessOrEqualCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltEqCircuit)
 	assert.NoError(err)
 
 	{
-		var witness gnark.LessOrEqualCircuit
+		var witness libgnark.LessOrEqualCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverSucceeded(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.LessOrEqualCircuit
+		var witness libgnark.LessOrEqualCircuit
 		witness.Vals.Val.Assign(120)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverSucceeded(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.LessOrEqualCircuit
+		var witness libgnark.LessOrEqualCircuit
 		witness.Vals.Val.Assign(350)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverFailed(r1cs, &witness)
@@ -108,25 +108,25 @@ func TestLessOrEqual(t *testing.T) {
 func TestGreaterOrEqual(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var ltCircuit gnark.GreaterOrEqualCircuit
+	var ltCircuit libgnark.GreaterOrEqualCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltCircuit)
 	assert.NoError(err)
 	{
-		var witness gnark.GreaterOrEqualCircuit
+		var witness libgnark.GreaterOrEqualCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverSucceeded(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.GreaterOrEqualCircuit
+		var witness libgnark.GreaterOrEqualCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(120)
 		assert.ProverSucceeded(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.GreaterOrEqualCircuit
+		var witness libgnark.GreaterOrEqualCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(350)
 		assert.ProverFailed(r1cs, &witness)
@@ -136,33 +136,33 @@ func TestGreaterOrEqual(t *testing.T) {
 func TestLess(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var ltCircuit gnark.LessCircuit
+	var ltCircuit libgnark.LessCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltCircuit)
 	assert.NoError(err)
 
 	{
-		var witness gnark.LessCircuit
+		var witness libgnark.LessCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverFailed(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.LessCircuit
+		var witness libgnark.LessCircuit
 		witness.Vals.Val.Assign(120)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverSucceeded(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.LessCircuit
+		var witness libgnark.LessCircuit
 		witness.Vals.Val.Assign(350)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverFailed(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.LessCircuit
+		var witness libgnark.LessCircuit
 		witness.Vals.Val.Assign(249)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverSucceeded(r1cs, &witness)
@@ -172,33 +172,33 @@ func TestLess(t *testing.T) {
 func TestGreater(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var ltCircuit gnark.GreaterCircuit
+	var ltCircuit libgnark.GreaterCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &ltCircuit)
 	assert.NoError(err)
 
 	{
-		var witness gnark.GreaterCircuit
+		var witness libgnark.GreaterCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(250)
 		assert.ProverFailed(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.GreaterCircuit
+		var witness libgnark.GreaterCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(120)
 		assert.ProverSucceeded(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.GreaterCircuit
+		var witness libgnark.GreaterCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(350)
 		assert.ProverFailed(r1cs, &witness)
 	}
 
 	{
-		var witness gnark.GreaterCircuit
+		var witness libgnark.GreaterCircuit
 		witness.Vals.Val.Assign(250)
 		witness.Vals.RelVal.Assign(249)
 		assert.ProverSucceeded(r1cs, &witness)
@@ -208,7 +208,7 @@ func TestGreater(t *testing.T) {
 func TestProofHash(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var pfHashCircuit gnark.ProofHashCircuit
+	var pfHashCircuit libgnark.ProofHashCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pfHashCircuit)
 	assert.NoError(err)
 
@@ -218,7 +218,7 @@ func TestProofHash(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(128, len(proofBytes))
 
-		var publicWitness gnark.ProofHashCircuit
+		var publicWitness libgnark.ProofHashCircuit
 		var i big.Int
 		hFunc := mimc.NewMiMC("seed")
 
@@ -245,7 +245,7 @@ func TestProofHash(t *testing.T) {
 func TestProofEddsa(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
-	var pfEddsaCircuit gnark.ProofEddsaCircuit
+	var pfEddsaCircuit libgnark.ProofEddsaCircuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pfEddsaCircuit)
 	assert.NoError(err)
 
@@ -255,7 +255,7 @@ func TestProofEddsa(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(128, len(proofBytes))
 
-		var publicWitness gnark.ProofEddsaCircuit
+		var publicWitness libgnark.ProofEddsaCircuit
 		hFunc := mimc.NewMiMC("seed")
 
 		chunks := len(publicWitness.Msg)

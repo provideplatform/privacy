@@ -281,7 +281,7 @@ func testCircuitLifecycle(
 	circuit *privacy.Circuit,
 	prevCircuit *privacy.Circuit,
 	payload map[string]interface{},
-) {
+) error {
 	raw, _ := json.Marshal(payload)
 
 	hFunc.Reset()
@@ -307,8 +307,7 @@ func testCircuitLifecycle(
 		"witness": witness,
 	})
 	if err != nil {
-		t.Errorf("failed to generate proof; %s", err.Error())
-		return
+		return fmt.Errorf("failed to generate proof; %s", err.Error())
 	}
 
 	note := map[string]interface{}{
@@ -320,8 +319,7 @@ func testCircuitLifecycle(
 
 	verification, err := privacy.Verify(*token, circuit.ID.String(), note)
 	if err != nil {
-		t.Errorf("failed to verify proof; %s", err.Error())
-		return
+		return fmt.Errorf("failed to verify proof; %s", err.Error())
 	}
 
 	t.Logf("%s proof/verification: %s / %v", *circuit.Name, *proof.Proof, verification.Result)
@@ -333,14 +331,12 @@ func testCircuitLifecycle(
 	// note state
 	resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
 	if err != nil {
-		t.Errorf("failed to fetch note value; %s", err.Error())
-		return
+		return fmt.Errorf("failed to fetch note value; %s", err.Error())
 	}
 
 	noteValue, err := base64.StdEncoding.DecodeString(*resp.Value)
 	if err != nil {
-		t.Errorf("failed to base64 decode note value; %s", err.Error())
-		return
+		return fmt.Errorf("failed to base64 decode note value; %s", err.Error())
 	}
 	t.Logf("retrieved %d-byte note value: %s at index %d; root: %s", len(*resp.Value), string(*resp.Value), circuitIndex, *resp.Root)
 
@@ -349,14 +345,12 @@ func testCircuitLifecycle(
 
 		resp, err := privacy.GetNoteValue(*token, prevCircuit.ID.String(), nullifiedIndex)
 		if err != nil {
-			t.Errorf("failed to fetch nullified note value; %s", err.Error())
-			return
+			return fmt.Errorf("failed to fetch nullified note value; %s", err.Error())
 		}
 
 		nullifiedNote, err := base64.StdEncoding.DecodeString(*resp.Value)
 		if err != nil {
-			t.Errorf("failed to base64 decode nullified note value; %s", err.Error())
-			return
+			return fmt.Errorf("failed to base64 decode nullified note value; %s", err.Error())
 		}
 		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
 
@@ -366,17 +360,17 @@ func testCircuitLifecycle(
 		t.Logf("nullifier key: %s", hex.EncodeToString(nullifierTreeKey))
 		resp, err = privacy.GetNullifierValue(*token, prevCircuit.ID.String(), hex.EncodeToString(nullifierTreeKey))
 		if err != nil {
-			t.Errorf("failed to fetch nullified note from nullifier tree; %s", err.Error())
-			return
+			return fmt.Errorf("failed to fetch nullified note from nullifier tree; %s", err.Error())
 		}
 
 		nullifiedValue, err := base64.StdEncoding.DecodeString(*resp.Value)
 		if err != nil {
-			t.Errorf("failed to base64 decode nullified note value; %s", err.Error())
-			return
+			return fmt.Errorf("failed to base64 decode nullified note value; %s", err.Error())
 		}
 		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(nullifiedValue), string(nullifiedValue), *resp.Root)
 	}
+
+	return nil
 }
 
 func circuitParamsFactory(curve, name, identifier, provingScheme string, noteStoreID, nullifierStoreID *string) map[string]interface{} {

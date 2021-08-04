@@ -72,30 +72,26 @@ func TestProcureToPayWorkflowGroth16(t *testing.T) {
 	goodsReceiptCircuit := circuits[3]
 	invoiceCircuit := circuits[4]
 
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(0), purchaseOrderCircuit, nil, map[string]interface{}{
-		"value": 11111111,
-		"hello": "world1",
-	})
+	tt := []struct {
+		circuitIndex uint64
+		circuit      *privacy.Circuit
+		prevCircuit  *privacy.Circuit
+		payload      map[string]interface{}
+	}{
+		{0, purchaseOrderCircuit, nil, map[string]interface{}{"value": 11111111, "hello": "world1"}},
+		{1, salesOrderCircuit, purchaseOrderCircuit, map[string]interface{}{"value": 22222222, "hello": "world2"}},
+		{2, shipmentNotificationCircuit, salesOrderCircuit, map[string]interface{}{"value": 33333333, "hello": "world3"}},
+		{3, goodsReceiptCircuit, shipmentNotificationCircuit, map[string]interface{}{"value": 44444444, "hello": "world4"}},
+		{4, invoiceCircuit, goodsReceiptCircuit, map[string]interface{}{"value": 55555555, "hello": "world5"}},
+	}
 
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(1), salesOrderCircuit, purchaseOrderCircuit, map[string]interface{}{
-		"value": 22222222,
-		"hello": "world2",
-	})
-
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(2), shipmentNotificationCircuit, salesOrderCircuit, map[string]interface{}{
-		"value": 33333333,
-		"hello": "world3",
-	})
-
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(3), goodsReceiptCircuit, shipmentNotificationCircuit, map[string]interface{}{
-		"value": 44444444,
-		"hello": "world4",
-	})
-
-	testCircuitLifecycle(t, tree, hFunc, token, uint64(4), invoiceCircuit, goodsReceiptCircuit, map[string]interface{}{
-		"value": 55555555,
-		"hello": "world5",
-	})
+	for _, tc := range tt {
+		err = testCircuitLifecycle(t, tree, hFunc, token, tc.circuitIndex, tc.circuit, tc.prevCircuit, tc.payload)
+		if err != nil {
+			t.Errorf("failed to test circuit 0; %s", err.Error())
+			return
+		}
+	}
 }
 
 func TestCircuitReuse(t *testing.T) {
@@ -163,8 +159,6 @@ func TestCircuitReuse(t *testing.T) {
 		},
 	}
 
-	time.Sleep(time.Duration(5) * time.Second)
-
 	verification, err := privacy.Verify(*token, circuit.ID.String(), note)
 	if err != nil {
 		t.Errorf("failed to verify proof; %s", err.Error())
@@ -172,8 +166,6 @@ func TestCircuitReuse(t *testing.T) {
 	}
 
 	t.Logf("%s proof/verification: %s / %v", *circuit.Name, *proof.Proof, verification.Result)
-
-	time.Sleep(time.Duration(5) * time.Second)
 
 	circuitIndex := uint64(0)
 	resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
@@ -214,8 +206,6 @@ func TestCircuitReuse(t *testing.T) {
 
 	t.Logf("proving witness Document.Hash: %s, Document.PreImage: %s", hashString, preImageString)
 
-	time.Sleep(time.Duration(5) * time.Second)
-
 	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": witness,
 	})
@@ -230,8 +220,6 @@ func TestCircuitReuse(t *testing.T) {
 			"Document.Hash": hashString,
 		},
 	}
-
-	time.Sleep(time.Duration(5) * time.Second)
 
 	verification, err = privacy.Verify(*token, circuit.ID.String(), note)
 	if err != nil {
@@ -253,8 +241,6 @@ func TestCircuitReuse(t *testing.T) {
 		return
 	}
 	t.Logf("retrieved %d-byte note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
-
-	time.Sleep(time.Duration(5) * time.Second)
 
 	t.Log("attempting retrieval of original note")
 

@@ -27,6 +27,7 @@ type StoreProvider interface {
 	Insert(val string) (root []byte, err error)
 	Root() (root *string, err error)
 	Size() int
+	CalculateKey(val string) []byte
 }
 
 // InitDenseMerkleTreeStoreProvider initializes a durable merkle tree

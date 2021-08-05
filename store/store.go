@@ -195,6 +195,17 @@ func (s *Store) ValueAt(key []byte) ([]byte, error) {
 	return val, nil
 }
 
+// CalculateKey returns the key for a corresponding value
+func (s *Store) CalculateKey(val string) (key []byte, err error) {
+	provider, err := s.storeProviderFactory()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key for store %s; %s", s.ID, err.Error())
+	}
+
+	key = provider.CalculateKey(val)
+	return key, nil
+}
+
 // validate the store params
 func (s *Store) validate() bool {
 	s.Errors = make([]*provide.Error, 0)

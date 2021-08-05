@@ -202,6 +202,10 @@ func (s *DMT) Size() int {
 	return len(s.values)
 }
 
+func (s *DMT) CalculateKey(val string) []byte {
+	return []byte{}
+}
+
 // StateAt returns the state at the given epoch
 func (s *DMT) StateAt(epoch uint64) (*state.State, error) {
 	claims := make([]*state.StateClaim, 0)

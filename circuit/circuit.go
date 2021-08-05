@@ -260,19 +260,19 @@ func (c *Circuit) NoteStoreRoot() (*string, error) {
 	return c.noteStore.Root()
 }
 
-// NoteValueAt returns the decrypted note from the underlying note storage provider
-func (c *Circuit) NoteValueAt(index uint64) ([]byte, error) {
+// NoteValueAt returns the decrypted note and key for nullified note from the underlying note storage provider
+func (c *Circuit) NoteValueAt(index uint64) ([]byte, []byte, error) {
 	if c.noteStore == nil && c.NoteStoreID != nil {
 		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
 	if c.noteStore == nil {
-		return nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s", index, c.ID)
+		return nil, nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s", index, c.ID)
 	}
 
 	val, err := c.noteStore.ValueAt(new(big.Int).SetUint64(index).Bytes())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	resp, err := vault.Decrypt(
@@ -284,10 +284,22 @@ func (c *Circuit) NoteValueAt(index uint64) ([]byte, error) {
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s; failed to decrypt note; %s", index, c.ID, err.Error())
+		return nil, nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s; failed to decrypt note; %s", index, c.ID, err.Error())
 	}
 
-	return []byte(resp.Data), nil
+	if c.nullifierStore == nil && c.NullifierStoreID != nil {
+		c.nullifierStore = storage.Find(*c.NullifierStoreID)
+	}
+
+	var key []byte
+	if c.nullifierStore != nil {
+		key, err = c.nullifierStore.CalculateKey(string(val))
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return []byte(resp.Data), key, nil
 }
 
 // NullifierStoreRoot returns the underlying nullifier store root

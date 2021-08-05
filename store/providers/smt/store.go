@@ -175,6 +175,10 @@ func (s *SMT) Size() int {
 	return s.tree.Values().Size()
 }
 
+func (s *SMT) CalculateKey(val string) []byte {
+	return s.digest([]byte(val))
+}
+
 // StateAt returns the state at the given epoch
 func (s *SMT) StateAt(epoch uint64) (*state.State, error) {
 	claims := make([]*state.StateClaim, 0)

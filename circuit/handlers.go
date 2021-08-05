@@ -383,7 +383,7 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	value, err := circuit.NoteValueAt(index)
+	value, nullifierKey, err := circuit.NoteValueAt(index)
 	if err != nil {
 		common.Log.Warningf("failed to retrieve note value at index: %d; %s", index, err.Error())
 		provide.RenderError(err.Error(), 404, c)
@@ -391,8 +391,9 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 	}
 
 	provide.Render(map[string]interface{}{
-		"root":  root,
-		"value": base64.StdEncoding.EncodeToString(value),
+		"root":          root,
+		"nullifier_key": base64.StdEncoding.EncodeToString(nullifierKey),
+		"value":         base64.StdEncoding.EncodeToString(value),
 	}, 200, c)
 }
 

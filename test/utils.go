@@ -338,7 +338,7 @@ func testCircuitLifecycle(
 	if err != nil {
 		return fmt.Errorf("failed to base64 decode note value; %s", err.Error())
 	}
-	t.Logf("retrieved %d-byte note value: %s at index %d; root: %s", len(*resp.Value), string(*resp.Value), circuitIndex, *resp.Root)
+	t.Logf("retrieved %d-byte note value: %s at index %d; root: %s", len(noteValue), string(noteValue), circuitIndex, *resp.Root)
 
 	if circuitIndex > 0 && prevCircuit != nil {
 		nullifiedIndex := circuitIndex - 1
@@ -352,22 +352,27 @@ func testCircuitLifecycle(
 		if err != nil {
 			return fmt.Errorf("failed to base64 decode nullified note value; %s", err.Error())
 		}
-		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
+		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(nullifiedNote), string(nullifiedNote), *resp.Root)
 
-		hFunc.Reset()
-		hFunc.Write(nullifiedNote)
-		nullifierTreeKey := hFunc.Sum(nil)
-		t.Logf("nullifier key: %s", hex.EncodeToString(nullifierTreeKey))
+		nullifierTreeKey, err := base64.StdEncoding.DecodeString(*resp.NullifierKey)
+		if err != nil {
+			return fmt.Errorf("failed to base64 decode nullifier tree key; %s", err.Error())
+		}
+		t.Logf("retrieved nullifier tree key: %s", hex.EncodeToString(nullifierTreeKey))
+
 		resp, err = privacy.GetNullifierValue(*token, prevCircuit.ID.String(), hex.EncodeToString(nullifierTreeKey))
 		if err != nil {
 			return fmt.Errorf("failed to fetch nullified note from nullifier tree; %s", err.Error())
+		}
+		if len(*resp.Value) == 0 {
+			return fmt.Errorf("failed to fetch nullified note from nullifier tree; key does not exist in tree")
 		}
 
 		nullifiedValue, err := base64.StdEncoding.DecodeString(*resp.Value)
 		if err != nil {
 			return fmt.Errorf("failed to base64 decode nullified note value; %s", err.Error())
 		}
-		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(nullifiedValue), string(nullifiedValue), *resp.Root)
+		t.Logf("retrieved %d-byte nullified note value: %s; root: %s", len(nullifiedValue), hex.EncodeToString(nullifiedValue), *resp.Root)
 	}
 
 	return nil

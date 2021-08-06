@@ -993,6 +993,11 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
+		err = c.dispatchNotification(natsCircuitNotificationNoteDeposit)
+		if err != nil {
+			common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationNoteDeposit, c.ID, err.Error())
+		}
+
 		common.Log.Debugf("inserted %d-byte note for circuit %s", len(note), c.ID)
 	}
 
@@ -1033,6 +1038,12 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 				common.Log.Warning(err.Error())
 				return err
 			}
+
+			err = c.dispatchNotification(natsCircuitNotificationNoteNullified)
+			if err != nil {
+				common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationNoteNullified, c.ID, err.Error())
+			}
+
 			common.Log.Debugf("inserted %d-byte nullifier for circuit %s: root: %s", len(data), c.ID, hex.EncodeToString(root))
 		}
 	}
@@ -1042,7 +1053,14 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 
 // exit the given circuit by nullifying its final valid state
 func (c *Circuit) exit() error {
+	var err error
 	// TODO: check to ensure an exit is possible...
+
+	err = c.dispatchNotification(natsCircuitNotificationExit)
+	if err != nil {
+		common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationExit, c.ID, err.Error())
+	}
+
 	return nil
 }
 

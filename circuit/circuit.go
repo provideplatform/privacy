@@ -126,7 +126,7 @@ func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
 }
 
 // Create a circuit
-func (c *Circuit) Create() bool {
+func (c *Circuit) Create(variables interface{}) bool {
 	if !c.validate() {
 		return false
 	}
@@ -134,7 +134,7 @@ func (c *Circuit) Create() bool {
 	db := dbconf.DatabaseConnection()
 	isImport := c.Artifacts != nil
 
-	if !c.importArtifacts(db) && !c.compile(db) {
+	if !c.importArtifacts(db) && !c.compile(db, variables) {
 		return false
 	}
 
@@ -416,7 +416,7 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 }
 
 // compile attempts to compile the circuit
-func (c *Circuit) compile(db *gorm.DB) bool {
+func (c *Circuit) compile(db *gorm.DB, variables interface{}) bool {
 	c.updateStatus(db, circuitStatusCompiling, nil)
 
 	provider := c.circuitProviderFactory()
@@ -434,7 +434,7 @@ func (c *Circuit) compile(db *gorm.DB) bool {
 		circuit := provider.CircuitFactory(*c.Identifier)
 
 		if circuit != nil {
-			artifacts, err = provider.Compile(circuit)
+			artifacts, err = provider.Compile(circuit, variables)
 			if err != nil {
 				c.Errors = append(c.Errors, &provide.Error{
 					Message: common.StringOrNil(fmt.Sprintf("failed to compile circuit with identifier %s; %s", *c.Identifier, err.Error())),

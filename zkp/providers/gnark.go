@@ -3,6 +3,7 @@ package providers
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -60,6 +61,35 @@ func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
 	}
 }
 
+// allocateVariablesForCircuit allocates slices for the given circuit if needed
+// inputs should be of the form map[string]interface{}{"CircuitMemberName_count": "3"}
+func allocateVariablesForCircuit(circuit frontend.Circuit, inputs map[string]interface{}) error {
+	circuitVal := reflect.Indirect(reflect.ValueOf(circuit))
+
+	for i := 0; i < circuitVal.NumField(); i++ {
+		field := circuitVal.Field(i)
+		if field.Kind() == reflect.Slice && field.Len() == 0 {
+			fieldName := circuitVal.Type().Field(i).Name + "_count"
+
+			countString, countOk := inputs[fieldName]
+			if !countOk {
+				return fmt.Errorf("failed to allocate variables for circuit; field named %s not found", fieldName)
+			}
+
+			count, ok := new(big.Int).SetString(countString.(string), 10)
+			if !ok {
+				return fmt.Errorf("failed to allocate variables for circuit; invalid count string %s", countString)
+			}
+
+			t := reflect.TypeOf(frontend.Variable{})
+			slice := reflect.MakeSlice(reflect.SliceOf(t), int(count.Int64()), int(count.Int64()))
+			field.Set(slice)
+		}
+	}
+
+	return nil
+}
+
 // WitnessFactory generates a valid witness for the given circuit identifier, curve and named inputs
 func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, inputs interface{}, isPublic bool) (interface{}, error) {
 	w := p.CircuitFactory(identifier)
@@ -67,9 +97,18 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 		return nil, fmt.Errorf("failed to serialize witness; %s circuit not resolved", identifier)
 	}
 
+	err := allocateVariablesForCircuit(w.(frontend.Circuit), inputs.(map[string]interface{}))
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize witness; %s", err.Error())
+	}
+
 	if witmap, witmapOk := inputs.(map[string]interface{}); witmapOk {
 		witval := reflect.Indirect(reflect.ValueOf(w))
 		for k := range witmap {
+			if strings.Contains(k, "_count") {
+				continue
+			}
+
 			field := witval
 			// handle variables in nested structs
 			var f string
@@ -79,7 +118,7 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 			if !field.CanSet() {
 				return nil, fmt.Errorf("failed to serialize witness; field %s does not exist on %s circuit", k, identifier)
 			}
-			if field.Kind() == reflect.Array && strings.Contains(f, "[") {
+			if (field.Kind() == reflect.Array || field.Kind() == reflect.Slice) && strings.Contains(f, "[") {
 				indexStr := strings.Split(f, "[")[1]
 				indexStr = strings.TrimRight(indexStr, "]")
 				index, err := strconv.Atoi(indexStr)
@@ -219,6 +258,15 @@ func (p *GnarkCircuitProvider) decodeProof(proof []byte) (interface{}, error) {
 // Compile the circuit...
 func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error) {
 	circuit := argv[0].(frontend.Circuit)
+	inputs, ok := argv[1].(map[string]interface{})
+
+	if ok {
+		err := allocateVariablesForCircuit(circuit, inputs)
+		if err != nil {
+			common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
+			return nil, err
+		}
+	}
 	r1cs, err := frontend.Compile(p.curveID, p.provingSchemeID, circuit)
 	if err != nil {
 		common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())

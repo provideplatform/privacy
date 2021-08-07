@@ -135,7 +135,9 @@ func createCircuitHandler(c *gin.Context) {
 		circuit.alpha = new(big.Int).SetUint64(uint64(alpha)).Bytes()
 	}
 
-	if circuit.Create() {
+	variables := params["variables"]
+
+	if circuit.Create(variables) {
 		provide.Render(circuit, 201, c)
 	} else {
 		obj := map[string]interface{}{}

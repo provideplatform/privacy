@@ -64,25 +64,34 @@ func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
 // allocateVariablesForCircuit allocates slices for the given circuit if needed
 // inputs should be of the form map[string]interface{}{"CircuitMemberName_count": "3"}
 func allocateVariablesForCircuit(circuit frontend.Circuit, inputs map[string]interface{}) error {
-	circuitVal := reflect.Indirect(reflect.ValueOf(circuit))
+	witval := reflect.Indirect(reflect.ValueOf(circuit))
 
-	for i := 0; i < circuitVal.NumField(); i++ {
-		field := circuitVal.Field(i)
+	for k := range inputs {
+		if !strings.Contains(k, "_count") {
+			continue
+		}
+
+		field := witval
+		// handle variables in nested structs
+		var f string
+		k = strings.Split(k, "_")[0]
+		for _, f = range strings.Split(k, ".") {
+			field = field.FieldByName(strings.Split(f, "[")[0])
+		}
+
 		if field.Kind() == reflect.Slice && field.Len() == 0 {
-			fieldName := circuitVal.Type().Field(i).Name + "_count"
-
-			countString, countOk := inputs[fieldName]
-			if !countOk {
-				return fmt.Errorf("failed to allocate variables for circuit; field named %s not found", fieldName)
+			countString, countStringOk := inputs[k+"_count"]
+			if !countStringOk {
+				continue
 			}
-
-			count, ok := new(big.Int).SetString(countString.(string), 10)
-			if !ok {
-				return fmt.Errorf("failed to allocate variables for circuit; invalid count string %s", countString)
+			countInt, countIntOk := new(big.Int).SetString(countString.(string), 10)
+			if !countIntOk {
+				continue
 			}
+			count := int(countInt.Int64())
 
 			t := reflect.TypeOf(frontend.Variable{})
-			slice := reflect.MakeSlice(reflect.SliceOf(t), int(count.Int64()), int(count.Int64()))
+			slice := reflect.MakeSlice(reflect.SliceOf(t), count, count)
 			field.Set(slice)
 		}
 	}

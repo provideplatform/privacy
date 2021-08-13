@@ -23,6 +23,7 @@ import (
 type GnarkCircuitProvider struct {
 	curveID         ecc.ID
 	provingSchemeID backend.ID
+	circuitLibrary  map[string]interface{}
 }
 
 // InitGnarkCircuitProvider initializes and configures a new GnarkCircuitProvider instance
@@ -30,35 +31,41 @@ func InitGnarkCircuitProvider(curveID *string, provingScheme *string) *GnarkCirc
 	return &GnarkCircuitProvider{
 		curveID:         common.GnarkCurveIDFactory(curveID),
 		provingSchemeID: common.GnarkProvingSchemeFactory(provingScheme),
+		circuitLibrary: map[string]interface{}{
+			GnarkCircuitIdentifierCubic:                       &gnark.CubicCircuit{},
+			GnarkCircuitIdentifierMimc:                        &gnark.MimcCircuit{},
+			GnarkCircuitIdentifierBaselineRollup:              &gnark.BaselineRollupCircuit{},
+			GnarkCircuitIdentifierPurchaseOrderCircuit:        &gnark.PurchaseOrderCircuit{},
+			GnarkCircuitIdentifierSalesOrderCircuit:           &gnark.SalesOrderCircuit{},
+			GnarkCircuitIdentifierShipmentNotificationCircuit: &gnark.ShipmentNotificationCircuit{},
+			GnarkCircuitIdentifierGoodsReceiptCircuit:         &gnark.GoodsReceiptCircuit{},
+			GnarkCircuitIdentifierInvoiceCircuit:              &gnark.InvoiceCircuit{},
+			GnarkCircuitIdentifierProofHashCircuit:            &gnark.ProofHashCircuit{},
+			GnarkCircuitIdentifierProofEddsaCircuit:           &gnark.ProofEddsaCircuit{},
+		},
 	}
 }
 
 // CircuitFactory returns a library circuit by name
 func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
-	switch identifier {
-	case GnarkCircuitIdentifierCubic:
-		return &gnark.CubicCircuit{}
-	case GnarkCircuitIdentifierMimc:
-		return &gnark.MimcCircuit{}
-	case GnarkCircuitIdentifierBaselineRollup:
-		return &gnark.BaselineRollupCircuit{}
-	case GnarkCircuitIdentifierPurchaseOrderCircuit:
-		return &gnark.PurchaseOrderCircuit{}
-	case GnarkCircuitIdentifierSalesOrderCircuit:
-		return &gnark.SalesOrderCircuit{}
-	case GnarkCircuitIdentifierShipmentNotificationCircuit:
-		return &gnark.ShipmentNotificationCircuit{}
-	case GnarkCircuitIdentifierGoodsReceiptCircuit:
-		return &gnark.GoodsReceiptCircuit{}
-	case GnarkCircuitIdentifierInvoiceCircuit:
-		return &gnark.InvoiceCircuit{}
-	case GnarkCircuitIdentifierProofHashCircuit:
-		return &gnark.ProofHashCircuit{}
-	case GnarkCircuitIdentifierProofEddsaCircuit:
-		return &gnark.ProofEddsaCircuit{}
-	default:
-		return nil
+	circuit, circuitOk := p.circuitLibrary[identifier]
+	if circuitOk {
+		return circuit
 	}
+
+	return nil
+}
+
+// AddCircuit adds a gnark circuit to the library
+func (p *GnarkCircuitProvider) AddCircuit(identifier string, circuit interface{}) error {
+	c, cOk := circuit.(frontend.Circuit)
+	if !cOk {
+		return fmt.Errorf("invalid gnark circuit type %T; expected frontend.Circuit", circuit)
+	}
+
+	p.circuitLibrary[identifier] = c
+
+	return nil
 }
 
 // allocateVariablesForCircuit allocates slices for the given circuit if needed
@@ -267,13 +274,15 @@ func (p *GnarkCircuitProvider) decodeProof(proof []byte) (interface{}, error) {
 // Compile the circuit...
 func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error) {
 	circuit := argv[0].(frontend.Circuit)
-	inputs, ok := argv[1].(map[string]interface{})
+	if len(argv) > 1 {
+		inputs, ok := argv[1].(map[string]interface{})
 
-	if ok {
-		err := allocateVariablesForCircuit(circuit, inputs)
-		if err != nil {
-			common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
-			return nil, err
+		if ok {
+			err := allocateVariablesForCircuit(circuit, inputs)
+			if err != nil {
+				common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
+				return nil, err
+			}
 		}
 	}
 	r1cs, err := frontend.Compile(p.curveID, p.provingSchemeID, circuit)

@@ -48,8 +48,7 @@ func InitGnarkCircuitProvider(curveID *string, provingScheme *string) *GnarkCirc
 
 // CircuitFactory returns a library circuit by name
 func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
-	id := strings.ToLower(identifier)
-	circuit, circuitOk := p.circuitLibrary[id]
+	circuit, circuitOk := p.circuitLibrary[identifier]
 	if circuitOk {
 		return circuit
 	}
@@ -64,8 +63,7 @@ func (p *GnarkCircuitProvider) AddCircuit(identifier string, circuit interface{}
 		return fmt.Errorf("invalid gnark circuit type %T; expected frontend.Circuit", circuit)
 	}
 
-	id := strings.ToLower(identifier)
-	p.circuitLibrary[id] = c
+	p.circuitLibrary[identifier] = c
 
 	return nil
 }

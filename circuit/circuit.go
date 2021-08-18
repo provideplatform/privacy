@@ -10,10 +10,6 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/kzg"
-	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/gnark/frontend"
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -26,12 +22,6 @@ import (
 	provide "github.com/provideplatform/provide-go/api"
 	vault "github.com/provideplatform/provide-go/api/vault"
 	util "github.com/provideplatform/provide-go/common/util"
-
-	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
-	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
-	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
-	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
-	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
 const circuitProvingSchemeGroth16 = "groth16"
@@ -86,7 +76,6 @@ type Circuit struct {
 	nullifierStore   *storage.Store
 
 	// ephemeral fields
-	alpha        []byte `sql:"-" json:"-"`
 	srs          []byte
 	provingKey   []byte
 	verifyingKey []byte
@@ -175,16 +164,6 @@ func (c *Circuit) Create(variables interface{}) bool {
 				}
 
 				if c.srsRequired() {
-					if c.alpha != nil && (c.srs == nil || len(c.srs) == 0) {
-						err := c.generateSRS()
-						if err != nil {
-							c.Errors = append(c.Errors, &provide.Error{
-								Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required alpha for SRS was not present", *c.ProvingScheme, *c.Identifier)),
-							})
-							return false
-						}
-					}
-
 					if c.srs == nil || len(c.srs) == 0 {
 						c.Errors = append(c.Errors, &provide.Error{
 							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),
@@ -545,10 +524,6 @@ func (c *Circuit) enrich() error {
 			"verifying_key": hex.EncodeToString(c.verifyingKey),
 		}
 
-		if c.alpha != nil && len(c.alpha) > 0 {
-			c.Artifacts["alpha"] = new(big.Int).SetBytes(c.alpha).Uint64()
-		}
-
 		if c.srs != nil && len(c.srs) > 0 {
 			c.Artifacts["srs"] = hex.EncodeToString(c.srs)
 		}
@@ -603,79 +578,6 @@ func (c *Circuit) exportVerifier() error {
 	return nil
 }
 
-// generateSRS enriches the ephemeral in-memory circuit SRS value;
-// this method is deterministic per alpha
-func (c *Circuit) generateSRS() error {
-	var r1cs frontend.CompiledConstraintSystem
-
-	switch *c.ProvingScheme {
-	case circuitProvingSchemeGroth16:
-		r1cs = groth16.NewCS(common.GnarkCurveIDFactory(c.Curve))
-	case circuitProvingSchemePlonk:
-		r1cs = plonk.NewCS(common.GnarkCurveIDFactory(c.Curve))
-	default:
-		return fmt.Errorf("failed to read r1cs for circuit %s; invalid proving scheme %s", c.ID, *c.ProvingScheme)
-	}
-
-	_, err := r1cs.ReadFrom(bytes.NewReader(c.Binary))
-	if err != nil {
-		return fmt.Errorf("failed to read r1cs for circuit %s; %s", c.ID, err.Error())
-	}
-
-	srs, err := c.getKZGScheme(r1cs)
-	if err != nil {
-		return fmt.Errorf("failed to write srs for circuit %s; %s", c.ID, err.Error())
-	}
-
-	buf := new(bytes.Buffer)
-	_, err = srs.WriteTo(buf)
-	if err != nil {
-		return fmt.Errorf("failed to write srs for circuit %s; %s", c.ID, err.Error())
-	}
-
-	c.srs = buf.Bytes()
-
-	return nil
-}
-
-// getKZGScheme resolves the Kate-Zaverucha-Goldberg (KZG) constant-sized polynomial
-// commitment scheme for the given r1cs, using the ephemeral in-memory circuit alpha
-func (c *Circuit) getKZGScheme(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
-	if c.alpha == nil || len(c.alpha) == 0 {
-		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; nil alpha", c.ID)
-	}
-
-	alpha := new(big.Int).SetBytes(c.alpha)
-	nbConstraints := r1cs.GetNbConstraints()
-	internal, secret, public := r1cs.GetNbVariables()
-	nbVariables := internal + secret + public
-
-	var s int
-	var size uint64
-	if nbConstraints > nbVariables {
-		s = nbConstraints
-	} else {
-		s = nbVariables
-	}
-
-	size = ecc.NextPowerOfTwo(uint64(s))
-
-	switch r1cs.CurveID() {
-	case ecc.BN254:
-		return kzgbn254.NewSRS(size+3, alpha)
-	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size+3, alpha)
-	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size+3, alpha)
-	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2+3, alpha)
-	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size+3, alpha)
-	default:
-		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; unsupported curve type: %s", c.ID, r1cs.CurveID().String())
-	}
-}
-
 // importArtifacts attempts to import the circuit from existing artifacts
 func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 	if c.Artifacts == nil {
@@ -710,26 +612,6 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
 				Message: common.StringOrNil(fmt.Sprintf("failed to import verifying key for circuit %s; %s", c.ID, err.Error())),
-			})
-			return false
-		}
-	}
-
-	_, alphaOk := c.Artifacts["alpha"]
-	_, srsOk := c.Artifacts["srs"]
-
-	if alphaOk && srsOk {
-		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to import artifacts for circuit %s; %s", c.ID, err.Error())),
-		})
-		return false
-	}
-
-	if alpha, alphaOk := c.Artifacts["alpha"].(float64); alphaOk {
-		c.alpha = new(big.Int).SetUint64(uint64(alpha)).Bytes()
-		if err != nil {
-			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import alpha for circuit %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}

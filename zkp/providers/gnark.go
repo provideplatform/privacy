@@ -42,6 +42,7 @@ func InitGnarkCircuitProvider(curveID *string, provingScheme *string) *GnarkCirc
 			GnarkCircuitIdentifierInvoiceCircuit:              &gnark.InvoiceCircuit{},
 			GnarkCircuitIdentifierProofHashCircuit:            &gnark.ProofHashCircuit{},
 			GnarkCircuitIdentifierProofEddsaCircuit:           &gnark.ProofEddsaCircuit{},
+			GnarkCircuitIdentifierBondCircuit:                 &gnark.BondCircuit{},
 		},
 	}
 }

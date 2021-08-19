@@ -36,6 +36,9 @@ const GnarkCircuitIdentifierProofHashCircuit = "proof_hash"
 // GnarkCircuitIdentifierProofEddsaCircuit gnark circuit
 const GnarkCircuitIdentifierProofEddsaCircuit = "proof_eddsa"
 
+// GnarkCircuitIdentifierBondCircuit gnark circuit
+const GnarkCircuitIdentifierBondCircuit = "bond"
+
 // ZKSnarkCircuitProviderGnark gnark zksnark circuit provider
 const ZKSnarkCircuitProviderGnark = "gnark"
 

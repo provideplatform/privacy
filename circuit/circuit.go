@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strings"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -309,7 +310,10 @@ func (c *Circuit) NullifierValueAt(key []byte) ([]byte, error) {
 
 // Prove generates a proof for the given witness
 func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
-	c.enrich()
+	err := c.enrich()
+	if err != nil {
+		common.Log.Warningf("enrich failed for circuit prove; %s", err.Error())
+	}
 
 	provider := c.circuitProviderFactory()
 	if provider == nil {
@@ -353,7 +357,10 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 
 // Verify a proof to be verifiable for the given witness
 func (c *Circuit) Verify(proof string, witness map[string]interface{}, store bool) (bool, error) {
-	c.enrich()
+	err := c.enrich()
+	if err != nil {
+		common.Log.Warningf("enrich failed for circuit verify; %s", err.Error())
+	}
 
 	provider := c.circuitProviderFactory()
 	if provider == nil {
@@ -361,7 +368,6 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 	}
 
 	var _proof []byte
-	var err error
 
 	_proof, err = hex.DecodeString(proof)
 	if err != nil {
@@ -444,7 +450,7 @@ func (c *Circuit) compile(db *gorm.DB, variables interface{}) bool {
 
 // canExportVerifier returns true if the circuit instance supports exporting a verifier smart contract
 func (c *Circuit) canExportVerifier() bool {
-	return c.VerifierContract == nil && *c.ProvingScheme == circuitProvingSchemeGroth16 && *c.Curve == ecc.BN254.String()
+	return c.VerifierContract == nil && strings.ToLower(*c.ProvingScheme) == circuitProvingSchemeGroth16 && strings.ToLower(*c.Curve) == ecc.BN254.String()
 }
 
 // enrich the circuit

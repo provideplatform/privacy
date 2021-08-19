@@ -35,7 +35,6 @@ jobs:
           repository: provideplatform/ident
           path: 'ident'
           ref: master
-          token: ${{ secrets.DEPLOY_GITHUB_PAT }}
       - run: make build
         working-directory: privacy
       - run: make test

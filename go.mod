@@ -19,9 +19,7 @@ require (
 	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd
 	github.com/providenetwork/smt v0.2.1-0.20210730053242-2e71de60adeb
-	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
+	github.com/provideplatform/ident v0.9.10-0.20210801033801-297a9eac7ffc
 	github.com/provideplatform/provide-go v0.0.0-20210804232208-ced52410c4b0
 	github.com/stretchr/testify v1.7.0
 )
-
-replace github.com/provideplatform/ident => ../ident

@@ -67,11 +67,11 @@ docker_build()
     sudo docker build -t provide/privacy .
 
     echo 'Docker tag...'
-    sudo docker tag provide/privacy:latest "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/provide/privacy:${buildRef}"
+    sudo docker tag provide/privacy:latest "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/provide/privacy:${buildRef}"
 
     echo 'Docker push...'
-    $(aws ecr get-login --no-include-email --region us-east-1)
-    sudo docker push "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/provide/privacy:${buildRef}"
+    aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+    docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/provide/privacy:${buildRef}"
 }
 
 ecs_deploy()

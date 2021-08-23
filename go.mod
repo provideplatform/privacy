@@ -3,8 +3,8 @@ module github.com/provideplatform/privacy
 go 1.15
 
 require (
-	github.com/consensys/gnark v0.4.1-0.20210810173659-9e05ca392128
-	github.com/consensys/gnark-crypto v0.4.1-0.20210810152820-89f1497f0bc5
+	github.com/consensys/gnark v0.5.0
+	github.com/consensys/gnark-crypto v0.5.0
 	github.com/gin-gonic/gin v1.7.0
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jinzhu/gorm v1.9.16

@@ -79,31 +79,22 @@ func userTokenFactory(testID uuid.UUID) (*string, error) {
 // commitment scheme for the given r1cs, using constant (insecure) alpha
 func getKzgSchemeForTest(r1cs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
 	nbConstraints := r1cs.GetNbConstraints()
-	internal, secret, public := r1cs.GetNbVariables()
-	nbVariables := internal + secret + public
+	_, _, public := r1cs.GetNbVariables()
+	size := uint64(nbConstraints + public)
 
-	var s int
-	var size uint64
-	if nbConstraints > nbVariables {
-		s = nbConstraints
-	} else {
-		s = nbVariables
-	}
-
-	size = ecc.NextPowerOfTwo(uint64(s))
 	alpha := new(big.Int).SetUint64(42)
 
 	switch r1cs.CurveID() {
 	case ecc.BN254:
-		return kzgbn254.NewSRS(size+3, alpha)
+		return kzgbn254.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
 	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(size+3, alpha)
+		return kzgbls12381.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
 	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(size+3, alpha)
+		return kzgbls12377.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
 	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(size*2+3, alpha)
+		return kzgbw6761.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
 	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(size+3, alpha)
+		return kzgbls24315.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
 	default:
 		return nil, fmt.Errorf("invalid curve id")
 	}

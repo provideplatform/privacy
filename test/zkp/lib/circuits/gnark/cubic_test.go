@@ -226,7 +226,6 @@ func TestCubicEquationDeterminism(t *testing.T) {
 	assert.NoError(err)
 
 	{
-		// var witness1, publicWitness libgnark.CubicCircuit
 		var witness1 libgnark.CubicCircuit
 		witness1.X.Assign(3)
 		witness1.Y.Assign(35)
@@ -279,7 +278,6 @@ func TestCubicEquationDeterminism(t *testing.T) {
 
 		assert.Equal(pfBuf1.Bytes(), pfBuf2.Bytes(), "proofs are NOT equal")
 		t.Logf("proofs of length %d are equal", pfBuf1.Len())
-		// t.Logf("%s", hex.EncodeToString(pfBuf1.Bytes()))
 
 		assert.Equal(pkBuf1.Bytes(), pkBuf2.Bytes(), "pks are NOT equal")
 		t.Logf("pks of length %d are equal", pkBuf1.Len())

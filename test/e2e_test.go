@@ -57,11 +57,15 @@ func TestProcureToPayWorkflowGroth16(t *testing.T) {
 	tree := merkletree.NewMerkleTree(hFunc)
 
 	testUserID, _ := uuid.NewV4()
-	token, _ := userTokenFactory(testUserID)
+	token, err := userTokenFactory(testUserID)
+	if err != nil {
+		t.Errorf("failed to create user token; %s", err.Error())
+		return
+	}
 
 	circuits, err := createProcureToPayWorkflow(token, testProvingSchemeGroth16)
 	if err != nil {
-		t.Errorf("failed to create procure to pay workflow circuits%s", err.Error())
+		t.Errorf("failed to create procure to pay workflow circuits; %s", err.Error())
 		return
 	}
 
@@ -103,7 +107,11 @@ func TestCircuitReuse(t *testing.T) {
 	hFunc := mimc.NewMiMC("seed")
 
 	testUserID, _ := uuid.NewV4()
-	token, _ := userTokenFactory(testUserID)
+	token, err := userTokenFactory(testUserID)
+	if err != nil {
+		t.Errorf("failed to create user token; %s", err.Error())
+		return
+	}
 
 	circuit, err := privacy.CreateCircuit(
 		*token,
@@ -268,7 +276,11 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 	tree := merkletree.NewMerkleTree(hFunc)
 
 	testUserID, _ := uuid.NewV4()
-	token, _ := userTokenFactory(testUserID)
+	token, err := userTokenFactory(testUserID)
+	if err != nil {
+		t.Errorf("failed to create user token; %s", err.Error())
+		return
+	}
 
 	circuits := make([]*privacy.Circuit, 0)
 	notes := make([][]byte, 0)
@@ -281,7 +293,7 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 
 		workflowCircuits, err := createProcureToPayWorkflow(token, testProvingSchemeGroth16)
 		if err != nil {
-			t.Errorf("failed to create procure to pay workflow circuits%s", err.Error())
+			t.Errorf("failed to create procure to pay workflow circuits; %s", err.Error())
 			return
 		}
 

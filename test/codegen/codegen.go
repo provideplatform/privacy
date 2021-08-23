@@ -108,7 +108,7 @@ func (c *Circuit) makeCircuitLogic() (string, error) {
 	var logic strings.Builder
 
 	if c.RollupProofCount > 0 {
-		fmt.Fprintf(&logic, "\tmimc, err := mimc.NewMiMC(\"seed\", curveID)\n")
+		fmt.Fprintf(&logic, "\tmimc, err := mimc.NewMiMC(\"seed\", curveID, cs)\n")
 		fmt.Fprintf(&logic, "\tif err != nil {\n")
 		fmt.Fprintf(&logic, "\t\treturn err\n\t}\n")
 		fmt.Fprintf(&logic, "\tmerkle.VerifyProof(cs, mimc, circuit.RootHash, circuit.Proofs[:], circuit.Helpers[:])\n")

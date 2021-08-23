@@ -27,6 +27,9 @@ import (
 	frbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
 	eddsabw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/twistededwards/eddsa"
 
+	// frbw6633 "github.com/consensys/gnark-crypto/ecc/bw6-633/fr"
+	// eddsabw6633 "github.com/consensys/gnark-crypto/ecc/bw6-633/twistededwards/eddsa"
+
 	"github.com/consensys/gnark-crypto/accumulator/merkletree"
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark-crypto/signature"
@@ -81,6 +84,12 @@ func bytesToFieldElementBytes(id ecc.ID, b []byte, v *frontend.Variable) []byte 
 		elemBytes := elem.Bytes()
 		v.Assign(elem)
 		return elemBytes[:]
+		// case ecc.BW6_633:
+		// 	var elem frbw6633.Element
+		// 	elem.SetBytes(b)
+		// 	elemBytes := elem.Bytes()
+		// 	v.Assign(elem)
+		// 	return elemBytes[:]
 	}
 	return nil
 }
@@ -218,6 +227,7 @@ func TestKeySizesGroth16(t *testing.T) {
 	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
+	// signature.Register(signature.EDDSA_BW6_633, eddsabw6633.GenerateKeyInterfaces)
 
 	confs := []confSig{
 		{ecc.BN254, hash.MIMC_BN254, signature.EDDSA_BN254},
@@ -225,6 +235,7 @@ func TestKeySizesGroth16(t *testing.T) {
 		{ecc.BLS12_377, hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
 		{ecc.BW6_761, hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
 		{ecc.BLS24_315, hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+		// {ecc.BW6_633, hash.MIMC_BW6_633, signature.EDDSA_BW6_633},
 	}
 
 	circuits := []string{
@@ -292,6 +303,7 @@ func TestKeySizesPlonk(t *testing.T) {
 	signature.Register(signature.EDDSA_BLS12_377, eddsabls12377.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BW6_761, eddsabw6761.GenerateKeyInterfaces)
 	signature.Register(signature.EDDSA_BLS24_315, eddsabls24315.GenerateKeyInterfaces)
+	// signature.Register(signature.EDDSA_BW6_633, eddsabw6633.GenerateKeyInterfaces)
 
 	confs := []confSig{
 		{ecc.BN254, hash.MIMC_BN254, signature.EDDSA_BN254},
@@ -299,6 +311,7 @@ func TestKeySizesPlonk(t *testing.T) {
 		{ecc.BLS12_377, hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
 		{ecc.BW6_761, hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
 		{ecc.BLS24_315, hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+		// {ecc.BW6_633, hash.MIMC_BW6_633, signature.EDDSA_BW6_633},
 	}
 
 	circuits := []string{
@@ -368,13 +381,13 @@ type ProofHashSizeTestCircuit struct {
 
 // Define declares the circuit constraints
 func (circuit *ProofHashSizeTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	hFunc, err := mimc.NewMiMC("seed", curveID)
+	hFunc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Proof[:]...)
-	cs.AssertIsEqual(hash, circuit.Hash)
+	hFunc.Write(circuit.Proof[:]...)
+	cs.AssertIsEqual(hFunc.Sum(), circuit.Hash)
 
 	return nil
 }
@@ -472,13 +485,13 @@ func (circuit *ProofEddsaSizeTestCircuit) Define(curveID ecc.ID, cs *frontend.Co
 	}
 	circuit.PubKey.Curve = curve
 
-	hFunc, err := mimc.NewMiMC("seed", curveID)
+	hFunc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Msg[:]...)
-	eddsa.Verify(cs, circuit.Sig, hash, circuit.PubKey)
+	hFunc.Write(circuit.Msg[:]...)
+	eddsa.Verify(cs, circuit.Sig, hFunc.Sum(), circuit.PubKey)
 
 	return nil
 }

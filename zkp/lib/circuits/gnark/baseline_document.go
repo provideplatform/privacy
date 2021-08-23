@@ -37,13 +37,13 @@ type InvoiceCircuit struct {
 // Define declares the PO circuit constraints
 func (circuit *PurchaseOrderCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, err := mimc.NewMiMC("seed", curveID)
+	mimc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	mimc.Write(circuit.Document.Preimage)
+	cs.AssertIsEqual(circuit.Document.Hash, mimc.Sum())
 
 	return nil
 }
@@ -51,13 +51,13 @@ func (circuit *PurchaseOrderCircuit) Define(curveID ecc.ID, cs *frontend.Constra
 // Define declares the SO circuit constraints
 func (circuit *SalesOrderCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, err := mimc.NewMiMC("seed", curveID)
+	mimc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	mimc.Write(circuit.Document.Preimage)
+	cs.AssertIsEqual(circuit.Document.Hash, mimc.Sum())
 
 	return nil
 }
@@ -65,13 +65,13 @@ func (circuit *SalesOrderCircuit) Define(curveID ecc.ID, cs *frontend.Constraint
 // Define declares the SN circuit constraints
 func (circuit *ShipmentNotificationCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, err := mimc.NewMiMC("seed", curveID)
+	mimc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	mimc.Write(circuit.Document.Preimage)
+	cs.AssertIsEqual(circuit.Document.Hash, mimc.Sum())
 
 	return nil
 }
@@ -79,13 +79,13 @@ func (circuit *ShipmentNotificationCircuit) Define(curveID ecc.ID, cs *frontend.
 // Define declares the GR circuit constraints
 func (circuit *GoodsReceiptCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, err := mimc.NewMiMC("seed", curveID)
+	mimc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	mimc.Write(circuit.Document.Preimage)
+	cs.AssertIsEqual(circuit.Document.Hash, mimc.Sum())
 
 	return nil
 }
@@ -93,13 +93,13 @@ func (circuit *GoodsReceiptCircuit) Define(curveID ecc.ID, cs *frontend.Constrai
 // Define declares the Invoice circuit constraints
 func (circuit *InvoiceCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, err := mimc.NewMiMC("seed", curveID)
+	mimc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	mimc.Write(circuit.Document.Preimage)
+	cs.AssertIsEqual(circuit.Document.Hash, mimc.Sum())
 
 	return nil
 }

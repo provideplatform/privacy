@@ -16,7 +16,7 @@ type BaselineRollupCircuit struct {
 // Define declares the circuit constraints
 func (circuit *BaselineRollupCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, err := mimc.NewMiMC("seed", curveID)
+	mimc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}

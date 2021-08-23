@@ -19,11 +19,12 @@ type MimcCircuit struct {
 // Hash = mimc(Preimage)
 func (circuit *MimcCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
-	mimc, _ := mimc.NewMiMC("seed", curveID)
+	mimc, _ := mimc.NewMiMC("seed", curveID, cs)
 
 	// specify constraints
 	// mimc(preImage) == hash
-	cs.AssertIsEqual(circuit.Hash, mimc.Hash(cs, circuit.Preimage))
+	mimc.Write(circuit.Preimage)
+	cs.AssertIsEqual(circuit.Hash, mimc.Sum())
 
 	return nil
 }

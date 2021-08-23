@@ -94,13 +94,13 @@ type ProofHashCircuit struct {
 
 // Define declares the circuit constraints
 func (circuit *ProofHashCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	hFunc, err := mimc.NewMiMC("seed", curveID)
+	hFunc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Proof[:]...)
-	cs.AssertIsEqual(hash, circuit.Hash)
+	hFunc.Write(circuit.Proof[:]...)
+	cs.AssertIsEqual(hFunc.Sum(), circuit.Hash)
 
 	return nil
 }
@@ -120,13 +120,13 @@ func (circuit *ProofEddsaCircuit) Define(curveID ecc.ID, cs *frontend.Constraint
 	}
 	circuit.PubKey.Curve = curve
 
-	hFunc, err := mimc.NewMiMC("seed", curveID)
+	hFunc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Msg[:]...)
-	eddsa.Verify(cs, circuit.Sig, hash, circuit.PubKey)
+	hFunc.Write(circuit.Msg[:]...)
+	eddsa.Verify(cs, circuit.Sig, hFunc.Sum(), circuit.PubKey)
 
 	return nil
 }

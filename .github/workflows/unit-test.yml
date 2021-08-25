@@ -39,6 +39,9 @@ jobs:
           ref: master
       - run: make build
         working-directory: privacy
+      - run: docker-compose -f ./ops/docker-compose-db.yml up -d
+        working-directory: privacy
       - run: make test
         working-directory: privacy
+      - run: docker-compose -f baseline/ops/docker-compose-db.yml down
       - run: docker volume rm ops_privacy-db

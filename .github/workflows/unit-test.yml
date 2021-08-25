@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - dev
+      - fix-ci-tests
+
 jobs:
   test:
     runs-on: ubuntu-latest

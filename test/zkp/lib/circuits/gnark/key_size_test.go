@@ -295,10 +295,10 @@ func TestKeySizesPlonk(t *testing.T) {
 
 	confs := []confSig{
 		{ecc.BN254, hash.MIMC_BN254, signature.EDDSA_BN254},
-		{ecc.BLS12_381, hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
-		{ecc.BLS12_377, hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
-		{ecc.BW6_761, hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
-		{ecc.BLS24_315, hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+		// {ecc.BLS12_381, hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
+		// {ecc.BLS12_377, hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
+		// {ecc.BW6_761, hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
+		// {ecc.BLS24_315, hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
 	}
 
 	circuits := []string{
@@ -384,7 +384,8 @@ func TestKeySizesByHashWitnessSize(t *testing.T) {
 
 	// in testing, proving keys increased in size for count == 1, 2, 3, 4, 6, 8, 11, 16, 22, 31, 44, 62
 	// then go test errored on 72
-	for count := 70; count <= 100; count++ {
+	for count := 1; count <= 1; count++ {
+		// for count := 70; count <= 100; count++ {
 		id, h := ecc.BN254, hash.MIMC_BN254
 
 		var circuit, witness ProofHashSizeTestCircuit
@@ -488,7 +489,7 @@ func TestKeySizesByEddsaWitnessSize(t *testing.T) {
 
 	// in testing, proving keys increased in size for count == 1, 8, 18, 29, 42, 61 (855638832 bytes)
 	// then go test crashed on 87 with heavy RAM usage on a 32gb system
-	for count := 1; count <= 86; count++ {
+	for count := 1; count <= 1; count++ {
 		id, h, s := ecc.BN254, hash.MIMC_BN254, signature.EDDSA_BN254
 
 		var circuit, witness ProofEddsaSizeTestCircuit
@@ -578,11 +579,11 @@ func TestKeySizesForMerkleCircuit(t *testing.T) {
 	assert := plonk.NewAssert(t)
 
 	confs := map[ecc.ID]hash.Hash{
-		ecc.BN254:     hash.MIMC_BN254,
-		ecc.BLS12_381: hash.MIMC_BLS12_381,
-		ecc.BLS12_377: hash.MIMC_BLS12_377,
-		ecc.BW6_761:   hash.MIMC_BW6_761,
-		ecc.BLS24_315: hash.MIMC_BLS24_315,
+		ecc.BN254: hash.MIMC_BN254,
+		// ecc.BLS12_381: hash.MIMC_BLS12_381,
+		// ecc.BLS12_377: hash.MIMC_BLS12_377,
+		// ecc.BW6_761:   hash.MIMC_BW6_761,
+		// ecc.BLS24_315: hash.MIMC_BLS24_315,
 	}
 
 	for id, h := range confs {

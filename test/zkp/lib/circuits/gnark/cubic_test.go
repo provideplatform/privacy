@@ -4,7 +4,6 @@ package gnark
 
 import (
 	"bytes"
-	"encoding/hex"
 	"math/big"
 	"testing"
 
@@ -195,16 +194,12 @@ func TestCubicEquationPlonkSRSEntropy(t *testing.T) {
 		_, err = srs1.WriteTo(buf1)
 		assert.NoError(err)
 
-		t.Logf("srs1: %v", hex.EncodeToString(buf1.Bytes()))
-
 		buf2 := new(bytes.Buffer)
 		srs2, err := kzg.NewSRS(size, alpha)
 		assert.NoError(err, "Getting KZG scheme should not have failed")
 
 		_, err = srs2.WriteTo(buf2)
 		assert.NoError(err)
-
-		t.Logf("srs2: %v", hex.EncodeToString(buf2.Bytes()))
 
 		assert.Equal(buf1.Bytes(), buf2.Bytes(), "srs objects initialized with same value are NOT equal")
 
@@ -226,7 +221,6 @@ func TestCubicEquationDeterminism(t *testing.T) {
 	assert.NoError(err)
 
 	{
-		// var witness1, publicWitness libgnark.CubicCircuit
 		var witness1 libgnark.CubicCircuit
 		witness1.X.Assign(3)
 		witness1.Y.Assign(35)
@@ -277,15 +271,14 @@ func TestCubicEquationDeterminism(t *testing.T) {
 		_, err = proof2.WriteTo(pfBuf2)
 		assert.NoError(err, "failed to write proof 2 to buffer")
 
-		assert.Equal(pfBuf1.Bytes(), pfBuf2.Bytes(), "proofs are NOT equal")
-		t.Logf("proofs of length %d are equal", pfBuf1.Len())
-		// t.Logf("%s", hex.EncodeToString(pfBuf1.Bytes()))
-
 		assert.Equal(pkBuf1.Bytes(), pkBuf2.Bytes(), "pks are NOT equal")
 		t.Logf("pks of length %d are equal", pkBuf1.Len())
 
 		assert.Equal(vkBuf1.Bytes(), vkBuf2.Bytes(), "vks are NOT equal")
 		t.Logf("vks of length %d are equal", vkBuf1.Len())
+
+		assert.NotEqual(pfBuf1.Bytes(), pfBuf2.Bytes(), "proofs are equal")
+		t.Logf("proofs of length %d are NOT equal", pfBuf1.Len())
 	}
 
 }

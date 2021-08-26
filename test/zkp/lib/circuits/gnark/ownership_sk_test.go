@@ -153,11 +153,11 @@ func TestOwnershipSkPlonk(t *testing.T) {
 	}
 
 	confs := map[ecc.ID]confSig{
-		ecc.BN254:     {hash.MIMC_BN254, signature.EDDSA_BN254},
-		ecc.BLS12_381: {hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
-		ecc.BLS12_377: {hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
-		ecc.BW6_761:   {hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
-		ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
+		ecc.BN254: {hash.MIMC_BN254, signature.EDDSA_BN254},
+		// ecc.BLS12_381: {hash.MIMC_BLS12_381, signature.EDDSA_BLS12_381},
+		// ecc.BLS12_377: {hash.MIMC_BLS12_377, signature.EDDSA_BLS12_377},
+		// ecc.BW6_761:   {hash.MIMC_BW6_761, signature.EDDSA_BW6_761},
+		// ecc.BLS24_315: {hash.MIMC_BLS24_315, signature.EDDSA_BLS24_315},
 	}
 
 	for id, ss := range confs {

@@ -124,7 +124,7 @@ func TestBaselineRollupMerkleCircuit(t *testing.T) {
 	t.Logf("proof verified")
 }
 
-func TestMerkleImplementationsWithPaddedTree(t *testing.T) {
+func DeprecatedTestMerkleImplementationsWithPaddedTree(t *testing.T) {
 	hFunc := mimc.NewMiMC("seed")
 
 	proofs := []string{

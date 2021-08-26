@@ -1,4 +1,4 @@
-// +build unit
+// +build codegen
 
 package test
 

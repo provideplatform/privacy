@@ -16,25 +16,27 @@ import (
 	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
+// CeremonyConfig
+type CeremonyConfig struct {
+	expectedEntropy int
+}
+
 // Ceremony model
 type Ceremony struct {
-	BlockID            int
-	entropy            big.Int
-	needsEntropyUpdate bool
-	partyEntropy       map[int]big.Int
-	PartyID            int
+	Block   uint64 // number of block being used for entropy
+	Config  CeremonyConfig
+	entropy big.Int
+	PartyID string
 }
 
 func (c *Ceremony) AddParty(other *Ceremony) {
-	c.partyEntropy[other.PartyID] = other.entropy
+	// TODO: receive entropy from other parties
 }
 
 func (c *Ceremony) calculateAlpha() *big.Int {
 	alpha := new(big.Int)
 
-	for _, entropy := range c.partyEntropy {
-		alpha.Add(alpha, &entropy)
-	}
+	// TODO: calculate alpha sequentially from all entropy values
 	return alpha
 }
 
@@ -57,28 +59,23 @@ func (c *Ceremony) GenerateSRS(size uint64, curveID ecc.ID) (kzg.SRS, error) {
 	}
 }
 
-func (c *Ceremony) GetEntropy(blockID int) error {
-	if !c.needsEntropyUpdate {
-		return fmt.Errorf("entropy already retrieved, %v", c.needsEntropyUpdate)
-	}
-
-	// TODO: get beacon entropy by blockID
+func (c *Ceremony) GetEntropy(block int) error {
+	// TODO: get beacon entropy by block number
 	entropy, err := common.RandomBytes(32)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve entropy for mpc ceremony; %s", err.Error())
 	}
 
 	c.entropy.SetBytes(entropy)
-	c.partyEntropy[c.PartyID] = c.entropy
-	c.needsEntropyUpdate = false
 	return nil
 }
 
-func NewCeremony(partyID int) *Ceremony {
+func NewCeremony(partyID string) *Ceremony {
 	return &Ceremony{
-		PartyID:            partyID,
-		needsEntropyUpdate: true,
-		partyEntropy:       make(map[int]big.Int),
+		PartyID: partyID,
+		Config: CeremonyConfig{
+			expectedEntropy: 0,
+		},
 	}
 }
 

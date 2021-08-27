@@ -16,19 +16,19 @@ services:
       start_period: 10s
     hostname: postgres
     volumes:
-      - prvd-db:/var/lib/postgresql/data
+      - privacy-db:/var/lib/postgresql/data
     networks:
-      - prvd
+      - privacy
     ports:
       - 5432:5432
     restart: always
 
 networks:
-  prvd:
+  privacy:
     driver: bridge
     ipam:
       config:
-      - subnet: 172.40.0.0/24
+      - subnet: 172.60.0.0/24
 
 volumes:
-  prvd-db:
+  privacy-db:

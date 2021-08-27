@@ -12,14 +12,23 @@ import (
 	"github.com/provideplatform/privacy/ceremony"
 )
 
-func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, partyCount, blockID int) error {
-	for partyID := int64(0); partyID < int64(partyCount); partyID++ {
-		i := new(big.Int).SetInt64(partyID)
-		mpc := ceremony.NewCeremony(i.String())
+func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, parties [][]byte, blockID uint64) error {
+	for i := 0; i < len(parties); i++ {
+		mpc := ceremony.CeremonyFactory(parties, &ceremony.CeremonyConfig{
+			Block:           &blockID,
+			ExpectedEntropy: 32 * (len(parties) + 1),
+			Index:           i,
+			WordSize:        32,
+		})
 
 		err := mpc.GetEntropy(blockID)
 		if err != nil {
 			return fmt.Errorf("unable to get entropy; %s", err.Error())
+		}
+
+		err = mpc.GenerateEntropy()
+		if err != nil {
+			return fmt.Errorf("unable to generate entropy; %s", err.Error())
 		}
 
 		err = mpc.SubmitEntropy()
@@ -34,6 +43,7 @@ func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, partyCount, blockID
 	return nil
 }
 
+// TODO: replace with actual entropy receipt
 func addPartiesToTestMPCs(t *testing.T, mpcs []*ceremony.Ceremony) error {
 	partyCount := len(mpcs)
 	for i := 0; i < partyCount; i++ {
@@ -87,10 +97,17 @@ func TestCeremonySRSGeneration(t *testing.T) {
 	mpcs := make([]*ceremony.Ceremony, 0)
 
 	// TODO: retrieve block ID properly
-	blockID := 123456
+	blockID := uint64(123456)
 	const partyCount = 5
+	parties := make([][]byte, 0)
 
-	err := setupTestMPCs(t, &mpcs, partyCount, blockID)
+	i := new(big.Int)
+	for party := int64(0); party < int64(partyCount); party++ {
+		i.SetInt64(party)
+		parties = append(parties, i.Bytes())
+	}
+
+	err := setupTestMPCs(t, &mpcs, parties, blockID)
 	if err != nil {
 		t.Errorf("error setting up test MPCs; %s", err.Error())
 		return

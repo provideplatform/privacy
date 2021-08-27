@@ -44,4 +44,5 @@ jobs:
       - run: make test
         working-directory: privacy
       - run: docker-compose -f ./ops/docker-compose-db.yml down
+        working-directory: privacy
       - run: docker volume rm ops_privacy-db

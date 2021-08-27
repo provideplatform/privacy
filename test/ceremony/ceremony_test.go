@@ -5,6 +5,7 @@ package test
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -12,8 +13,9 @@ import (
 )
 
 func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, partyCount, blockID int) error {
-	for i := 0; i < partyCount; i++ {
-		mpc := ceremony.NewCeremony(i)
+	for partyID := int64(0); partyID < int64(partyCount); partyID++ {
+		i := new(big.Int).SetInt64(partyID)
+		mpc := ceremony.NewCeremony(i.String())
 
 		err := mpc.GetEntropy(blockID)
 		if err != nil {

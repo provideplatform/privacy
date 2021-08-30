@@ -1,9 +1,10 @@
 package ceremony
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/big"
+	"sort"
 
 	"github.com/jinzhu/gorm"
 	provide "github.com/provideplatform/provide-go/api"
@@ -11,24 +12,20 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/provideplatform/privacy/common"
-
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/kzg"
-
-	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
-	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
-	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
-	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
-	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
 const defaultWordSize = 32
+
+// const ceremonyStatusComplete = "complete"
+// const ceremonyStatusCreated = "created"
+// const ceremonyStatusFailed = "failed"
+// const ceremonyStatusInit = "init"
+const ceremonyStatusPending = "pending"
 
 // CeremonyConfig
 type CeremonyConfig struct {
 	Block           *uint64 `json:"block"`            // number of block being used for entropy
 	ExpectedEntropy int     `json:"expected_entropy"` // expected number of bytes of entropy from all parties and any random beacon as required
-	Index           int     `json:"index"`            // index of party's entropy
 	WordSize        int     `json:"word_size"`
 }
 
@@ -36,37 +33,32 @@ type CeremonyConfig struct {
 type Ceremony struct {
 	provide.Model
 
-	Config  CeremonyConfig `json:"config"`
-	Parties [][]byte       `json:"parties"`
-	Status  *string        `json:"status"`
-	entropy []byte         `json:"-"`
+	Config     CeremonyConfig `json:"config"`
+	Parties    []string       `json:"parties"`
+	Status     *string        `json:"status"`
+	entropy    []byte         `json:"-"`
+	ownEntropy []byte         `json:"-"`
 }
 
 // Create a ceremony
-func (c *Ceremony) AddParty(other *Ceremony) error {
+func (c *Ceremony) AddParty(index int, other *Ceremony) error {
 	// TODO: receive entropy from other parties
 	if c.Config.WordSize != other.Config.WordSize {
 		return fmt.Errorf("other word size %d does not match expected word size %d", other.Config.WordSize, c.Config.WordSize)
 	}
-	copy(c.entropy[other.Config.Index*other.Config.WordSize:], other.entropy[other.Config.Index*other.Config.WordSize:(other.Config.Index+1)*other.Config.WordSize])
+
+	copy(c.entropy[index*c.Config.WordSize:], other.ownEntropy)
 	return nil
 }
 
-// calculateAlpha value from entropy
-func (c *Ceremony) calculateAlpha() (*big.Int, error) {
-	alpha := new(big.Int)
-
-	// TODO: need to check ready condition of entropy
-	alpha.SetBytes(c.entropy)
-	return alpha, nil
-}
-
 // CeremonyFactory creates a new Ceremony object
-func CeremonyFactory(parties [][]byte, config *CeremonyConfig) *Ceremony {
+func CeremonyFactory(parties []string, config *CeremonyConfig) *Ceremony {
 	ceremony := &Ceremony{
 		Parties: parties,
 		Config:  *config,
 	}
+
+	sort.Strings(ceremony.Parties)
 
 	if ceremony.Config.WordSize <= 0 {
 		ceremony.Config.WordSize = defaultWordSize
@@ -79,6 +71,10 @@ func CeremonyFactory(parties [][]byte, config *CeremonyConfig) *Ceremony {
 	ceremony.entropy = make([]byte, ceremony.Config.ExpectedEntropy)
 
 	return ceremony
+}
+
+func (c *Ceremony) CompareEntropy(other *Ceremony) bool {
+	return bytes.Equal(c.entropy, other.entropy)
 }
 
 func (c *Ceremony) Create(variables interface{}) bool {
@@ -102,13 +98,11 @@ func (c *Ceremony) Create(variables interface{}) bool {
 		if !db.NewRecord(c) {
 			success := rowsAffected > 0
 			if success {
-				c.updateStatus(db, ceremonyStatusPending, nil)
-
 				payload, _ := json.Marshal(map[string]interface{}{
 					"ceremony_id": c.ID.String(),
 				})
 				natsutil.NatsStreamingPublish(natsCeremonyPendingSubject, payload)
-				c.updateStatus(db, ceremonyStatusCreated, nil)
+				c.updateStatus(db, ceremonyStatusPending, nil)
 			}
 
 			return success
@@ -130,32 +124,9 @@ func (c *Ceremony) GenerateEntropy() error {
 		return fmt.Errorf("unable to generate entropy for mpc ceremony; %s", err.Error())
 	}
 
-	// insert block entropy at party index
-	copy(c.entropy[c.Config.Index*c.Config.WordSize:], entropy)
+	c.ownEntropy = entropy
+
 	return nil
-}
-
-// GenerateSRS from constraint size and entropy-seeded alpha value
-func (c *Ceremony) GenerateSRS(size uint64, curveID ecc.ID) (kzg.SRS, error) {
-	alpha, err := c.calculateAlpha()
-	if err != nil {
-		return nil, fmt.Errorf("unable to calculate alpha value; %s", err.Error())
-	}
-
-	switch curveID {
-	case ecc.BN254:
-		return kzgbn254.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
-	case ecc.BLS12_381:
-		return kzgbls12381.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
-	case ecc.BLS12_377:
-		return kzgbls12377.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
-	case ecc.BW6_761:
-		return kzgbw6761.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
-	case ecc.BLS24_315:
-		return kzgbls24315.NewSRS(ecc.NextPowerOfTwo(size)+3, alpha)
-	default:
-		return nil, fmt.Errorf("invalid curve id")
-	}
 }
 
 // GetEntropy gets the requested entropy by block number

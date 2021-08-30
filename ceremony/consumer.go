@@ -29,12 +29,6 @@ const ceremonyGenerateEntropyAckWait = time.Hour * 1
 const ceremonyGenerateEntropyTimeout = int64(time.Hour * 6)
 const ceremonyGenerateEntropyMaxInFlight = 1024
 
-const ceremonyStatusComplete = "complete"
-const ceremonyStatusCreated = "created"
-const ceremonyStatusFailed = "failed"
-const ceremonyStatusInit = "init"
-const ceremonyStatusPending = "pending"
-
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
 		common.Log.Debug("ceremony package consumer configured to skip NATS streaming subscription setup")

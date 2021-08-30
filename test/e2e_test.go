@@ -7,9 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"hash"
 	"math/big"
-	"math/rand"
 
 	"os"
 	"testing"
@@ -21,8 +19,6 @@ import (
 
 	gnark_merkle "github.com/consensys/gnark-crypto/accumulator/merkletree"
 	mimc "github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
-	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards"
-	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/store/providers/merkletree"
 
@@ -433,117 +429,4 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 	}
 
 	t.Logf("%s proof/verification: %s / %v", *rollupCircuit.Name, *rollupProof.Proof, verification.Result)
-}
-
-type STAGE uint16
-
-const (
-	PURCHASE STAGE = iota
-	SALES
-	SHIPMENT
-	GOODS
-	INVOICE
-)
-
-func getProcurementWitness(stage STAGE, hFunc hash.Hash, proofString string, creditRating string) (string, map[string]interface{}) {
-	var i big.Int
-
-	certificateNumber, _ := uuid.FromString("12345678-1234-5678-9abc-123456789abc")
-	createdOn := []byte("01/02/2021 04:40 PM UTC")
-	globalGoodsReceiptNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001-GR")
-	globalPurchaseOrderNumber := []byte("ENTITY-ORDER-NUMBER-20210101-001") // GlobalPONumber from form
-	globalSalesOrderNumber := []byte("ENTITY-1234567890")
-	globalShipmentNumber := []byte("ENTITY-0000123456")
-	goodsReceiptCreatedOn := []byte("01/04/2021 01:40 PM UTC")
-	soldTo := []byte("56785678")
-	soNumber := []byte("1234567890")
-
-	identifier := ""
-	hFunc.Reset()
-
-	switch stage {
-	case PURCHASE:
-		// mimc Write never returns an error
-		hFunc.Write(globalPurchaseOrderNumber)
-		hFunc.Write(soNumber)
-		hFunc.Write(certificateNumber.Bytes())
-		identifier = "purchase_order"
-	case SALES:
-		hFunc.Write(globalPurchaseOrderNumber)
-		hFunc.Write(globalSalesOrderNumber)
-		hFunc.Write(createdOn)
-		identifier = "sales_order"
-	case SHIPMENT:
-		hFunc.Write(globalPurchaseOrderNumber)
-		hFunc.Write(globalShipmentNumber)
-		hFunc.Write(soldTo)
-		identifier = "shipment_notification"
-	case GOODS:
-		hFunc.Write(globalPurchaseOrderNumber)
-		hFunc.Write(globalGoodsReceiptNumber)
-		hFunc.Write(goodsReceiptCreatedOn)
-		identifier = "goods_receipt"
-	case INVOICE:
-		privKey, _ := eddsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())))
-		pubKey := privKey.PublicKey
-
-		var invoiceData big.Int
-		invoiceIntStr := "123456789123456789123456789123456789"
-		invoiceData.SetString(invoiceIntStr, 10)
-		invoiceDataBytes := invoiceData.Bytes()
-
-		sigBytes, err := privKey.Sign(invoiceDataBytes, hFunc)
-		if err != nil {
-			return "", nil
-		}
-
-		verified, err := pubKey.Verify(sigBytes, invoiceDataBytes, hFunc)
-		if err != nil || !verified {
-			return "", nil
-		}
-
-		var sig eddsa.Signature
-		sig.SetBytes(sigBytes)
-
-		var point twistededwards.PointAffine
-		pubKeyBytes := pubKey.Bytes()
-		point.SetBytes(pubKeyBytes)
-		xKey := point.X.Bytes()
-		xKeyString := i.SetBytes(xKey[:]).String()
-		yKey := point.Y.Bytes()
-		yKeyString := i.SetBytes(yKey[:]).String()
-
-		point.SetBytes(sigBytes)
-		xSig := point.X.Bytes()
-		xSigString := i.SetBytes(xSig[:]).String()
-		ySig := point.Y.Bytes()
-		ySigString := i.SetBytes(ySig[:]).String()
-		sigLen := len(sigBytes) / 2
-		sigS1String := i.SetBytes(sigBytes[sigLen : sigLen+sigLen/2]).String()
-		sigS2String := i.SetBytes(sigBytes[sigLen+sigLen/2:]).String()
-
-		return "invoice", map[string]interface{}{
-			"Msg":        invoiceIntStr,
-			"PubKey.A.X": xKeyString,
-			"PubKey.A.Y": yKeyString,
-			"Sig.R.X":    xSigString,
-			"Sig.R.Y":    ySigString,
-			"Sig.S1":     sigS1String,
-			"Sig.S2":     sigS2String,
-		}
-	}
-
-	hFunc.Write([]byte(proofString))
-	hFunc.Write([]byte(creditRating))
-	preImage := hFunc.Sum(nil)
-	preImageString := i.SetBytes(preImage).String()
-
-	// mimc Sum merely calls Write which never returns an error
-	hash, _ := mimc.Sum("seed", preImage)
-	hashString := i.SetBytes(hash).String()
-
-	return identifier, map[string]interface{}{
-		"Document.Preimage": preImageString,
-		"Document.Hash":     hashString,
-	}
 }

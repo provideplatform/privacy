@@ -7,4 +7,7 @@ Microservice providing a circuit registry and compilation, trusted setup, verifi
 The following zkSNARK toolboxes are supported:
 
 - Gnark
-- ZoKrates
+
+## Documentation
+
+See the privacy documentation [here](https://docs.provide.services/api/privacy/overview).

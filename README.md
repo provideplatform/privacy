@@ -10,4 +10,4 @@ The following zkSNARK toolboxes are supported:
 
 ## Documentation
 
-See the privacy documentation [here](https://docs.provide.services/api/privacy/overview).
+See the privacy documentation [here](https://docs.provide.services/privacy).

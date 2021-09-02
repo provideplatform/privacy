@@ -7,7 +7,11 @@ import (
 	"math/big"
 	"testing"
 
+	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/ceremony"
+	"github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/provide-go/api/privacy"
+	"github.com/provideplatform/provide-go/common/util"
 )
 
 func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, parties []string, blockID uint64) error {
@@ -18,7 +22,7 @@ func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, parties []string, b
 			WordSize:        32,
 		})
 
-		err := mpc.GetEntropy(blockID)
+		err := mpc.GetEntropyFromBeacon(blockID)
 		if err != nil {
 			return fmt.Errorf("unable to get entropy; %s", err.Error())
 		}
@@ -62,6 +66,26 @@ func validateEntropy(t *testing.T, mpcs []*ceremony.Ceremony) error {
 	return nil
 }
 
+func circuitParamsFactory(curve, name, identifier, provingScheme string, noteStoreID, nullifierStoreID *string) map[string]interface{} {
+	params := map[string]interface{}{
+		"curve":          curve,
+		"identifier":     identifier,
+		"name":           name,
+		"provider":       "gnark",
+		"proving_scheme": provingScheme,
+	}
+
+	if noteStoreID != nil {
+		params["note_store_id"] = noteStoreID
+	}
+
+	if nullifierStoreID != nil {
+		params["nullifier_store_id"] = nullifierStoreID
+	}
+
+	return params
+}
+
 func TestCeremonySRSGeneration(t *testing.T) {
 	mpcs := make([]*ceremony.Ceremony, 0)
 
@@ -97,4 +121,47 @@ func TestCeremonySRSGeneration(t *testing.T) {
 	}
 
 	t.Log("all calculated entropy values are valid")
+
+	newVault, err := vaultFactory(util.DefaultVaultAccessJWT, "mpc vault", "contains entropy for mpc")
+	if err != nil {
+		t.Errorf("failed to create vault for ceremony test; %s", err.Error())
+		return
+	}
+
+	entropySecretID, err := mpcs[0].StoreEntropy(
+		common.StringOrNil(util.DefaultVaultAccessJWT),
+		common.StringOrNil(newVault.ID.String()),
+		common.StringOrNil("mpc entropy"),
+		common.StringOrNil("entropy for mpc"),
+		common.StringOrNil("entropy"),
+	)
+	if err != nil {
+		t.Errorf("failed to store entropy in vault; %s", err.Error())
+		return
+	}
+
+	t.Logf("stored entropy in vault; secret id: %s", entropySecretID.String())
+
+	testUserID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(testUserID)
+
+	params := circuitParamsFactory(
+		"BN254",
+		"PO",
+		"purchase_order",
+		"plonk",
+		nil,
+		nil,
+	)
+
+	params["entropy_id"] = entropySecretID.String()
+	params["vault_id"] = newVault.ID.String()
+
+	circuit, err := privacy.CreateCircuit(*token, params)
+	if err != nil {
+		t.Errorf("failed to deploy circuit; %s", err.Error())
+		return
+	}
+
+	t.Logf("created circuit id: %s", circuit.ID.String())
 }

@@ -11,6 +11,9 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/kzg"
+	"github.com/consensys/gnark/backend/plonk"
+	"github.com/consensys/gnark/frontend"
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -23,6 +26,12 @@ import (
 	provide "github.com/provideplatform/provide-go/api"
 	vault "github.com/provideplatform/provide-go/api/vault"
 	util "github.com/provideplatform/provide-go/common/util"
+
+	kzgbls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
+	kzgbls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/kzg"
+	kzgbls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/kzg"
+	kzgbn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
+	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/kzg"
 )
 
 const circuitProvingSchemeGroth16 = "groth16"
@@ -68,6 +77,9 @@ type Circuit struct {
 	// SRS (structured reference string) is protocol-specific and may be nil depending on the proving scheme
 	StructuredReferenceStringID *uuid.UUID `gorm:"column:srs_id" json:"srs_id,omitempty"`
 
+	// entropy is used for secure, deterministic setup of Plonk circuits
+	entropyID *uuid.UUID
+
 	// encrypted notes storage
 	NoteStoreID *uuid.UUID `sql:"type:uuid" json:"note_store_id"`
 	noteStore   *storage.Store
@@ -78,6 +90,7 @@ type Circuit struct {
 
 	// ephemeral fields
 	srs          []byte
+	entropy      []byte
 	provingKey   []byte
 	verifyingKey []byte
 
@@ -164,7 +177,21 @@ func (c *Circuit) Create(variables interface{}) bool {
 					}
 				}
 
+				common.Log.Debug("checking if srs is required")
 				if c.srsRequired() {
+					common.Log.Debug("srs is required")
+					if c.srs == nil && c.entropyID != nil {
+						common.Log.Debug("need to generate srs")
+						err := c.generateSRS()
+						if err != nil {
+							common.Log.Errorf("failed to setup %s circuit with identifier %s; unable to generate SRS; %s", *c.ProvingScheme, *c.Identifier, err.Error())
+							c.Errors = append(c.Errors, &provide.Error{
+								Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; unable to generate SRS; %s", *c.ProvingScheme, *c.Identifier, err.Error())),
+							})
+							return false
+						}
+					}
+
 					if c.srs == nil || len(c.srs) == 0 {
 						c.Errors = append(c.Errors, &provide.Error{
 							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),
@@ -178,6 +205,8 @@ func (c *Circuit) Create(variables interface{}) bool {
 						})
 						return false
 					}
+				} else {
+					common.Log.Debug("srs is not required")
 				}
 
 				if c.setupRequired() {
@@ -197,6 +226,28 @@ func (c *Circuit) Create(variables interface{}) bool {
 	}
 
 	return false
+}
+
+// getEntropy fetches entropy value from the configured vault instance
+func (c *Circuit) getEntropy() error {
+	if (c.entropy == nil || len(c.entropy) == 0) && c.entropyID != nil {
+		secret, err := vault.FetchSecret(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.entropyID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+		c.entropy, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode entropy secret from hex; %s", err.Error())
+			return err
+		}
+	}
+
+	return nil
 }
 
 // NoteStoreHeight returns the underlying note store height
@@ -582,6 +633,76 @@ func (c *Circuit) exportVerifier() error {
 
 	c.verifierContractSource = verifierContract.([]byte)
 	return nil
+}
+
+// generateSRS enriches the ephemeral in-memory circuit SRS value;
+// this method is deterministic per entropy
+func (c *Circuit) generateSRS() error {
+	common.Log.Debug("attempting to generate srs")
+	if *c.ProvingScheme != circuitProvingSchemePlonk {
+		return fmt.Errorf("failed to read r1cs for circuit %s; invalid proving scheme %s", c.ID, *c.ProvingScheme)
+	}
+
+	curveID := common.GnarkCurveIDFactory(c.Curve)
+	if curveID == ecc.UNKNOWN {
+		return fmt.Errorf("failed to read r1cs for circuit %s; invalid curve id %s", c.ID, *c.Curve)
+	}
+
+	r1cs := plonk.NewCS(curveID)
+
+	_, err := r1cs.ReadFrom(bytes.NewReader(c.Binary))
+	if err != nil {
+		return fmt.Errorf("failed to read r1cs for circuit %s; %s", c.ID, err.Error())
+	}
+
+	srs, err := c.getKZGScheme(r1cs)
+	if err != nil {
+		return fmt.Errorf("failed to get srs for circuit %s; %s", c.ID, err.Error())
+	}
+
+	buf := new(bytes.Buffer)
+	_, err = srs.WriteTo(buf)
+	if err != nil {
+		return fmt.Errorf("failed to write srs for circuit %s; %s", c.ID, err.Error())
+	}
+
+	c.srs = buf.Bytes()
+
+	return nil
+}
+
+// getKZGScheme resolves the Kate-Zaverucha-Goldberg (KZG) constant-sized polynomial
+// commitment scheme for the given ccs, using the ephemeral in-memory circuit alpha
+func (c *Circuit) getKZGScheme(ccs frontend.CompiledConstraintSystem) (kzg.SRS, error) {
+	err := c.getEntropy()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; %s", c.ID, err.Error())
+	}
+
+	alpha := new(big.Int).SetBytes(c.entropy)
+	nbConstraints := ccs.GetNbConstraints()
+	internal, secret, public := ccs.GetNbVariables()
+	nbVariables := internal + secret + public
+	kzgSize := uint64(nbVariables)
+	if nbConstraints > nbVariables {
+		kzgSize = uint64(nbConstraints)
+	}
+	kzgSize = ecc.NextPowerOfTwo(kzgSize) + 3
+
+	switch ccs.CurveID() {
+	case ecc.BN254:
+		return kzgbn254.NewSRS(kzgSize, alpha)
+	case ecc.BLS12_381:
+		return kzgbls12381.NewSRS(kzgSize, alpha)
+	case ecc.BLS12_377:
+		return kzgbls12377.NewSRS(kzgSize, alpha)
+	case ecc.BW6_761:
+		return kzgbw6761.NewSRS(kzgSize, alpha)
+	case ecc.BLS24_315:
+		return kzgbls24315.NewSRS(kzgSize, alpha)
+	default:
+		return nil, fmt.Errorf("failed to resolve KZG commitment scheme for circuit with identifier %s; unsupported curve type: %s", c.ID, ccs.CurveID().String())
+	}
 }
 
 // importArtifacts attempts to import the circuit from existing artifacts

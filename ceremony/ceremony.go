@@ -2,15 +2,18 @@ package ceremony
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sort"
 
 	"github.com/jinzhu/gorm"
 	provide "github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/vault"
 
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
+	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/common"
 )
 
@@ -40,11 +43,15 @@ type Ceremony struct {
 	ownEntropy []byte         `json:"-"`
 }
 
-// Create a ceremony
+// AddParty creates a ceremony
 func (c *Ceremony) AddParty(index int, other *Ceremony) error {
 	// TODO: receive entropy from other parties
 	if c.Config.WordSize != other.Config.WordSize {
 		return fmt.Errorf("other word size %d does not match expected word size %d", other.Config.WordSize, c.Config.WordSize)
+	}
+
+	if len(other.ownEntropy) == 0 || bytes.Equal(other.ownEntropy, make([]byte, other.Config.WordSize)) {
+		return fmt.Errorf("other party ceremony has uninitialized entropy value")
 	}
 
 	copy(c.entropy[index*c.Config.WordSize:], other.ownEntropy)
@@ -73,6 +80,7 @@ func CeremonyFactory(parties []string, config *CeremonyConfig) *Ceremony {
 	return ceremony
 }
 
+// CompareEntropy compares entropy value to that of other Ceremony
 func (c *Ceremony) CompareEntropy(other *Ceremony) bool {
 	return bytes.Equal(c.entropy, other.entropy)
 }
@@ -129,8 +137,8 @@ func (c *Ceremony) GenerateEntropy() error {
 	return nil
 }
 
-// GetEntropy gets the requested entropy by block number
-func (c *Ceremony) GetEntropy(block uint64) error {
+// GetEntropyFromBeacon gets the requested entropy by block number
+func (c *Ceremony) GetEntropyFromBeacon(block uint64) error {
 
 	// TODO: get beacon entropy by block number, this will be same for all parties
 	entropy := []byte("test block entropy blahblahblah.")
@@ -138,6 +146,24 @@ func (c *Ceremony) GetEntropy(block uint64) error {
 	// insert block entropy at end
 	copy(c.entropy[len(c.entropy)-c.Config.WordSize:], entropy)
 	return nil
+}
+
+// StoreEntropy stores entropy in vault
+func (c *Ceremony) StoreEntropy(token, vaultID, name, description, secretType *string) (*uuid.UUID, error) {
+	// TODO: make sure entropy value has no uninitialized/all-zero words
+
+	secret, err := vault.CreateSecret(
+		*token,
+		*vaultID,
+		hex.EncodeToString(c.entropy),
+		*name,
+		*description,
+		*secretType,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store entropy for ceremony %s in vault %s; %s", c.ID.String(), *vaultID, err.Error())
+	}
+	return &secret.ID, nil
 }
 
 // SubmitEntropy broadcasts entropy to other parties

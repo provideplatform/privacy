@@ -118,6 +118,15 @@ func createCircuitHandler(c *gin.Context) {
 		}
 	}
 
+	if entropyIDString, ok := params["entropy_id"].(string); ok {
+		entropyID, err := uuid.FromString(entropyIDString)
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
+		circuit.entropyID = &entropyID
+	}
+
 	variables := params["variables"]
 
 	if circuit.Create(variables) {

@@ -14,7 +14,7 @@ func init() {
 		return
 	}
 
-	natsutil.EstablishSharedNatsStreamingConnection(nil)
+	natsutil.EstablishSharedNatsConnection(nil)
 
 	// var waitGroup sync.WaitGroup
 }

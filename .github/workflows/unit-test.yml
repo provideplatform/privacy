@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - dev
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -37,6 +38,10 @@ jobs:
           ref: master
       - run: make build
         working-directory: privacy
+      - run: docker-compose -f ./ops/docker-compose-db.yml up -d
+        working-directory: privacy
       - run: make test
+        working-directory: privacy
+      - run: docker-compose -f ./ops/docker-compose-db.yml down
         working-directory: privacy
       - run: docker volume rm ops_privacy-db

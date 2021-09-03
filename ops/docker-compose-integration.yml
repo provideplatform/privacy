@@ -42,9 +42,9 @@ services:
     restart: always
 
   privacy0-nats:
-    image: provide/nats-server
-    container_name: privacy0-nats
-    command: ["-auth", "testtoken", "-p", "4222", "-D", "-V"]
+    image: provide/nats-server:2.2.3-beta.4-PRVD
+    container_name: provide-nats
+    command: ["--js", "--server_name", "prvd-privacy0-nats", "-auth", "testtoken", "-p", "4222", "-D", "-V"]
     environment:
       JWT_SIGNER_PUBLIC_KEY: |-
         -----BEGIN PUBLIC KEY-----
@@ -78,33 +78,11 @@ services:
     volumes:
       - ./ops/await_tcp.sh:/usr/local/bin/await_tcp.sh:cached
 
-  privacy0-nats-streaming:
-    image: provide/nats-streaming
-    command: ["-cid", "provide", "--auth", "testtoken", "-SDV"]
-    container_name: privacy0-nats-streaming
-    depends_on:
-      - privacy0-nats
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/await_tcp.sh", "localhost:4222"]
-      interval: 1m
-      timeout: 1s
-      retries: 2
-      start_period: 10s
-    hostname: privacy0-nats-streaming
-    networks:
-      - privacy0
-      - privacy1
-    ports:
-      - 4222
-    restart: always
-    volumes:
-      - ./ops/await_tcp.sh:/usr/local/bin/await_tcp.sh:cached
-
   privacy0-ident:
     image: provide/ident
     container_name: privacy0-ident
     depends_on:
-      - privacy0-nats-streaming
+      - privacy0-nats
       - privacy0-postgres
       - privacy0-redis
     environment:
@@ -116,7 +94,7 @@ services:
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
       - NATS_CLIENT_PREFIX=ident
       - NATS_URL=nats://privacy0-nats:4222
-      - NATS_STREAMING_URL=nats://privacy0-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy0-nats:4222
       - IDENT_API_HOST=privacy0-ident:8080
       - IDENT_API_SCHEME=http
       - REDIS_HOSTS=privacy0-redis:6379
@@ -144,7 +122,7 @@ services:
     container_name: privacy0-ident-consumer
     depends_on:
       - privacy0-ident
-      - privacy0-nats-streaming
+      - privacy0-nats
       - privacy0-postgres
       - privacy0-redis
     environment:
@@ -157,7 +135,7 @@ services:
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
       - NATS_CLIENT_PREFIX=privacy0-ident-consumer
       - NATS_URL=nats://privacy0-nats:4222
-      - NATS_STREAMING_URL=nats://privacy0-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy0-nats:4222
       - IDENT_API_HOST=privacy0-ident:8080
       - IDENT_API_SCHEME=http
       - REDIS_HOSTS=privacy0-redis:6379
@@ -181,7 +159,7 @@ services:
     container_name: privacy0-privacy
     depends_on:
       - privacy0-ident
-      - privacy0-nats-streaming
+      - privacy0-nats
       - privacy0-postgres
       - privacy0-consumer
       - privacy0-redis
@@ -198,7 +176,7 @@ services:
       - LOG_LEVEL=DEBUG
       - NATS_CLIENT_PREFIX=privacy
       - NATS_URL=nats://privacy0-nats:4222
-      - NATS_STREAMING_URL=nats://privacy0-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy0-nats:4222
       - PORT=8080
       - VAULT_API_HOST=privacy0-vault:8080
       - VAULT_API_SCHEME=http
@@ -221,7 +199,7 @@ services:
     entrypoint: ./ops/run_consumer.sh
     container_name: privacy0-consumer
     depends_on:
-      - privacy0-nats-streaming
+      - privacy0-nats
       - privacy0-postgres
       - privacy0-redis
       - privacy0-vault
@@ -238,7 +216,7 @@ services:
       - LOG_LEVEL=DEBUG
       - NATS_CLIENT_PREFIX=privacy-consumer
       - NATS_URL=nats://privacy0-nats:4222
-      - NATS_STREAMING_URL=nats://privacy0-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy0-nats:4222
       - VAULT_API_HOST=privacy0-vault:8080
       - VAULT_API_SCHEME=http
       - VAULT_REFRESH_TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6IjEwOjJlOmQ5OmUxOmI4OmEyOjM0OjM3Ojk5OjNhOjI0OmZjOmFhOmQxOmM4OjU5IiwidHlwIjoiSldUIn0.eyJhdWQiOiJodHRwczovL3Byb3ZpZGUuc2VydmljZXMvYXBpL3YxIiwiaWF0IjoxNjA1NzkxMjQ4LCJpc3MiOiJodHRwczovL2lkZW50LnByb3ZpZGUuc2VydmljZXMiLCJqdGkiOiI5YjUxNGIxNS01NTdlLTRhYWQtYTcwOC0wMTcwZTAwZWE1ZmIiLCJuYXRzIjp7InBlcm1pc3Npb25zIjp7InN1YnNjcmliZSI6eyJhbGxvdyI6WyJhcHBsaWNhdGlvbi4zNjAxNTdmOC1kNWExLTQ0NDAtOTE4Yi1mNjhiYjM5YzBkODAiLCJ1c2VyLjIzY2MwN2UwLTM4NTEtNDBkZC1iNjc1LWRmNzY4MDY3MmY3ZCIsIm5ldHdvcmsuKi5jb25uZWN0b3IuKiIsIm5ldHdvcmsuKi5zdGF0dXMiLCJwbGF0Zm9ybS5cdTAwM2UiXX19fSwicHJ2ZCI6eyJhcHBsaWNhdGlvbl9pZCI6IjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCIsImV4dGVuZGVkIjp7InBlcm1pc3Npb25zIjp7IioiOjUxMH19LCJwZXJtaXNzaW9ucyI6NTEwLCJ1c2VyX2lkIjoiMjNjYzA3ZTAtMzg1MS00MGRkLWI2NzUtZGY3NjgwNjcyZjdkIn0sInN1YiI6ImFwcGxpY2F0aW9uOjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCJ9.SUh84MKBNstdu3KFu1zEAQq03xbPw1D0lLXeogz1HfBJy77bIGf7HLvCuc6bjkh0xj3cEuEus1dC1Dj3BvlZoSXsvz_biTzSapkXzJjpkwOL6qkYDmqTPZvXwqmk-mUNrHTPkqdiIJL7xA46tzHW3E_hjSA9HjEk1kXjPdJQ6_ifkgWNoAaSD--kudIrhZ7vLnfy0H1JEAOsXzSAMoc5_pNG2n79m0ywvb_4l9BqdsHW8N3xSQOFjcp9gD_tqo6ffug3pkpoy-RSguM_OaMR2lj_CHhYxAt0phtjUceDD3K1h5iZ38kSl7izhOdULMmGBhVpBMoSy6_R6ZzpCL3pj8FcReX9RXR5oYpm8PDtlmWqblQzjwY00-uYLfOX0_iS4MGfEsjadZPfTmJLcOTYC7H4PL9ZRu_XtMDUrGBQQz5b_ad2ZzMXbBNeU6vbxVKDG8VFKWOHAemqHTcvuOAsOCLIqOu-eJpZHlXbx-FXPTYledd-GBDe7IjaC9ll_JK3utCOnCq0qUs6lnXIrQ_Sp1LcTKJJ7aY5f9TxeoAuL-ghDbQ3Xkw6huKyPCz2evOwVLwrB9ZRMlQXgmTnB1OeQvWii1WbmkyV1Zhbz_RPB8ckK7_mFxuPvsXK8wTFiWFmj96sRX470kV-ooSfM5CzKZhSLqgyyaUNC0VaCPq0uuE
@@ -327,9 +305,9 @@ services:
     restart: always
 
   privacy1-nats:
-    image: provide/nats-server
+    image: provide/nats-server:2.2.3-beta.4-PRVD
     container_name: privacy1-nats
-    command: ["-auth", "testtoken", "-p", "4222", "-D", "-V"]
+    command: ["--js", "--server_name", "prvd-privacy1", "-auth", "testtoken", "-p", "4222", "-D", "-V"]
     environment:
       JWT_SIGNER_PUBLIC_KEY: |-
         -----BEGIN PUBLIC KEY-----
@@ -357,30 +335,8 @@ services:
       - privacy0
       - privacy1
     ports:
-      - 4223:4221
-      - 4224:4222
-    restart: always
-    volumes:
-      - ./ops/await_tcp.sh:/usr/local/bin/await_tcp.sh:cached
-
-  privacy1-nats-streaming:
-    image: provide/nats-streaming
-    command: ["-cid", "provide", "--auth", "testtoken", "-SDV"]
-    container_name: privacy1-nats-streaming
-    depends_on:
-      - privacy1-nats
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/await_tcp.sh", "localhost:4222"]
-      interval: 1m
-      timeout: 1s
-      retries: 2
-      start_period: 10s
-    hostname: privacy1-nats-streaming
-    networks:
-      - privacy0
-      - privacy1
-    ports:
-      - 4222
+      - 4221:4221
+      - 4222:4222
     restart: always
     volumes:
       - ./ops/await_tcp.sh:/usr/local/bin/await_tcp.sh:cached
@@ -389,7 +345,7 @@ services:
     image: provide/ident
     container_name: privacy1-ident
     depends_on:
-      - privacy1-nats-streaming
+      - privacy1-nats
       - privacy1-postgres
       - privacy1-redis
     environment:
@@ -401,7 +357,7 @@ services:
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
       - NATS_CLIENT_PREFIX=ident
       - NATS_URL=nats://privacy1-nats:4222
-      - NATS_STREAMING_URL=nats://privacy1-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy1-nats:4222
       - IDENT_API_HOST=privacy1-ident:8080
       - IDENT_API_SCHEME=http
       - REDIS_HOSTS=privacy1-redis:6379
@@ -429,7 +385,7 @@ services:
     container_name: privacy1-ident-consumer
     depends_on:
       - privacy1-ident
-      - privacy1-nats-streaming
+      - privacy1-nats
       - privacy1-postgres
       - privacy1-redis
       - privacy1-vault
@@ -443,7 +399,7 @@ services:
       - DATABASE_SUPERUSER_PASSWORD=prvdp455
       - NATS_CLIENT_PREFIX=ident-consumer
       - NATS_URL=nats://privacy1-nats:4222
-      - NATS_STREAMING_URL=nats://privacy1-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy1-nats:4222
       - IDENT_API_HOST=privacy1-ident:8080
       - IDENT_API_SCHEME=http
       - REDIS_HOSTS=privacy1-redis:6379
@@ -467,7 +423,7 @@ services:
     container_name: privacy1-privacy
     depends_on:
       - privacy1-ident
-      - privacy1-nats-streaming
+      - privacy1-nats
       - privacy1-postgres
       - privacy1-consumer
       - privacy1-redis
@@ -484,7 +440,7 @@ services:
       - LOG_LEVEL=DEBUG
       - NATS_CLIENT_PREFIX=privacy
       - NATS_URL=nats://privacy1-nats:4222
-      - NATS_STREAMING_URL=nats://privacy1-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy1-nats:4222
       - PORT=8080
       - VAULT_API_HOST=privacy1-vault:8080
       - VAULT_API_SCHEME=http
@@ -507,7 +463,7 @@ services:
     entrypoint: ./ops/run_consumer.sh
     container_name: privacy1-consumer
     depends_on:
-      - privacy1-nats-streaming
+      - privacy1-nats
       - privacy1-postgres
       - privacy1-redis
       - privacy1-vault
@@ -524,7 +480,7 @@ services:
       - LOG_LEVEL=DEBUG
       - NATS_CLIENT_PREFIX=privacy-consumer
       - NATS_URL=nats://privacy1-nats:4222
-      - NATS_STREAMING_URL=nats://privacy1-nats-streaming:4222
+      - NATS_JETSTREAM_URL=nats://privacy1-nats:4222
       - VAULT_API_HOST=privacy1-vault:8080
       - VAULT_API_SCHEME=http
       - VAULT_REFRESH_TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6IjEwOjJlOmQ5OmUxOmI4OmEyOjM0OjM3Ojk5OjNhOjI0OmZjOmFhOmQxOmM4OjU5IiwidHlwIjoiSldUIn0.eyJhdWQiOiJodHRwczovL3Byb3ZpZGUuc2VydmljZXMvYXBpL3YxIiwiaWF0IjoxNjA1NzkxMjQ4LCJpc3MiOiJodHRwczovL2lkZW50LnByb3ZpZGUuc2VydmljZXMiLCJqdGkiOiI5YjUxNGIxNS01NTdlLTRhYWQtYTcwOC0wMTcwZTAwZWE1ZmIiLCJuYXRzIjp7InBlcm1pc3Npb25zIjp7InN1YnNjcmliZSI6eyJhbGxvdyI6WyJhcHBsaWNhdGlvbi4zNjAxNTdmOC1kNWExLTQ0NDAtOTE4Yi1mNjhiYjM5YzBkODAiLCJ1c2VyLjIzY2MwN2UwLTM4NTEtNDBkZC1iNjc1LWRmNzY4MDY3MmY3ZCIsIm5ldHdvcmsuKi5jb25uZWN0b3IuKiIsIm5ldHdvcmsuKi5zdGF0dXMiLCJwbGF0Zm9ybS5cdTAwM2UiXX19fSwicHJ2ZCI6eyJhcHBsaWNhdGlvbl9pZCI6IjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCIsImV4dGVuZGVkIjp7InBlcm1pc3Npb25zIjp7IioiOjUxMH19LCJwZXJtaXNzaW9ucyI6NTEwLCJ1c2VyX2lkIjoiMjNjYzA3ZTAtMzg1MS00MGRkLWI2NzUtZGY3NjgwNjcyZjdkIn0sInN1YiI6ImFwcGxpY2F0aW9uOjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCJ9.SUh84MKBNstdu3KFu1zEAQq03xbPw1D0lLXeogz1HfBJy77bIGf7HLvCuc6bjkh0xj3cEuEus1dC1Dj3BvlZoSXsvz_biTzSapkXzJjpkwOL6qkYDmqTPZvXwqmk-mUNrHTPkqdiIJL7xA46tzHW3E_hjSA9HjEk1kXjPdJQ6_ifkgWNoAaSD--kudIrhZ7vLnfy0H1JEAOsXzSAMoc5_pNG2n79m0ywvb_4l9BqdsHW8N3xSQOFjcp9gD_tqo6ffug3pkpoy-RSguM_OaMR2lj_CHhYxAt0phtjUceDD3K1h5iZ38kSl7izhOdULMmGBhVpBMoSy6_R6ZzpCL3pj8FcReX9RXR5oYpm8PDtlmWqblQzjwY00-uYLfOX0_iS4MGfEsjadZPfTmJLcOTYC7H4PL9ZRu_XtMDUrGBQQz5b_ad2ZzMXbBNeU6vbxVKDG8VFKWOHAemqHTcvuOAsOCLIqOu-eJpZHlXbx-FXPTYledd-GBDe7IjaC9ll_JK3utCOnCq0qUs6lnXIrQ_Sp1LcTKJJ7aY5f9TxeoAuL-ghDbQ3Xkw6huKyPCz2evOwVLwrB9ZRMlQXgmTnB1OeQvWii1WbmkyV1Zhbz_RPB8ckK7_mFxuPvsXK8wTFiWFmj96sRX470kV-ooSfM5CzKZhSLqgyyaUNC0VaCPq0uuE

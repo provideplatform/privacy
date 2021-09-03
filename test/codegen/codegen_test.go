@@ -1,4 +1,4 @@
-// +build unit
+// +build codegen
 
 package test
 
@@ -12,8 +12,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func writeToFile(logPath string, s string) {
-	f, err := os.OpenFile(logPath,
+var generatedCodeFolder = "./generated"
+
+func init() {
+	// os.RemoveAll(generatedCodeFolder)
+}
+
+func removeGeneratedFiles(circuitFilePath, testFilePath string) {
+	os.Remove(circuitFilePath)
+	os.Remove(testFilePath)
+}
+
+func writeToFile(filePath string, s string) {
+	os.Mkdir(generatedCodeFolder, 0755)
+	f, err := os.OpenFile(filePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Println(err)
@@ -158,8 +170,11 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 }
 
 func TestCodegen(t *testing.T) {
-	circuitFilePath := "./generated_code.go"
-	testFilePath := "./generated_code_test.go"
+	circuitFilePath := generatedCodeFolder + "/generated_codegen.go"
+	testFilePath := generatedCodeFolder + "/generated_codegen_test.go"
+
+	removeGeneratedFiles(circuitFilePath, testFilePath)
+
 	curveIDString := "BN254"
 	provingScheme := "groth16"
 	{
@@ -560,8 +575,11 @@ func TestCodegen(t *testing.T) {
 }
 
 func TestRollupCodegen(t *testing.T) {
-	circuitFilePath := "./generated_code.go"
-	testFilePath := "./generated_code_test.go"
+	circuitFilePath := generatedCodeFolder + "/generated_rollup_codegen.go"
+	testFilePath := generatedCodeFolder + "/generated_rollup_codegen_test.go"
+
+	removeGeneratedFiles(circuitFilePath, testFilePath)
+
 	curveIDString := "BN254"
 	provingScheme := "groth16"
 	{
@@ -598,12 +616,15 @@ func TestRollupCodegen(t *testing.T) {
 }
 
 func TestRollupCodegenPlonk(t *testing.T) {
-	circuitFilePath := "./generated_code.go"
-	testFilePath := "./generated_code_test.go"
+	circuitFilePath := generatedCodeFolder + "/generated_rollup_codegen_plonk.go"
+	testFilePath := generatedCodeFolder + "/generated_rollup_codegen_plonk_test.go"
+
+	removeGeneratedFiles(circuitFilePath, testFilePath)
+
 	curveIDString := "BN254"
 	provingScheme := "plonk"
 	{
-		circuitName := "GenRollupCircuit"
+		circuitName := "GenRollupCircuitPlonk"
 		packageName := "test"
 		proofs := []string{
 			"aa5500ca9af223afdec21989169de5c63938274908f09ee85a233fd1a7396bba89ea271a41a7d38014dfffbdcbe806d0726c5dc4eef7f178ea52de45852697d51f2c74152e1fbbed79ebdfd1235788ea2b1637e6ed49a33a05653133e21a5cfdaa86f1acc9588b17838f8da88a5398cb324b1289aa7759457ddccddf53ee1ca9",

@@ -47,5 +47,7 @@ coverage.txt
 profile.cov
 profile.out
 
+test/codegen/generated
+
 .bin/
 .tmp/

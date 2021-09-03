@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	// vault "github.com/provideplatform/provide-go/api/vault"
-
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	stan "github.com/nats-io/stan.go"
+	"github.com/nats-io/nats.go"
 	"github.com/provideplatform/privacy/common"
 )
+
+const defaultNatsStream = "privacy"
 
 const natsCircuitSetupCompleteSubject = "privacy.circuit.setup.complete"
 const natsCircuitSetupFailedSubject = "privacy.circuit.setup.failed"
@@ -21,7 +21,6 @@ const natsCircuitSetupFailedSubject = "privacy.circuit.setup.failed"
 const natsCreatedCircuitSetupSubject = "privacy.circuit.setup.pending"
 const natsCreatedCircuitSetupMaxInFlight = 32
 const createCircuitAckWait = time.Hour * 1
-const createCircuitTimeout = int64(time.Hour * 1)
 
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
@@ -29,7 +28,10 @@ func init() {
 		return
 	}
 
-	natsutil.EstablishSharedNatsStreamingConnection(nil)
+	natsutil.EstablishSharedNatsConnection(nil)
+	natsutil.NatsCreateStream(defaultNatsStream, []string{
+		fmt.Sprintf("%s.*", defaultNatsStream),
+	})
 
 	var waitGroup sync.WaitGroup
 
@@ -38,7 +40,7 @@ func init() {
 
 func createNatsCircuitSetupSubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
-		natsutil.RequireNatsStreamingSubscription(wg,
+		natsutil.RequireNatsJetstreamSubscription(wg,
 			createCircuitAckWait,
 			natsCreatedCircuitSetupSubject,
 			natsCreatedCircuitSetupSubject,
@@ -50,28 +52,28 @@ func createNatsCircuitSetupSubscriptions(wg *sync.WaitGroup) {
 	}
 }
 
-func consumeCircuitSetupMsg(msg *stan.Msg) {
+func consumeCircuitSetupMsg(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit setup; %s", r)
-			natsutil.AttemptNack(msg, createCircuitTimeout)
+			msg.Nak()
 		}
 	}()
 
-	common.Log.Debugf("consuming %d-byte NATS circuit setup message on subject: %s", msg.Size(), msg.Subject)
+	common.Log.Debugf("consuming %d-byte NATS circuit setup message on subject: %s", len(msg.Data), msg.Subject)
 
 	params := map[string]interface{}{}
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
 		common.Log.Warningf("failed to unmarshal circuit setup message; %s", err.Error())
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
 	circuitID, circuitIDOk := params["circuit_id"].(string)
 	if !circuitIDOk {
 		common.Log.Warning("failed to unmarshal circuit_id during setup message handler")
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
@@ -82,7 +84,7 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 
 	if circuit == nil || circuit.ID == uuid.Nil {
 		common.Log.Warningf("failed to resolve circuit during async setup; circuit id: %s", circuitID)
-		natsutil.AttemptNack(msg, createCircuitTimeout)
+		msg.Nak()
 		return
 	}
 
@@ -94,13 +96,13 @@ func consumeCircuitSetupMsg(msg *stan.Msg) {
 	if circuit.setup(db) {
 		common.Log.Debugf("setup completed for circuit: %s", circuit.ID)
 		circuit.updateStatus(db, circuitStatusProvisioned, nil)
-		natsutil.NatsStreamingPublish(natsCircuitSetupCompleteSubject, msg.Data)
+		natsutil.NatsJetstreamPublish(natsCircuitSetupCompleteSubject, msg.Data)
 		msg.Ack()
 	} else {
 		common.Log.Warningf("setup failed for circuit: %s", circuit.ID)
 		err = fmt.Errorf("unspecified error")
 		circuit.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
-		natsutil.NatsStreamingPublish(natsCircuitSetupFailedSubject, msg.Data)
-		natsutil.AttemptNack(msg, createCircuitTimeout)
+		natsutil.NatsJetstreamPublish(natsCircuitSetupFailedSubject, msg.Data)
+		msg.Nak()
 	}
 }

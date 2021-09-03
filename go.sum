@@ -238,8 +238,9 @@ github.com/kthomas/go-logger v0.0.0-20200602041232-5c46e0cab608/go.mod h1:sXRQB7
 github.com/kthomas/go-logger v0.0.0-20200602072946-d7d72dfc2531/go.mod h1:sXRQB767yNz+melLbxSNF+yu0H7kxguvoJHqa47Mxh4=
 github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c h1:RY4Ei3MRDKfjWqaSG9OA2R/xz4GGmRQx/wcgGosYilI=
 github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c/go.mod h1:TtVSBQILggONVgiZObhmzisbSxWrgnF+GYhwKbNDV8Y=
-github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05 h1:Sx6QjNcTqprrN0k/EjM8GaAM9Lfgb0BSSbzt3nRWH5U=
 github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05/go.mod h1:N0lpxSQ7hGx0pR4CK79koHPC2duLwvUORDHQ1hEERqU=
+github.com/kthomas/go-natsutil v0.0.0-20210903192029-65b750c188cc h1:B/tGLmDSTaxbKafnfqDyUvHPm5w2PWQo7SEM0a42K5o=
+github.com/kthomas/go-natsutil v0.0.0-20210903192029-65b750c188cc/go.mod h1:uDO8r+HO3dikewreimCjMOlBFJMeax3B6y//ttme1+w=
 github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943 h1:cDp8m82Etk3UybAMLVTgUyvscBc54Yuy1MsoqXbo71c=
 github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943/go.mod h1:1wYaoVWP9k76g2FfW5U9NaJ6dELUDFt2J2XMzSbJAVg=
 github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff h1:8tlYBAzX9jkEwGpIXLOwOMO57S5XmLLAcRDbuEtNJv8=
@@ -290,8 +291,9 @@ github.com/nats-io/nats-streaming-server v0.16.2/go.mod h1:P12vTqmBpT6Ufs+cu0W1C
 github.com/nats-io/nats.go v1.8.1/go.mod h1:BrFz9vVn0fU3AcH9Vn4Kd7W0NpJ651tD5omQ3M8LwxM=
 github.com/nats-io/nats.go v1.9.1/go.mod h1:ZjDU1L/7fJ09jvUSRVBR2e7+RnLiiIQyqyzEE/Zbp4w=
 github.com/nats-io/nats.go v1.10.0/go.mod h1:AjGArbfyR50+afOUotNX2Xs5SYHf+CoOa5HH1eEl2HE=
-github.com/nats-io/nats.go v1.11.0 h1:L263PZkrmkRJRJT2YHU8GwWWvEvmr9/LUKuJTXsF32k=
 github.com/nats-io/nats.go v1.11.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
+github.com/nats-io/nats.go v1.12.0 h1:n0oZzK2aIZDMKuEiMKJ9qkCUgVY5vTAAksSXtLlz5Xc=
+github.com/nats-io/nats.go v1.12.0/go.mod h1:BPko4oXsySz4aSWeFgOHLZs3G4Jq4ZAyE6/zMCxRT6w=
 github.com/nats-io/nkeys v0.0.2/go.mod h1:dab7URMsZm6Z/jp9Z5UGa87Uutgc2mVpXLC4B7TDb/4=
 github.com/nats-io/nkeys v0.1.0/go.mod h1:xpnFELMwJABBLVhffcfd1MZx6VsNRFpEugbxziKVo7w=
 github.com/nats-io/nkeys v0.1.3/go.mod h1:xpnFELMwJABBLVhffcfd1MZx6VsNRFpEugbxziKVo7w=
@@ -559,8 +561,9 @@ google.golang.org/protobuf v1.23.0/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2
 google.golang.org/protobuf v1.23.1-0.20200526195155-81db48ad09cc/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2l/sGQquU=
 google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlbajtzgsN7c=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
-google.golang.org/protobuf v1.26.0 h1:bxAC2xTBsZGibn2RTntX0oH50xLsqy1OxA9tTL3p/lk=
 google.golang.org/protobuf v1.26.0/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
+google.golang.org/protobuf v1.27.1 h1:SnqbnDw1V7RiZcXPx5MEeqPv2s79L9i7BJUlG/+RurQ=
+google.golang.org/protobuf v1.27.1/go.mod h1:9q0QmTI4eRPtz6boOQmLYwt+qCgq0jsYwAQnmE0givc=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

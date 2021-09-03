@@ -43,7 +43,7 @@ services:
 
   privacy0-nats:
     image: provide/nats-server:2.2.3-beta.4-PRVD
-    container_name: provide-nats
+    container_name: privacy0-nats
     command: ["--js", "--server_name", "prvd-privacy0-nats", "-auth", "testtoken", "-p", "4222", "-D", "-V"]
     environment:
       JWT_SIGNER_PUBLIC_KEY: |-

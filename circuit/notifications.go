@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	natsutil "github.com/kthomas/go-natsutil"
+	"github.com/nats-io/nats.go"
 	"github.com/provideplatform/privacy/common"
 )
 
@@ -13,17 +14,17 @@ const natsCircuitNotificationNoteNullified = "note.nullified"
 const natsCircuitNotificationExit = "exit"
 
 // dispatchNotification broadcasts an event to qualified subjects
-func (c *Circuit) dispatchNotification(event string) error {
+func (c *Circuit) dispatchNotification(event string) (*nats.PubAck, error) {
 	prefix := c.notificationsSubjectPrefix()
 	if prefix == nil {
-		return nil
+		return nil, fmt.Errorf("failed to dispatch event notification for circuit %s; nil prefix", c.ID.String())
 	}
 	if event == "" {
-		return fmt.Errorf("failed to dispatch event notification for circuit %s", c.ID.String())
+		return nil, fmt.Errorf("failed to dispatch event notification for circuit %s", c.ID.String())
 	}
 	subject := fmt.Sprintf("%s.%s", *prefix, event)
 	payload, _ := json.Marshal(map[string]interface{}{})
-	return natsutil.NatsStreamingPublish(subject, payload)
+	return natsutil.NatsJetstreamPublish(subject, payload)
 }
 
 // notificationsSubject returns a namespaced subject suitable for pub/sub subscriptions

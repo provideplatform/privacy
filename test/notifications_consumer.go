@@ -27,7 +27,8 @@ func init() {
 		return
 	}
 
-	natsutil.EstablishSharedNatsStreamingConnection(nil)
+	natsutil.EstablishSharedNatsConnection(nil)
+	// TODO-- setup stream
 
 	var waitGroup sync.WaitGroup
 	createNatsCircuitNotificationNoteDepositSubscription(&waitGroup)
@@ -51,7 +52,7 @@ func createNatsCircuitNotificationNoteDepositSubscription(wg *sync.WaitGroup) {
 		panic(err)
 	}
 
-	natsutil.RequireNatsStreamingSubscription(wg,
+	natsutil.RequireNatsJetstreamSubscription(wg,
 		natsCircuitNotificationAckWait,
 		*subject,
 		*subject,
@@ -70,7 +71,7 @@ func createNatsCircuitNotificationNoteNullifiedSubscription(wg *sync.WaitGroup) 
 		panic(err)
 	}
 
-	natsutil.RequireNatsStreamingSubscription(wg,
+	natsutil.RequireNatsJetstreamSubscription(wg,
 		natsCircuitNotificationAckWait,
 		*subject,
 		*subject,
@@ -89,7 +90,7 @@ func createNatsCircuitNotificationExitSubscription(wg *sync.WaitGroup) {
 		panic(err)
 	}
 
-	natsutil.RequireNatsStreamingSubscription(wg,
+	natsutil.RequireNatsJetstreamSubscription(wg,
 		natsCircuitNotificationAckWait,
 		*subject,
 		*subject,
@@ -104,7 +105,7 @@ func circuitNoteDepositHandler(msg *stan.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit note deposit notification handler; %s", r)
-			natsutil.AttemptNack(msg, natsCircuitNotificationTimeout)
+			msg.Nak()
 		}
 	}()
 
@@ -115,7 +116,7 @@ func circuitNoteNullifiedHandler(msg *stan.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit note nullified notification handler; %s", r)
-			natsutil.AttemptNack(msg, natsCircuitNotificationTimeout)
+			msg.Nak()
 		}
 	}()
 
@@ -126,7 +127,7 @@ func circuitExitHandler(msg *stan.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit exit notification handler; %s", r)
-			natsutil.AttemptNack(msg, natsCircuitNotificationTimeout)
+			msg.Nak()
 		}
 	}()
 

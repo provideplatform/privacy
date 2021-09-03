@@ -186,7 +186,7 @@ func (c *Circuit) Create(variables interface{}) bool {
 					payload, _ := json.Marshal(map[string]interface{}{
 						"circuit_id": c.ID.String(),
 					})
-					natsutil.NatsStreamingPublish(natsCreatedCircuitSetupSubject, payload)
+					natsutil.NatsJetstreamPublish(natsCreatedCircuitSetupSubject, payload)
 				} else if isImport {
 					c.updateStatus(db, circuitStatusProvisioned, nil)
 				}
@@ -993,7 +993,7 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			return err
 		}
 
-		err = c.dispatchNotification(natsCircuitNotificationNoteDeposit)
+		_, err = c.dispatchNotification(natsCircuitNotificationNoteDeposit)
 		if err != nil {
 			common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationNoteDeposit, c.ID, err.Error())
 		}
@@ -1039,7 +1039,7 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 				return err
 			}
 
-			err = c.dispatchNotification(natsCircuitNotificationNoteNullified)
+			_, err = c.dispatchNotification(natsCircuitNotificationNoteNullified)
 			if err != nil {
 				common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationNoteNullified, c.ID, err.Error())
 			}
@@ -1056,7 +1056,7 @@ func (c *Circuit) exit() error {
 	var err error
 	// TODO: check to ensure an exit is possible...
 
-	err = c.dispatchNotification(natsCircuitNotificationExit)
+	_, err = c.dispatchNotification(natsCircuitNotificationExit)
 	if err != nil {
 		common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationExit, c.ID, err.Error())
 	}

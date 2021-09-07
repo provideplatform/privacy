@@ -24,7 +24,7 @@ func (circuit *EqualCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSyste
 	cs.AssertIsLessOrEqual(circuit.Vals.Val, circuit.Vals.RelVal)
 	cs.AssertIsLessOrEqual(circuit.Vals.RelVal, circuit.Vals.Val) // AssertIsEqual having trouble with this circuit, this is a workaround
 	//diff := cs.Sub(circuit.Vals.Val, circuit.Vals.RelVal)
-	//diffIsZero := cs.IsZero(diff, curveID)
+	//diffIsZero := cs.IsZero(diff)
 	//cs.AssertIsEqual(diffIsZero, cs.Constant(1))
 	return nil
 }
@@ -37,7 +37,7 @@ type NotEqualCircuit struct {
 // Define declares the circuit constraints
 func (circuit *NotEqualCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	diff := cs.Sub(circuit.Vals.Val, circuit.Vals.RelVal)
-	diffIsZero := cs.IsZero(diff, curveID)
+	diffIsZero := cs.IsZero(diff)
 	cs.AssertIsEqual(diffIsZero, cs.Constant(0))
 	return nil
 }

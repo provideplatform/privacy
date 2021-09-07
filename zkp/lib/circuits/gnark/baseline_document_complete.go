@@ -68,8 +68,9 @@ func (circuit *BaselineDocumentCompleteCircuit) Define(curveID ecc.ID, cs *front
 
 	// Check for knowledge of preimage
 	// Hash = mimc(Preimage)
-	mimc, _ := mimc.NewMiMC("seed", curveID)
-	cs.AssertIsEqual(circuit.Doc.Hash, mimc.Hash(cs, circuit.Doc.Preimage))
+	mimc, _ := mimc.NewMiMC("seed", curveID, cs)
+	mimc.Write(circuit.Doc.Preimage)
+	cs.AssertIsEqual(circuit.Doc.Hash, mimc.Sum())
 
 	return nil
 }

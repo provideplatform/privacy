@@ -3,8 +3,8 @@ module github.com/provideplatform/privacy
 go 1.15
 
 require (
-	github.com/consensys/gnark v0.4.1-0.20210810173659-9e05ca392128
-	github.com/consensys/gnark-crypto v0.4.1-0.20210810152820-89f1497f0bc5
+	github.com/consensys/gnark v0.5.1-0.20210907165147-4e5ac5738a63
+	github.com/consensys/gnark-crypto v0.5.0
 	github.com/gin-gonic/gin v1.7.0
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jinzhu/gorm v1.9.16
@@ -15,7 +15,7 @@ require (
 	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
 	github.com/nats-io/nats.go v1.12.0
-	github.com/nats-io/stan.go v0.9.0 // indirect
+	github.com/nats-io/stan.go v0.9.0
 	github.com/onsi/ginkgo v1.16.3 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd

@@ -24,7 +24,7 @@ func (circuit *EqualCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSyste
 	cs.AssertIsLessOrEqual(circuit.Vals.Val, circuit.Vals.RelVal)
 	cs.AssertIsLessOrEqual(circuit.Vals.RelVal, circuit.Vals.Val) // AssertIsEqual having trouble with this circuit, this is a workaround
 	//diff := cs.Sub(circuit.Vals.Val, circuit.Vals.RelVal)
-	//diffIsZero := cs.IsZero(diff, curveID)
+	//diffIsZero := cs.IsZero(diff)
 	//cs.AssertIsEqual(diffIsZero, cs.Constant(1))
 	return nil
 }
@@ -37,7 +37,7 @@ type NotEqualCircuit struct {
 // Define declares the circuit constraints
 func (circuit *NotEqualCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	diff := cs.Sub(circuit.Vals.Val, circuit.Vals.RelVal)
-	diffIsZero := cs.IsZero(diff, curveID)
+	diffIsZero := cs.IsZero(diff)
 	cs.AssertIsEqual(diffIsZero, cs.Constant(0))
 	return nil
 }
@@ -94,13 +94,13 @@ type ProofHashCircuit struct {
 
 // Define declares the circuit constraints
 func (circuit *ProofHashCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	hFunc, err := mimc.NewMiMC("seed", curveID)
+	hFunc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Proof[:]...)
-	cs.AssertIsEqual(hash, circuit.Hash)
+	hFunc.Write(circuit.Proof[:]...)
+	cs.AssertIsEqual(hFunc.Sum(), circuit.Hash)
 
 	return nil
 }
@@ -120,13 +120,13 @@ func (circuit *ProofEddsaCircuit) Define(curveID ecc.ID, cs *frontend.Constraint
 	}
 	circuit.PubKey.Curve = curve
 
-	hFunc, err := mimc.NewMiMC("seed", curveID)
+	hFunc, err := mimc.NewMiMC("seed", curveID, cs)
 	if err != nil {
 		return err
 	}
 
-	hash := hFunc.Hash(cs, circuit.Msg[:]...)
-	eddsa.Verify(cs, circuit.Sig, hash, circuit.PubKey)
+	hFunc.Write(circuit.Msg[:]...)
+	eddsa.Verify(cs, circuit.Sig, hFunc.Sum(), circuit.PubKey)
 
 	return nil
 }

@@ -989,7 +989,7 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 
 		nullifiedIndex--
 
-		if nullifiedIndex >= 0 {
+		if nullifiedIndex >= 0 && c.nullifierStore != nil {
 			nullifiedNote, err = c.noteStore.ValueAt(new(big.Int).SetUint64(uint64(nullifiedIndex)).Bytes())
 			if err != nil {
 				common.Log.Warningf("failed to update state; note not inserted for circuit %s; failed to check double-spend; %s", c.ID, err.Error())

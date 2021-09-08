@@ -21,6 +21,7 @@ const natsCircuitSetupFailedSubject = "privacy.circuit.setup.failed"
 const natsCreatedCircuitSetupSubject = "privacy.circuit.setup.pending"
 const natsCreatedCircuitSetupMaxInFlight = 32
 const createCircuitAckWait = time.Hour * 1
+const createCircuitMaxDeliveries = 5
 
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
@@ -44,9 +45,11 @@ func createNatsCircuitSetupSubscriptions(wg *sync.WaitGroup) {
 			createCircuitAckWait,
 			natsCreatedCircuitSetupSubject,
 			natsCreatedCircuitSetupSubject,
+			natsCreatedCircuitSetupSubject,
 			consumeCircuitSetupMsg,
 			createCircuitAckWait,
 			natsCreatedCircuitSetupMaxInFlight,
+			createCircuitMaxDeliveries,
 			nil,
 		)
 	}

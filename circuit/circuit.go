@@ -989,22 +989,24 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 
 		nullifiedIndex--
 
-		nullifiedNote, err = c.noteStore.ValueAt(new(big.Int).SetUint64(uint64(nullifiedIndex)).Bytes())
-		if err != nil {
-			common.Log.Warningf("failed to update state; note not inserted for circuit %s; failed to check double-spend; %s", c.ID, err.Error())
-			return err
-		}
+		if nullifiedIndex >= 0 {
+			nullifiedNote, err = c.noteStore.ValueAt(new(big.Int).SetUint64(uint64(nullifiedIndex)).Bytes())
+			if err != nil {
+				common.Log.Warningf("failed to update state; note not inserted for circuit %s; failed to check double-spend; %s", c.ID, err.Error())
+				return err
+			}
 
-		nullifierExists, err = c.nullifierStore.Contains(string(nullifiedNote))
-		if err != nil {
-			common.Log.Warningf("failed to update state; unable to determine if nullifier exists for circuit %s; %s", c.ID, err.Error())
-			return err
-		}
+			nullifierExists, err = c.nullifierStore.Contains(string(nullifiedNote))
+			if err != nil {
+				common.Log.Warningf("failed to update state; unable to determine if nullifier exists for circuit %s; %s", c.ID, err.Error())
+				return err
+			}
 
-		if nullifierExists {
-			err := fmt.Errorf("attempt to double-spend %d-byte note for circuit %s", len(note), c.ID)
-			common.Log.Warning(err.Error())
-			return err
+			if nullifierExists {
+				err := fmt.Errorf("attempt to double-spend %d-byte note for circuit %s", len(note), c.ID)
+				common.Log.Warning(err.Error())
+				return err
+			}
 		}
 
 		_, err = c.noteStore.Insert(string(data))

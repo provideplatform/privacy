@@ -15,7 +15,6 @@ require (
 	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
 	github.com/nats-io/nats.go v1.12.0
-	github.com/nats-io/stan.go v0.9.0
 	github.com/onsi/ginkgo v1.16.3 // indirect
 	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/providenetwork/merkletree v0.2.1-0.20210730012829-7003f45aa7dd

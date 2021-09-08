@@ -2,6 +2,7 @@ package ceremony
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -10,19 +11,23 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	stan "github.com/nats-io/stan.go"
+	"github.com/nats-io/nats.go"
 	"github.com/provideplatform/privacy/common"
 )
+
+const defaultNatsStream = "privacy"
 
 const natsCeremonyPendingSubject = "privacy.ceremony.pending"
 const ceremonyPendingAckWait = time.Second * 5
 const ceremonyPendingTimeout = int64(time.Minute * 1)
 const ceremonyPendingMaxInFlight = 512
+const ceremonyPendingMaxDeliveries = 5
 
 const natsCeremonyCompleteSubject = "privacy.ceremony.complete"
 const ceremonyCompleteAckWait = time.Hour * 1
 const ceremonyCompleteTimeout = int64(time.Hour * 1)
 const ceremonyCompleteMaxInFlight = 512
+const ceremonyCompleteMaxDeliveries = 5
 
 const natsGenerateCeremonyEntropySubject = "privacy.ceremony.entropy.generate"
 const ceremonyGenerateEntropyAckWait = time.Hour * 1
@@ -35,7 +40,10 @@ func init() {
 		return
 	}
 
-	natsutil.EstablishSharedNatsStreamingConnection(nil)
+	natsutil.EstablishSharedNatsConnection(nil)
+	natsutil.NatsCreateStream(defaultNatsStream, []string{
+		fmt.Sprintf("%s.>", defaultNatsStream),
+	})
 
 	var waitGroup sync.WaitGroup
 
@@ -44,13 +52,15 @@ func init() {
 
 func createNatsCeremonyPendingSubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
-		natsutil.RequireNatsStreamingSubscription(wg,
+		natsutil.RequireNatsJetstreamSubscription(wg,
 			ceremonyPendingAckWait,
+			natsCeremonyPendingSubject,
 			natsCeremonyPendingSubject,
 			natsCeremonyPendingSubject,
 			consumeCeremonyPendingMsg,
 			ceremonyPendingAckWait,
 			ceremonyPendingMaxInFlight,
+			ceremonyPendingMaxDeliveries,
 			nil,
 		)
 	}
@@ -58,13 +68,15 @@ func createNatsCeremonyPendingSubscriptions(wg *sync.WaitGroup) {
 
 func createNatsCeremonyCompleteSubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
-		natsutil.RequireNatsStreamingSubscription(wg,
+		natsutil.RequireNatsJetstreamSubscription(wg,
 			ceremonyPendingAckWait,
+			natsCeremonyCompleteSubject,
 			natsCeremonyCompleteSubject,
 			natsCeremonyCompleteSubject,
 			consumeCeremonyCompleteMsg,
 			ceremonyCompleteAckWait,
 			ceremonyCompleteMaxInFlight,
+			ceremonyCompleteMaxDeliveries,
 			nil,
 		)
 	}
@@ -72,40 +84,42 @@ func createNatsCeremonyCompleteSubscriptions(wg *sync.WaitGroup) {
 
 func createNatsGenerateCeremonyEntropySubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
-		natsutil.RequireNatsStreamingSubscription(wg,
+		natsutil.RequireNatsJetstreamSubscription(wg,
 			ceremonyGenerateEntropyAckWait,
+			natsGenerateCeremonyEntropySubject,
 			natsGenerateCeremonyEntropySubject,
 			natsGenerateCeremonyEntropySubject,
 			consumeCeremonyGenerateEntropyMsg,
 			ceremonyPendingAckWait,
 			ceremonyPendingMaxInFlight,
+			ceremonyPendingMaxDeliveries,
 			nil,
 		)
 	}
 }
 
-func consumeCeremonyPendingMsg(msg *stan.Msg) {
+func consumeCeremonyPendingMsg(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during pending ceremony state transition; %s", r)
-			natsutil.AttemptNack(msg, ceremonyPendingTimeout)
+			msg.Nak()
 		}
 	}()
 
-	common.Log.Debugf("consuming %d-byte NATS pending ceremony message on subject: %s", msg.Size(), msg.Subject)
+	common.Log.Debugf("consuming %d-byte NATS pending ceremony message on subject: %s", len(msg.Data), msg.Subject)
 
 	params := map[string]interface{}{}
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
 		common.Log.Warningf("failed to unmarshal pending ceremony message; %s", err.Error())
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
 	ceremonyID, ceremonyIDOk := params["ceremony_id"].(string)
 	if !ceremonyIDOk {
 		common.Log.Warning("failed to unmarshal ceremony_id during pending message message handler")
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
@@ -116,7 +130,7 @@ func consumeCeremonyPendingMsg(msg *stan.Msg) {
 
 	if ceremony == nil || ceremony.ID == uuid.Nil {
 		common.Log.Warningf("failed to resolve ceremony during async pending message handler; ceremony id: %s", ceremonyID)
-		natsutil.AttemptNack(msg, ceremonyPendingTimeout)
+		msg.Nak()
 		return
 	}
 
@@ -133,28 +147,28 @@ func consumeCeremonyPendingMsg(msg *stan.Msg) {
 	msg.Ack()
 }
 
-func consumeCeremonyCompleteMsg(msg *stan.Msg) {
+func consumeCeremonyCompleteMsg(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during complete ceremony state transition; %s", r)
-			natsutil.AttemptNack(msg, ceremonyPendingTimeout)
+			msg.Nak()
 		}
 	}()
 
-	common.Log.Debugf("consuming %d-byte NATS complete ceremony message on subject: %s", msg.Size(), msg.Subject)
+	common.Log.Debugf("consuming %d-byte NATS complete ceremony message on subject: %s", len(msg.Data), msg.Subject)
 
 	params := map[string]interface{}{}
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
 		common.Log.Warningf("failed to unmarshal complete ceremony message; %s", err.Error())
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
 	ceremonyID, ceremonyIDOk := params["ceremony_id"].(string)
 	if !ceremonyIDOk {
 		common.Log.Warning("failed to unmarshal ceremony_id during complete message message handler")
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
@@ -165,7 +179,7 @@ func consumeCeremonyCompleteMsg(msg *stan.Msg) {
 
 	if ceremony == nil || ceremony.ID == uuid.Nil {
 		common.Log.Warningf("failed to resolve ceremony during async complete message handler; ceremony id: %s", ceremonyID)
-		natsutil.AttemptNack(msg, ceremonyPendingTimeout)
+		msg.Nak()
 		return
 	}
 
@@ -180,28 +194,28 @@ func consumeCeremonyCompleteMsg(msg *stan.Msg) {
 	msg.Ack()
 }
 
-func consumeCeremonyGenerateEntropyMsg(msg *stan.Msg) {
+func consumeCeremonyGenerateEntropyMsg(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during ceremony entropy message transition; %s", r)
-			natsutil.AttemptNack(msg, ceremonyPendingTimeout)
+			msg.Nak()
 		}
 	}()
 
-	common.Log.Debugf("consuming %d-byte NATS ceremony entropy message on subject: %s", msg.Size(), msg.Subject)
+	common.Log.Debugf("consuming %d-byte NATS ceremony entropy message on subject: %s", len(msg.Data), msg.Subject)
 
 	params := map[string]interface{}{}
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
 		common.Log.Warningf("failed to unmarshal ceremony entropy message; %s", err.Error())
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
 	ceremonyID, ceremonyIDOk := params["ceremony_id"].(string)
 	if !ceremonyIDOk {
 		common.Log.Warning("failed to unmarshal ceremony_id during entropy message handler")
-		natsutil.Nack(msg)
+		msg.Nak()
 		return
 	}
 
@@ -212,7 +226,7 @@ func consumeCeremonyGenerateEntropyMsg(msg *stan.Msg) {
 
 	if ceremony == nil || ceremony.ID == uuid.Nil {
 		common.Log.Warningf("failed to resolve ceremony during async ceremony entropy handler; ceremony id: %s", ceremonyID)
-		natsutil.AttemptNack(msg, ceremonyPendingTimeout)
+		msg.Nak()
 		return
 	}
 

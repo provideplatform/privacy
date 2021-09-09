@@ -10,31 +10,22 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/privacy/ceremony"
 	"github.com/provideplatform/privacy/common"
+
 	"github.com/provideplatform/provide-go/api/privacy"
 	"github.com/provideplatform/provide-go/common/util"
 )
 
 func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, parties []string, blockID uint64) error {
 	for i := 0; i < len(parties); i++ {
-		mpc := ceremony.CeremonyFactory(parties, &ceremony.CeremonyConfig{
-			Block:           &blockID,
-			ExpectedEntropy: 32 * (len(parties) + 1),
-			WordSize:        32,
+		mpc := &ceremony.Ceremony{}
+
+		mpc.CeremonyFactory(parties, &ceremony.CeremonyConfig{
+			Block: &blockID,
 		})
 
-		err := mpc.GetEntropyFromBeacon(blockID)
+		err := mpc.GetEntropyFromBeacon()
 		if err != nil {
 			return fmt.Errorf("unable to get entropy; %s", err.Error())
-		}
-
-		err = mpc.GenerateEntropy()
-		if err != nil {
-			return fmt.Errorf("unable to generate entropy; %s", err.Error())
-		}
-
-		err = mpc.SubmitEntropy()
-		if err != nil {
-			return fmt.Errorf("unable to submit entropy; %s", err.Error())
 		}
 
 		*mpcs = append(*mpcs, mpc)
@@ -48,8 +39,16 @@ func setupTestMPCs(t *testing.T, mpcs *[]*ceremony.Ceremony, parties []string, b
 func addPartiesToTestMPCs(t *testing.T, mpcs []*ceremony.Ceremony) error {
 	partyCount := len(mpcs)
 	for i := 0; i < partyCount; i++ {
+		entropy, err := common.RandomBytes(mpcs[i].Config.WordSize)
+		if err != nil {
+			return fmt.Errorf("unable to generate entropy for mpc ceremony; %s", err.Error())
+		}
+
 		for j := 0; j < partyCount; j++ {
-			mpcs[i].AddParty(j, mpcs[j])
+			err = mpcs[j].SubmitEntropy(mpcs[i].Parties[i], entropy)
+			if err != nil {
+				return fmt.Errorf("unable to submit entropy; %s", err.Error())
+			}
 		}
 	}
 
@@ -87,6 +86,20 @@ func circuitParamsFactory(curve, name, identifier, provingScheme string, noteSto
 }
 
 func TestCeremonySRSGeneration(t *testing.T) {
+	testUserID, _ := uuid.NewV4()
+	token, _ := userTokenFactory(testUserID)
+
+	util.DefaultVaultAccessJWT = *token
+
+	v, _ := vaultFactory(util.DefaultVaultAccessJWT, "vault", "vault for ceremonies")
+
+	common.DefaultVault = v
+
+	if common.DefaultVault == nil {
+		t.Error("failed to get default vault")
+		return
+	}
+
 	mpcs := make([]*ceremony.Ceremony, 0)
 
 	// TODO: retrieve block ID properly
@@ -122,28 +135,13 @@ func TestCeremonySRSGeneration(t *testing.T) {
 
 	t.Log("all calculated entropy values are valid")
 
-	newVault, err := vaultFactory(util.DefaultVaultAccessJWT, "mpc vault", "contains entropy for mpc")
-	if err != nil {
-		t.Errorf("failed to create vault for ceremony test; %s", err.Error())
-		return
-	}
-
-	entropySecretID, err := mpcs[0].StoreEntropy(
-		common.StringOrNil(util.DefaultVaultAccessJWT),
-		common.StringOrNil(newVault.ID.String()),
-		common.StringOrNil("mpc entropy"),
-		common.StringOrNil("entropy for mpc"),
-		common.StringOrNil("entropy"),
-	)
+	err = mpcs[0].StoreEntropy()
 	if err != nil {
 		t.Errorf("failed to store entropy in vault; %s", err.Error())
 		return
 	}
 
-	t.Logf("stored entropy in vault; secret id: %s", entropySecretID.String())
-
-	testUserID, _ := uuid.NewV4()
-	token, _ := userTokenFactory(testUserID)
+	t.Logf("stored entropy in vault")
 
 	params := circuitParamsFactory(
 		"BN254",
@@ -154,8 +152,8 @@ func TestCeremonySRSGeneration(t *testing.T) {
 		nil,
 	)
 
-	params["entropy_id"] = entropySecretID.String()
-	params["vault_id"] = newVault.ID.String()
+	params["entropy_id"] = mpcs[0].EntropyVaultSecretID.String()
+	params["vault_id"] = common.DefaultVault.ID.String()
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {

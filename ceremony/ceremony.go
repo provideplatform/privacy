@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/jinzhu/gorm"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/vault"
+	util "github.com/provideplatform/provide-go/common/util"
 
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -27,62 +29,49 @@ const ceremonyStatusPending = "pending"
 
 // CeremonyConfig
 type CeremonyConfig struct {
-	Block           *uint64 `json:"block"`            // number of block being used for entropy
-	ExpectedEntropy int     `json:"expected_entropy"` // expected number of bytes of entropy from all parties and any random beacon as required
-	WordSize        int     `json:"word_size"`
+	Block    *uint64 `json:"block"` // number of block being used for entropy
+	WordSize int     `json:"word_size"`
 }
 
 // Ceremony model
 type Ceremony struct {
 	provide.Model
 
-	Config     CeremonyConfig `json:"config"`
-	Parties    []string       `json:"parties"`
-	Status     *string        `json:"status"`
-	entropy    []byte         `json:"-"`
-	ownEntropy []byte         `json:"-"`
-}
+	Config  CeremonyConfig `json:"config"`
+	Parties []string       `json:"parties"`
+	Status  *string        `json:"status"`
 
-// AddParty creates a ceremony
-func (c *Ceremony) AddParty(index int, other *Ceremony) error {
-	// TODO: receive entropy from other parties
-	if c.Config.WordSize != other.Config.WordSize {
-		return fmt.Errorf("other word size %d does not match expected word size %d", other.Config.WordSize, c.Config.WordSize)
-	}
+	Entropy []byte `json:"-"`
 
-	if len(other.ownEntropy) == 0 || bytes.Equal(other.ownEntropy, make([]byte, other.Config.WordSize)) {
-		return fmt.Errorf("other party ceremony has uninitialized entropy value")
-	}
+	VaultID              *uuid.UUID `json:"vault_id"`
+	EntropyVaultSecretID *uuid.UUID `json:"entropy_vault_secret_id"`
 
-	copy(c.entropy[index*c.Config.WordSize:], other.ownEntropy)
-	return nil
+	// Associations
+	ApplicationID  *uuid.UUID `sql:"type:uuid" json:"-"`
+	OrganizationID *uuid.UUID `sql:"type:uuid" json:"-"`
+	UserID         *uuid.UUID `sql:"type:uuid" json:"-"`
+
+	mutex sync.Mutex
 }
 
 // CeremonyFactory creates a new Ceremony object
-func CeremonyFactory(parties []string, config *CeremonyConfig) *Ceremony {
-	ceremony := &Ceremony{
-		Parties: parties,
-		Config:  *config,
+func (c *Ceremony) CeremonyFactory(parties []string, config *CeremonyConfig) {
+	c.Parties = parties
+	c.Config = *config
+
+	// TODO: validate no duplicate parties
+	sort.Strings(c.Parties)
+
+	if c.Config.WordSize <= 0 {
+		c.Config.WordSize = defaultWordSize
 	}
 
-	sort.Strings(ceremony.Parties)
-
-	if ceremony.Config.WordSize <= 0 {
-		ceremony.Config.WordSize = defaultWordSize
-	}
-
-	if ceremony.Config.ExpectedEntropy <= 0 {
-		ceremony.Config.ExpectedEntropy = ceremony.Config.WordSize * (len(parties) + 1)
-	}
-
-	ceremony.entropy = make([]byte, ceremony.Config.ExpectedEntropy)
-
-	return ceremony
+	c.Entropy = make([]byte, c.Config.WordSize*(len(parties)+1))
 }
 
 // CompareEntropy compares entropy value to that of other Ceremony
 func (c *Ceremony) CompareEntropy(other *Ceremony) bool {
-	return bytes.Equal(c.entropy, other.entropy)
+	return bytes.Equal(c.Entropy, other.Entropy)
 }
 
 func (c *Ceremony) Create(variables interface{}) bool {
@@ -109,7 +98,7 @@ func (c *Ceremony) Create(variables interface{}) bool {
 				payload, _ := json.Marshal(map[string]interface{}{
 					"ceremony_id": c.ID.String(),
 				})
-				natsutil.NatsStreamingPublish(natsCeremonyPendingSubject, payload)
+				natsutil.NatsJetstreamPublish(natsCeremonyPendingSubject, payload)
 				c.updateStatus(db, ceremonyStatusPending, nil)
 			}
 
@@ -122,53 +111,106 @@ func (c *Ceremony) Create(variables interface{}) bool {
 
 // enrich the ceremony
 func (c *Ceremony) enrich() error {
-	return nil
-}
+	if c.VaultID == nil {
+		if common.DefaultVault != nil {
+			c.VaultID = &common.DefaultVault.ID
+		}
 
-// GenerateEntropy generates entropy at party index
-func (c *Ceremony) GenerateEntropy() error {
-	entropy, err := common.RandomBytes(c.Config.WordSize)
-	if err != nil {
-		return fmt.Errorf("unable to generate entropy for mpc ceremony; %s", err.Error())
+		if c.VaultID == nil {
+			return fmt.Errorf("vault id required")
+		}
 	}
 
-	c.ownEntropy = entropy
+	if (c.Entropy == nil || len(c.Entropy) == 0) && c.EntropyVaultSecretID != nil {
+		secret, err := vault.FetchSecret(
+			util.DefaultVaultAccessJWT,
+			c.VaultID.String(),
+			c.EntropyVaultSecretID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+		c.Entropy, err = hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode entropy secret from hex; %s", err.Error())
+			return err
+		}
+	}
 
 	return nil
 }
 
 // GetEntropyFromBeacon gets the requested entropy by block number
-func (c *Ceremony) GetEntropyFromBeacon(block uint64) error {
+func (c *Ceremony) GetEntropyFromBeacon() error {
 
 	// TODO: get beacon entropy by block number, this will be same for all parties
 	entropy := []byte("test block entropy blahblahblah.")
 
 	// insert block entropy at end
-	copy(c.entropy[len(c.entropy)-c.Config.WordSize:], entropy)
+	copy(c.Entropy[len(c.Entropy)-c.Config.WordSize:], entropy)
 	return nil
 }
 
 // StoreEntropy stores entropy in vault
-func (c *Ceremony) StoreEntropy(token, vaultID, name, description, secretType *string) (*uuid.UUID, error) {
+func (c *Ceremony) StoreEntropy() error {
 	// TODO: make sure entropy value has no uninitialized/all-zero words
 
+	if c.VaultID == nil {
+		if common.DefaultVault != nil {
+			c.VaultID = &common.DefaultVault.ID
+		}
+
+		if c.VaultID == nil {
+			return fmt.Errorf("vault id required")
+		}
+	}
+
 	secret, err := vault.CreateSecret(
-		*token,
-		*vaultID,
-		hex.EncodeToString(c.entropy),
-		*name,
-		*description,
-		*secretType,
+		util.DefaultVaultAccessJWT,
+		c.VaultID.String(),
+		hex.EncodeToString(c.Entropy),
+		"mpc entropy",
+		"entropy for multiparty computation ceremony",
+		"entropy",
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to store entropy for ceremony %s in vault %s; %s", c.ID.String(), *vaultID, err.Error())
+		return fmt.Errorf("failed to store entropy for ceremony %s in vault %s; %s", c.ID.String(), c.VaultID.String(), err.Error())
 	}
-	return &secret.ID, nil
+
+	c.EntropyVaultSecretID = &secret.ID
+
+	return nil
 }
 
 // SubmitEntropy broadcasts entropy to other parties
-func (c *Ceremony) SubmitEntropy() error {
-	// TODO: broadcast entropy to other parties
+func (c *Ceremony) SubmitEntropy(party string, entropy []byte) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	err := c.enrich()
+	if err != nil {
+		return fmt.Errorf("failed to enrich entropy; %s", err.Error())
+	}
+
+	// TODO: receive entropy from other parties
+	if c.Config.WordSize != len(entropy) {
+		return fmt.Errorf("entropy size %d does not match expected word size %d", len(entropy), c.Config.WordSize)
+	}
+
+	index := -1
+	for i, p := range c.Parties {
+		if p == party {
+			index = i
+			break
+		}
+	}
+
+	if index == -1 {
+		return fmt.Errorf("invalid party %s", party)
+	}
+
+	copy(c.Entropy[index*c.Config.WordSize:], entropy)
 	return nil
 }
 

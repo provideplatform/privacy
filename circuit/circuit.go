@@ -523,23 +523,6 @@ func (c *Circuit) enrich() error {
 		}
 	}
 
-	if (c.provingKey == nil || len(c.provingKey) == 0) && c.ProvingKeyID != nil {
-		secret, err := vault.FetchSecret(
-			util.DefaultVaultAccessJWT,
-			c.VaultID.String(),
-			c.ProvingKeyID.String(),
-			map[string]interface{}{},
-		)
-		if err != nil {
-			return err
-		}
-		c.provingKey, err = hex.DecodeString(*secret.Value)
-		if err != nil {
-			common.Log.Warningf("failed to decode proving key secret from hex; %s", err.Error())
-			return err
-		}
-	}
-
 	if (c.verifyingKey == nil || len(c.verifyingKey) == 0) && c.VerifyingKeyID != nil {
 		secret, err := vault.FetchSecret(
 			util.DefaultVaultAccessJWT,
@@ -624,6 +607,10 @@ func (c *Circuit) exportVerifier() error {
 	provider := c.circuitProviderFactory()
 	if provider == nil {
 		return fmt.Errorf("failed to resolve circuit provider")
+	}
+
+	if c.verifyingKey == nil || len(c.verifyingKey) == 0 {
+		return fmt.Errorf("invalid verifying key")
 	}
 
 	verifierContract, err := provider.ExportVerifier(string(c.verifyingKey))

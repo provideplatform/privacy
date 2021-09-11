@@ -130,7 +130,7 @@ func (c *Circuit) makeCircuitLogic() (string, error) {
 			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(cs.Constant(%v), circuit.%s)\n", val, con.Name)
 		case "!=":
 			fmt.Fprintf(&logic, "\tdiff := cs.Sub(circuit.%s, cs.Constant(%v))\n", con.Name, val)
-			fmt.Fprintf(&logic, "\tdiffIsZero := cs.IsZero(diff, curveID)\n")
+			fmt.Fprintf(&logic, "\tdiffIsZero := cs.IsZero(diff)\n")
 			fmt.Fprintf(&logic, "\tcs.AssertIsEqual(diffIsZero, cs.Constant(0))\n")
 		case "<=":
 			fmt.Fprintf(&logic, "\tcs.AssertIsLessOrEqual(circuit.%s, cs.Constant(%v))\n", con.Name, val)

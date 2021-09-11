@@ -37,7 +37,7 @@ type NotEqualCircuit struct {
 // Define declares the circuit constraints
 func (circuit *NotEqualCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	diff := cs.Sub(circuit.Vals.Val, circuit.Vals.RelVal)
-	diffIsZero := cs.IsZero(diff)
+	diffIsZero := cs.IsZero(diff, curveID)
 	cs.AssertIsEqual(diffIsZero, cs.Constant(0))
 	return nil
 }

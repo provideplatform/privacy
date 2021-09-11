@@ -541,7 +541,7 @@ func TestCeremonySRSGeneration(t *testing.T) {
 		nil,
 	)
 
-	params["entropy_id"] = entropySecretID.String()
+	params["entropy_id"] = mpcs[0].EntropyVaultSecretID.String()
 
 	circuit, err := privacy.CreateCircuit(*token, params)
 	if err != nil {

@@ -11,7 +11,7 @@ require (
 	github.com/joho/godotenv v1.3.0
 	github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
-	github.com/kthomas/go-natsutil v0.0.0-20210908125324-f04da1af9ee6
+	github.com/kthomas/go-natsutil v0.0.0-20210911093321-41b91674d612
 	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
 	github.com/nats-io/nats.go v1.12.0

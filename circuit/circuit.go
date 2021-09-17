@@ -29,7 +29,6 @@ const circuitProvingSchemeGroth16 = "groth16"
 const circuitProvingSchemePlonk = "plonk"
 
 const circuitStatusFailed = "failed"
-const circuitStatusInit = "init"
 const circuitStatusCompiling = "compiling"
 const circuitStatusCompiled = "compiled"
 const circuitStatusPendingSetup = "pending_setup"
@@ -312,7 +311,7 @@ func (c *Circuit) NullifierValueAt(key []byte) ([]byte, error) {
 func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	err := c.enrich()
 	if err != nil {
-		common.Log.Warningf("enrich failed for circuit prove; %s", err.Error())
+		common.Log.Warningf("enrich failed for proving circuit %s; %s", c.ID, err.Error())
 	}
 
 	provider := c.circuitProviderFactory()
@@ -322,13 +321,13 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 
 	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness, false)
 	if err != nil {
-		common.Log.Warningf("failed to read serialize witness; %s", err.Error())
+		common.Log.Warningf("failed to read serialized witness for circuit %s; %s", c.ID, err.Error())
 		return nil, err
 	}
 
 	proof, err := provider.Prove(c.Binary, c.provingKey, witval, c.srs)
 	if err != nil {
-		common.Log.Warningf("failed to generate proof; %s", err.Error())
+		common.Log.Warningf("failed to generate proof for circuit %s; %s", c.ID, err.Error())
 		return nil, err
 	}
 
@@ -336,18 +335,18 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	_, err = proof.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proof for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proof for circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
 		})
 		return nil, err
 	}
 
 	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
-	common.Log.Debugf("generated proof for circuit with identifier %s: %s", *c.Identifier, *_proof)
+	common.Log.Debugf("generated proof for circuit %s with identifier %s: %s", c.ID, *c.Identifier, *_proof)
 
 	err = c.updateState(*_proof, witness)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
 		})
 		return nil, err
 	}
@@ -359,7 +358,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 func (c *Circuit) Verify(proof string, witness map[string]interface{}, store bool) (bool, error) {
 	err := c.enrich()
 	if err != nil {
-		common.Log.Warningf("enrich failed for circuit verify; %s", err.Error())
+		common.Log.Warningf("enrich failed for verifying circuit %s; %s", c.ID, *c.Identifier, err.Error())
 	}
 
 	provider := c.circuitProviderFactory()
@@ -371,13 +370,13 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 
 	_proof, err = hex.DecodeString(proof)
 	if err != nil {
-		common.Log.Debugf("failed to decode proof as hex; %s", err.Error())
+		common.Log.Debugf("failed to decode proof as hex for verification of circuit %s; %s", c.ID, err.Error())
 		_proof = []byte(proof)
 	}
 
 	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness, true)
 	if err != nil {
-		common.Log.Warningf("failed to read serialize witness; %s", err.Error())
+		common.Log.Warningf("failed to read serialized witness for circuit %s; %s", c.ID, err.Error())
 		return false, err
 	}
 
@@ -390,13 +389,13 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 		err = c.updateState(string(_proof), witness)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
 			})
 			return false, err
 		}
 	}
 
-	common.Log.Debugf("circuit witness %s verified for proof: %s", witness, proof)
+	common.Log.Debugf("witness verified for circuit %s; proof: %s", c.ID, proof)
 	return true, nil
 }
 
@@ -1055,18 +1054,33 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 	return nil
 }
 
+// exited returns true if the circuit, or its logical parent, has exited
+// a circuit can exit iff !exited()
+// func (c *Circuit) exited() bool {
+
+// 	return false
+// }
+
 // exit the given circuit by nullifying its final valid state
-func (c *Circuit) exit() error {
-	var err error
-	// TODO: check to ensure an exit is possible...
+//
+// 1. Set all values in the note object to zero and encrypt. This will always lead to the same string and thus nullifier index for the note and nullifier tree for a given circuit.
+// 2. Check if the last index value is the value to ensure that the note tree has not already been exited. If yes, then error out, if no continue
+// 3. Check if the nullifier tree has that entry too. If yes, then error out, if no continue
+// 4. Update the note store
+// 5. Update the nullifier tree. This seals both note and nullifier trees to further changes.
+//
+// TODO: add function to check if a workflow has been exited by checking to see if the last note is the exit note and if it has been nullified in the SMT
+// func (c *Circuit) exit() error {
+// 	var err error
+// 	// TODO: check to ensure an exit is possible...
 
-	_, err = c.dispatchNotification(natsCircuitNotificationExit)
-	if err != nil {
-		common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationExit, c.ID, err.Error())
-	}
+// 	_, err = c.dispatchNotification(natsCircuitNotificationExit)
+// 	if err != nil {
+// 		common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationExit, c.ID, err.Error())
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // validate the circuit params
 func (c *Circuit) validate() bool {

@@ -358,7 +358,7 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 func (c *Circuit) Verify(proof string, witness map[string]interface{}, store bool) (bool, error) {
 	err := c.enrich()
 	if err != nil {
-		common.Log.Warningf("enrich failed for verifying circuit %s; %s", c.ID, *c.Identifier, err.Error())
+		common.Log.Warningf("enrich failed for verifying circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())
 	}
 
 	provider := c.circuitProviderFactory()
@@ -1056,10 +1056,10 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 
 // exited returns true if the circuit, or its logical parent, has exited
 // a circuit can exit iff !exited()
-// func (c *Circuit) exited() bool {
+func (c *Circuit) exited() bool {
 
-// 	return false
-// }
+	return false
+}
 
 // exit the given circuit by nullifying its final valid state
 //
@@ -1070,17 +1070,17 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 // 5. Update the nullifier tree. This seals both note and nullifier trees to further changes.
 //
 // TODO: add function to check if a workflow has been exited by checking to see if the last note is the exit note and if it has been nullified in the SMT
-// func (c *Circuit) exit() error {
-// 	var err error
-// 	// TODO: check to ensure an exit is possible...
+func (c *Circuit) exit() error {
+	var err error
+	// TODO: check to ensure an exit is possible...
 
-// 	_, err = c.dispatchNotification(natsCircuitNotificationExit)
-// 	if err != nil {
-// 		common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationExit, c.ID, err.Error())
-// 	}
+	_, err = c.dispatchNotification(natsCircuitNotificationExit)
+	if err != nil {
+		common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationExit, c.ID, err.Error())
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
 // validate the circuit params
 func (c *Circuit) validate() bool {

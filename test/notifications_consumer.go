@@ -1,6 +1,9 @@
 // +build unit
 
+package test
+
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -9,7 +12,7 @@ import (
 
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	stan "github.com/nats-io/stan.go"
+	"github.com/nats-io/nats.go"
 	"github.com/provideplatform/privacy/common"
 )
 
@@ -20,6 +23,7 @@ const natsCircuitNotificationExit = "exit"
 const natsCircuitNotificationMaxInFlight = 32
 const natsCircuitNotificationAckWait = time.Hour * 1
 const natsCircuitNotificationTimeout = int64(time.Hour * 1)
+const natsCircuitNotificationMaxDeliveries = 5
 
 func init() {
 	if os.Getenv("PRIVACY_NOTIFICATION_ORGANIZATION_ID") == "" {
@@ -41,7 +45,8 @@ func natsCircuitNotificationSubject(event string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return common.StringOrNil(NotificationsSubjectFactory(orgUUID, event)), nil
+	// return common.StringOrNil(NotificationsSubjectFactory(orgUUID, event)), nil
+	return common.StringOrNil(fmt.Sprintf("org uuid %s event %s", orgUUID.String(), event)), nil
 }
 
 // createNatsCircuitNotificationNoteDepositSubscription
@@ -56,9 +61,11 @@ func createNatsCircuitNotificationNoteDepositSubscription(wg *sync.WaitGroup) {
 		natsCircuitNotificationAckWait,
 		*subject,
 		*subject,
+		*subject,
 		circuitNoteDepositHandler,
 		natsCircuitNotificationAckWait,
 		natsCircuitNotificationMaxInFlight,
+		natsCircuitNotificationMaxDeliveries,
 		nil,
 	)
 }
@@ -75,9 +82,11 @@ func createNatsCircuitNotificationNoteNullifiedSubscription(wg *sync.WaitGroup) 
 		natsCircuitNotificationAckWait,
 		*subject,
 		*subject,
+		*subject,
 		circuitNoteNullifiedHandler,
 		natsCircuitNotificationAckWait,
-		natsCreatedCircuitSetupMaxInFlight,
+		natsCircuitNotificationMaxInFlight,
+		natsCircuitNotificationMaxDeliveries,
 		nil,
 	)
 }
@@ -94,14 +103,16 @@ func createNatsCircuitNotificationExitSubscription(wg *sync.WaitGroup) {
 		natsCircuitNotificationAckWait,
 		*subject,
 		*subject,
+		*subject,
 		circuitExitHandler,
 		natsCircuitNotificationAckWait,
-		natsCreatedCircuitSetupMaxInFlight,
+		natsCircuitNotificationMaxInFlight,
+		natsCircuitNotificationMaxDeliveries,
 		nil,
 	)
 }
 
-func circuitNoteDepositHandler(msg *stan.Msg) {
+func circuitNoteDepositHandler(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit note deposit notification handler; %s", r)
@@ -112,7 +123,7 @@ func circuitNoteDepositHandler(msg *stan.Msg) {
 	// TODO... process it and msg.Ack()
 }
 
-func circuitNoteNullifiedHandler(msg *stan.Msg) {
+func circuitNoteNullifiedHandler(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit note nullified notification handler; %s", r)
@@ -123,7 +134,7 @@ func circuitNoteNullifiedHandler(msg *stan.Msg) {
 	// TODO... process it and msg.Ack()
 }
 
-func circuitExitHandler(msg *stan.Msg) {
+func circuitExitHandler(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			common.Log.Warningf("recovered during circuit exit notification handler; %s", r)

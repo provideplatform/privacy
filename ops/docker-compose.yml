@@ -67,7 +67,7 @@ services:
       start_period: 10s
     hostname: nats
     networks:
-      - provide
+      - privacy
     ports:
       - 4221:4221
       - 4222:4222

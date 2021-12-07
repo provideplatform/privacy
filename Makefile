@@ -9,9 +9,9 @@ clean:
 
 build: mod clean
 	go fmt ./...
-	go build -v -o ./.bin/api ./cmd/api
-	go build -v -o ./.bin/consumer ./cmd/consumer
-	go build -v -o ./.bin/migrate ./cmd/migrate
+	CGO_ENABLED=0 go build -v -o ./.bin/api ./cmd/api
+	CGO_ENABLED=0 go build -v -o ./.bin/consumer ./cmd/consumer
+	CGO_ENABLED=0 go build -v -o ./.bin/migrate ./cmd/migrate
 
 install: clean
 	go install ./...

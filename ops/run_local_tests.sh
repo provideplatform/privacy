@@ -86,7 +86,7 @@ if [ "$RACE" = "true" ]; then
                 -race \
                 -timeout 1800s \
                 -cover \
-                -coverpkg=./circuit/...,./zkp/... \
+                -coverpkg=./prover/...,./zkp/... \
                 -coverprofile=profile.cov \
                 -tags="$TAGS"
   go tool cover -func profile.cov
@@ -109,7 +109,7 @@ else
   go test ./... -v \
                 -timeout 1800s \
                 -cover \
-                -coverpkg=./circuit/...,./zkp/... \
+                -coverpkg=./prover/...,./zkp/... \
                 -coverprofile=profile.cov \
                 -tags="$TAGS"
   go tool cover -func profile.cov

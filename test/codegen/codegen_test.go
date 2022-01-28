@@ -18,8 +18,8 @@ func init() {
 	// os.RemoveAll(generatedCodeFolder)
 }
 
-func removeGeneratedFiles(circuitFilePath, testFilePath string) {
-	os.Remove(circuitFilePath)
+func removeGeneratedFiles(proverFilePath, testFilePath string) {
+	os.Remove(proverFilePath)
 	os.Remove(testFilePath)
 }
 
@@ -37,7 +37,7 @@ func writeToFile(filePath string, s string) {
 }
 
 type ConstraintTest struct {
-	CircuitName    string
+	ProverName     string
 	ConstraintName string
 	CurveID        string
 	PackageName    string
@@ -66,22 +66,22 @@ func (t *ConstraintTest) makeTest(includeImportHeader bool) string {
 		fmt.Fprintf(&test, "%s\n", makeImportList(importList))
 	}
 
-	// Compile circuit
+	// Compile prover
 	if t.TestName == "" {
-		fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.CircuitName)
+		fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.ProverName)
 	} else {
 		fmt.Fprintf(&test, "func %s(t *testing.T) {\n", t.TestName)
 	}
 	fmt.Fprintf(&test, "\tassert := %s.NewAssert(t)\n\n", t.ProvingScheme)
-	fmt.Fprintf(&test, "\tvar circuit %s\n", t.CircuitName)
-	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(ecc.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
+	fmt.Fprintf(&test, "\tvar prover %s\n", t.ProverName)
+	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(ecc.%s, backend.%s, &prover)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
 	fmt.Fprintf(&test, "\tassert.NoError(err)\n")
 
 	// Tests
 	for w := range t.Witness {
 		val, _ := sanitizeValue(w)
 		fmt.Fprintf(&test, "\n\t{\n")
-		fmt.Fprintf(&test, "\t\tvar witness %s\n", t.CircuitName)
+		fmt.Fprintf(&test, "\t\tvar witness %s\n", t.ProverName)
 		fmt.Fprintf(&test, "\t\twitness.%s.Assign(%v)\n", t.ConstraintName, val)
 		if t.Witness[w] {
 			fmt.Fprintf(&test, "\t\tassert.ProverSucceeded(r1cs, &witness)\n")
@@ -118,15 +118,15 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 		fmt.Fprintf(&test, "%s\n", makeImportList(importList))
 	}
 
-	// Compile circuit
+	// Compile prover
 	if t.TestName == "" {
-		fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.CircuitName)
+		fmt.Fprintf(&test, "func Test%s(t *testing.T) {\n", t.ProverName)
 	} else {
 		fmt.Fprintf(&test, "func %s(t *testing.T) {\n", t.TestName)
 	}
 	fmt.Fprintf(&test, "\tassert := %s.NewAssert(t)\n\n", t.ProvingScheme)
-	fmt.Fprintf(&test, "\tvar circuit %s\n", t.CircuitName)
-	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(ecc.%s, backend.%s, &circuit)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
+	fmt.Fprintf(&test, "\tvar prover %s\n", t.ProverName)
+	fmt.Fprintf(&test, "\tr1cs, err := frontend.Compile(ecc.%s, backend.%s, &prover)\n", t.CurveID, strings.ToUpper(t.ProvingScheme))
 	fmt.Fprintf(&test, "\tassert.NoError(err)\n")
 
 	// Tests
@@ -149,7 +149,7 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 	fmt.Fprintf(&test, "\t\tmerkleRoot, proofSet, numLeaves, err := merkletree.BuildReaderProof(&buf, hFunc, segmentSize, proofIndex)\n")
 	fmt.Fprintf(&test, "\t\tassert.NoError(err)\n\n")
 
-	fmt.Fprintf(&test, "\t\tvar witness %s\n", t.CircuitName)
+	fmt.Fprintf(&test, "\t\tvar witness %s\n", t.ProverName)
 	fmt.Fprintf(&test, "\t\tproofVerified := merkletree.VerifyProof(hFunc, merkleRoot, proofSet, proofIndex, numLeaves)\n")
 	fmt.Fprintf(&test, "\t\tassert.True(proofVerified)\n")
 	fmt.Fprintf(&test, "\t\tmerkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)\n\n")
@@ -170,20 +170,20 @@ func (t *ConstraintTest) makeRollupTest(includeImportHeader bool) string {
 }
 
 func TestCodegen(t *testing.T) {
-	circuitFilePath := generatedCodeFolder + "/generated_codegen.go"
+	proverFilePath := generatedCodeFolder + "/generated_codegen.go"
 	testFilePath := generatedCodeFolder + "/generated_codegen_test.go"
 
-	removeGeneratedFiles(circuitFilePath, testFilePath)
+	removeGeneratedFiles(proverFilePath, testFilePath)
 
 	curveIDString := "BN254"
 	provingScheme := "groth16"
 	{
-		circuitName := "GenEqual250Circuit"
+		proverName := "GenEqual250Prover"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -194,13 +194,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(true)
+		proverStr, err := prover.Make(true)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -212,17 +212,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(true)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenNotEqual250Circuit"
+		proverName := "GenNotEqual250Prover"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -233,13 +233,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -252,17 +252,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(false)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenLessEq250Circuit"
+		proverName := "GenLessEq250Prover"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -273,13 +273,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -292,17 +292,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(false)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenGreaterEq250Circuit"
+		proverName := "GenGreaterEq250Prover"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -313,13 +313,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -332,17 +332,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(false)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenLess250Circuit"
+		proverName := "GenLess250Prover"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -353,13 +353,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -373,17 +373,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(false)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenGreater250Circuit"
+		proverName := "GenGreater250Prover"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -394,13 +394,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -414,17 +414,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(false)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenEqualFloatCircuit"
+		proverName := "GenEqualFloatProver"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -435,13 +435,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -455,17 +455,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(false)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenGreaterFloatInvalidCircuit"
+		proverName := "GenGreaterFloatInvalidProver"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -476,17 +476,17 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		_, err := circuit.Make(false)
+		_, err := prover.Make(false)
 		assert.Error(t, err)
 	}
 
 	{
-		circuitName := "GenEqualFalseBoolCircuit"
+		proverName := "GenEqualFalseBoolProver"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -497,13 +497,13 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:    circuitName,
+			ProverName:     proverName,
 			ConstraintName: conName,
 			CurveID:        curveIDString,
 			PackageName:    packageName,
@@ -517,17 +517,17 @@ func TestCodegen(t *testing.T) {
 		}
 		testStr := test.makeTest(false)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 
 	{
-		circuitName := "GenGreaterBoolInvalidCircuit"
+		proverName := "GenGreaterBoolInvalidProver"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -538,17 +538,17 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		_, err := circuit.Make(false)
+		_, err := prover.Make(false)
 		assert.Error(t, err)
 	}
 
 	{
-		circuitName := "GenMultiConstraintCircuit"
+		proverName := "GenMultiConstraintProver"
 		packageName := "test"
 		conName := "Val"
 
-		circuit := Circuit{
-			Name:        circuitName,
+		prover := Prover{
+			Name:        proverName,
 			PackageName: packageName,
 			Con: []Constraint{
 				{
@@ -565,44 +565,44 @@ func TestCodegen(t *testing.T) {
 				}},
 		}
 
-		circuitStr, err := circuit.Make(false)
+		proverStr, err := prover.Make(false)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 	}
 }
 
 func TestRollupCodegen(t *testing.T) {
-	circuitFilePath := generatedCodeFolder + "/generated_rollup_codegen.go"
+	proverFilePath := generatedCodeFolder + "/generated_rollup_codegen.go"
 	testFilePath := generatedCodeFolder + "/generated_rollup_codegen_test.go"
 
-	removeGeneratedFiles(circuitFilePath, testFilePath)
+	removeGeneratedFiles(proverFilePath, testFilePath)
 
 	curveIDString := "BN254"
 	provingScheme := "groth16"
 	{
-		circuitName := "GenRollupCircuit"
+		proverName := "GenRollupProver"
 		packageName := "test"
 		proofs := []string{
 			"aa5500ca9af223afdec21989169de5c63938274908f09ee85a233fd1a7396bba89ea271a41a7d38014dfffbdcbe806d0726c5dc4eef7f178ea52de45852697d51f2c74152e1fbbed79ebdfd1235788ea2b1637e6ed49a33a05653133e21a5cfdaa86f1acc9588b17838f8da88a5398cb324b1289aa7759457ddccddf53ee1ca9",
 			"9f2becacfe12908f1766b00ed6c7c1d7aa0aa65d2c9651d3aa70b30d25a884aeac1e50a5848f3c2ce9877a690d56801da287224ec2be2e1f26fd73b519fa1b7a19980d9b770a872d03612bd217ea4ff2f6a3bef527997f1eea30098e6772ca8cb033c3f019ce79f794419d2db6039855759e29addc72836fb3a99379e4d5e572",
 		}
 
-		circuit := Circuit{
-			Name:             circuitName,
+		prover := Prover{
+			Name:             proverName,
 			PackageName:      packageName,
 			RollupProofCount: len(proofs),
 		}
 
-		circuitStr, err := circuit.Make(true)
+		proverStr, err := prover.Make(true)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:   circuitName,
+			ProverName:    proverName,
 			CurveID:       curveIDString,
 			PackageName:   packageName,
 			ProvingScheme: provingScheme,
@@ -610,40 +610,40 @@ func TestRollupCodegen(t *testing.T) {
 		}
 		testStr := test.makeRollupTest(true)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 }
 
 func TestRollupCodegenPlonk(t *testing.T) {
-	circuitFilePath := generatedCodeFolder + "/generated_rollup_codegen_plonk.go"
+	proverFilePath := generatedCodeFolder + "/generated_rollup_codegen_plonk.go"
 	testFilePath := generatedCodeFolder + "/generated_rollup_codegen_plonk_test.go"
 
-	removeGeneratedFiles(circuitFilePath, testFilePath)
+	removeGeneratedFiles(proverFilePath, testFilePath)
 
 	curveIDString := "BN254"
 	provingScheme := "plonk"
 	{
-		circuitName := "GenRollupCircuitPlonk"
+		proverName := "GenRollupProverPlonk"
 		packageName := "test"
 		proofs := []string{
 			"aa5500ca9af223afdec21989169de5c63938274908f09ee85a233fd1a7396bba89ea271a41a7d38014dfffbdcbe806d0726c5dc4eef7f178ea52de45852697d51f2c74152e1fbbed79ebdfd1235788ea2b1637e6ed49a33a05653133e21a5cfdaa86f1acc9588b17838f8da88a5398cb324b1289aa7759457ddccddf53ee1ca9",
 			"9f2becacfe12908f1766b00ed6c7c1d7aa0aa65d2c9651d3aa70b30d25a884aeac1e50a5848f3c2ce9877a690d56801da287224ec2be2e1f26fd73b519fa1b7a19980d9b770a872d03612bd217ea4ff2f6a3bef527997f1eea30098e6772ca8cb033c3f019ce79f794419d2db6039855759e29addc72836fb3a99379e4d5e572",
 		}
 
-		circuit := Circuit{
-			Name:             circuitName,
+		prover := Prover{
+			Name:             proverName,
 			PackageName:      packageName,
 			RollupProofCount: len(proofs),
 		}
 
-		circuitStr, err := circuit.Make(true)
+		proverStr, err := prover.Make(true)
 		if err != nil {
-			t.Fatalf("failed to make circuit: %s", err.Error())
+			t.Fatalf("failed to make prover: %s", err.Error())
 		}
 
 		test := ConstraintTest{
-			CircuitName:   circuitName,
+			ProverName:    proverName,
 			CurveID:       curveIDString,
 			PackageName:   packageName,
 			ProvingScheme: provingScheme,
@@ -651,7 +651,7 @@ func TestRollupCodegenPlonk(t *testing.T) {
 		}
 		testStr := test.makeRollupTest(true)
 
-		writeToFile(circuitFilePath, circuitStr)
+		writeToFile(proverFilePath, proverStr)
 		writeToFile(testFilePath, testStr)
 	}
 }

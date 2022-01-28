@@ -8,7 +8,7 @@ type State struct {
 	ID        uuid.UUID  `json:"id"`
 	AccountID *uuid.UUID `json:"account_id"`
 	Address   *string    `json:"address"` // FIXME... int type this address
-	CircuitID *uuid.UUID `json:"circuit_id"`
+	ProverID  *uuid.UUID `json:"prover_id"`
 	Epoch     uint64     `json:"epoch"`
 	Nonce     uint64     `json:"nonce"`
 

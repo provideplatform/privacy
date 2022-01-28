@@ -1,57 +1,57 @@
 package providers
 
-// GnarkCircuitIdentifierCubic gnark cubic circuit
-const GnarkCircuitIdentifierCubic = "cubic"
+// GnarkProverIdentifierCubic gnark cubic prover
+const GnarkProverIdentifierCubic = "cubic"
 
-// GnarkCircuitIdentifierOwnershipSk gnark ownership sk circuit
-const GnarkCircuitIdentifierOwnershipSk = "ownership_sk"
+// GnarkProverIdentifierOwnershipSk gnark ownership sk prover
+const GnarkProverIdentifierOwnershipSk = "ownership_sk"
 
-// GnarkCircuitIdentifierMimc gnark mimc circuit
-const GnarkCircuitIdentifierMimc = "mimc"
+// GnarkProverIdentifierMimc gnark mimc prover
+const GnarkProverIdentifierMimc = "mimc"
 
-// GnarkCircuitIdentifierBaselineDocumentComplete baseline document complete circuit
-const GnarkCircuitIdentifierBaselineDocumentComplete = "baseline_document_complete"
+// GnarkProverIdentifierBaselineDocumentComplete baseline document complete prover
+const GnarkProverIdentifierBaselineDocumentComplete = "baseline_document_complete"
 
-// GnarkCircuitIdentifierBaselineRollup gnark circuit
-const GnarkCircuitIdentifierBaselineRollup = "baseline_rollup"
+// GnarkProverIdentifierBaselineRollup gnark prover
+const GnarkProverIdentifierBaselineRollup = "baseline_rollup"
 
-// GnarkCircuitIdentifierPurchaseOrderCircuit gnark circuit
-const GnarkCircuitIdentifierPurchaseOrderCircuit = "purchase_order"
+// GnarkProverIdentifierPurchaseOrderProver gnark prover
+const GnarkProverIdentifierPurchaseOrderProver = "purchase_order"
 
-// GnarkCircuitIdentifierSalesOrderCircuit gnark circuit
-const GnarkCircuitIdentifierSalesOrderCircuit = "sales_order"
+// GnarkProverIdentifierSalesOrderProver gnark prover
+const GnarkProverIdentifierSalesOrderProver = "sales_order"
 
-// GnarkCircuitIdentifierShipmentNotificationCircuit gnark circuit
-const GnarkCircuitIdentifierShipmentNotificationCircuit = "shipment_notification"
+// GnarkProverIdentifierShipmentNotificationProver gnark prover
+const GnarkProverIdentifierShipmentNotificationProver = "shipment_notification"
 
-// GnarkCircuitIdentifierGoodsReceiptCircuit gnark circuit
-const GnarkCircuitIdentifierGoodsReceiptCircuit = "goods_receipt"
+// GnarkProverIdentifierGoodsReceiptProver gnark prover
+const GnarkProverIdentifierGoodsReceiptProver = "goods_receipt"
 
-// GnarkCircuitIdentifierInvoiceCircuit gnark circuit
-const GnarkCircuitIdentifierInvoiceCircuit = "invoice"
+// GnarkProverIdentifierInvoiceProver gnark prover
+const GnarkProverIdentifierInvoiceProver = "invoice"
 
-// GnarkCircuitIdentifierProofHashCircuit gnark circuit
-const GnarkCircuitIdentifierProofHashCircuit = "proof_hash"
+// GnarkProverIdentifierProofHashProver gnark prover
+const GnarkProverIdentifierProofHashProver = "proof_hash"
 
-// GnarkCircuitIdentifierProofEddsaCircuit gnark circuit
-const GnarkCircuitIdentifierProofEddsaCircuit = "proof_eddsa"
+// GnarkProverIdentifierProofEddsaProver gnark prover
+const GnarkProverIdentifierProofEddsaProver = "proof_eddsa"
 
-// ZKSnarkCircuitProviderGnark gnark zksnark circuit provider
-const ZKSnarkCircuitProviderGnark = "gnark"
+// ZKSnarkProverProviderGnark gnark zksnark prover provider
+const ZKSnarkProverProviderGnark = "gnark"
 
-// ZKSnarkCircuitProviderZoKrates ZoKrates zksnark circuit provider
-const ZKSnarkCircuitProviderZoKrates = "zokrates"
+// ZKSnarkProverProviderZoKrates ZoKrates zksnark prover provider
+const ZKSnarkProverProviderZoKrates = "zokrates"
 
-// ZKSnarkCircuitProvider provides a common interface to interact with zksnark circuits
-type ZKSnarkCircuitProvider interface {
+// ZKSnarkProverProvider provides a common interface to interact with zksnark provers
+type ZKSnarkProverProvider interface {
 	Compile(argv ...interface{}) (interface{}, error)
 	ComputeWitness(artifacts interface{}, argv ...interface{}) (interface{}, error)
 	ExportVerifier(verifyingKey string) (interface{}, error)
-	GenerateProof(circuit interface{}, witness interface{}, provingKey string) (interface{}, error)
-	Prove(circuit, provingKey []byte, witness interface{}, srs []byte) (interface{}, error)
-	Setup(circuit interface{}, srs []byte) (interface{}, interface{}, error)
+	GenerateProof(prover interface{}, witness interface{}, provingKey string) (interface{}, error)
+	Prove(prover, provingKey []byte, witness interface{}, srs []byte) (interface{}, error)
+	Setup(prover interface{}, srs []byte) (interface{}, interface{}, error)
 	Verify(proof, verifyingKey []byte, witness interface{}, srs []byte) error
 
-	CircuitFactory(identifier string) interface{}
+	ProverFactory(identifier string) interface{}
 	WitnessFactory(identifier string, curve string, inputs interface{}, isPublic bool) (interface{}, error)
 }

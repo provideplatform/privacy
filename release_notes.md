@@ -9,8 +9,8 @@ For more information, visit the [Privacy docs](https://docs.provide.services/pri
 
 ### New Features
 
-- **Circuits** - Maintain proof-backed synchronization between systems using zero-knowledge proofs to securely verify data-parity
+- **Provers** - Maintain proof-backed synchronization between systems using zero-knowledge proofs to securely verify data-parity
 - Upgrade to the next generation of secure data exchange with the Privacy **REST API** 
-- Retain proof & verification material immutably with the **Circuit Registry** 
+- Retain proof & verification material immutably with the **Prover Registry** 
 - **FFI/bridge** - designing a standard way to statically link crypto libraries written in Rust, C, C++, etc.
 - Scale your secure communications infrastructure with the [asynchronous compute Backplane](https://docs.provide.services/privacy/architecture/backplane)  

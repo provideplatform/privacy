@@ -6,114 +6,114 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 )
 
-// PurchaseOrderCircuit defines a knowledge proof for purchase orders
-type PurchaseOrderCircuit struct {
-	Document MimcCircuit
+// PurchaseOrderProver defines a knowledge proof for purchase orders
+type PurchaseOrderProver struct {
+	Document MimcProver
 }
 
-// SalesOrderCircuit defines a knowledge proof for sales orders
-type SalesOrderCircuit struct {
-	Document MimcCircuit
+// SalesOrderProver defines a knowledge proof for sales orders
+type SalesOrderProver struct {
+	Document MimcProver
 }
 
-// ShipmentNotificationCircuit defines a knowledge proof for shipment notifications
-type ShipmentNotificationCircuit struct {
-	Document MimcCircuit
+// ShipmentNotificationProver defines a knowledge proof for shipment notifications
+type ShipmentNotificationProver struct {
+	Document MimcProver
 }
 
-// GoodsReceiptCircuit defines a knowledge proof for goods receipts
-type GoodsReceiptCircuit struct {
-	Document MimcCircuit
+// GoodsReceiptProver defines a knowledge proof for goods receipts
+type GoodsReceiptProver struct {
+	Document MimcProver
 }
 
-// InvoiceCircuit defines a knowledge proof for invoices
-type InvoiceCircuit struct {
-	Document MimcCircuit
+// InvoiceProver defines a knowledge proof for invoices
+type InvoiceProver struct {
+	Document MimcProver
 	// PubKey eddsa.PublicKey   `gnark:",public"`
 	// Sig    eddsa.Signature   `gnark:",public"`
 	// Msg    frontend.Variable `gnark:",public"`
 }
 
-// Define declares the PO circuit constraints
-func (circuit *PurchaseOrderCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the PO prover constraints
+func (prover *PurchaseOrderProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	hash := mimc.Hash(cs, prover.Document.Preimage)
+	cs.AssertIsEqual(prover.Document.Hash, hash)
 
 	return nil
 }
 
-// Define declares the SO circuit constraints
-func (circuit *SalesOrderCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the SO prover constraints
+func (prover *SalesOrderProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	hash := mimc.Hash(cs, prover.Document.Preimage)
+	cs.AssertIsEqual(prover.Document.Hash, hash)
 
 	return nil
 }
 
-// Define declares the SN circuit constraints
-func (circuit *ShipmentNotificationCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the SN prover constraints
+func (prover *ShipmentNotificationProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	hash := mimc.Hash(cs, prover.Document.Preimage)
+	cs.AssertIsEqual(prover.Document.Hash, hash)
 
 	return nil
 }
 
-// Define declares the GR circuit constraints
-func (circuit *GoodsReceiptCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the GR prover constraints
+func (prover *GoodsReceiptProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	hash := mimc.Hash(cs, prover.Document.Preimage)
+	cs.AssertIsEqual(prover.Document.Hash, hash)
 
 	return nil
 }
 
-// Define declares the Invoice circuit constraints
-func (circuit *InvoiceCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the Invoice prover constraints
+func (prover *InvoiceProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
 		return err
 	}
 
-	hash := mimc.Hash(cs, circuit.Document.Preimage)
-	cs.AssertIsEqual(circuit.Document.Hash, hash)
+	hash := mimc.Hash(cs, prover.Document.Preimage)
+	cs.AssertIsEqual(prover.Document.Hash, hash)
 
 	return nil
 }
 
 // FIXME!! this fails...
-// // Define declares the Invoice circuit constraints
-// func (circuit *InvoiceCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// // Define declares the Invoice prover constraints
+// func (prover *InvoiceProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 // 	curve, err := twistededwards.NewEdCurve(curveID)
 // 	if err != nil {
 // 		return err
 // 	}
-// 	circuit.PubKey.Curve = curve
+// 	prover.PubKey.Curve = curve
 
-// 	eddsa.Verify(cs, circuit.Sig, circuit.Msg, circuit.PubKey)
+// 	eddsa.Verify(cs, prover.Sig, prover.Msg, prover.PubKey)
 
 // 	return nil
 // }

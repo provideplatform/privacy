@@ -13,8 +13,8 @@ import (
 
 	"github.com/provideplatform/ident/common"
 	"github.com/provideplatform/ident/token"
-	"github.com/provideplatform/privacy/circuit"
 	privacycommon "github.com/provideplatform/privacy/common"
+	"github.com/provideplatform/privacy/prover"
 	"github.com/provideplatform/privacy/store"
 
 	provide "github.com/provideplatform/provide-go/common"
@@ -107,7 +107,7 @@ func runAPI() {
 	r.Use(common.AccountingMiddleware())
 	r.Use(common.RateLimitingMiddleware())
 
-	circuit.InstallAPI(r)
+	prover.InstallAPI(r)
 	store.InstallAPI(r)
 
 	srv = &http.Server{

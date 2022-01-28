@@ -6,24 +6,24 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 )
 
-// MimcCircuit defines a pre-image knowledge proof
+// MimcProver defines a pre-image knowledge proof
 // mimc(secret preImage) = public hash
-type MimcCircuit struct {
+type MimcProver struct {
 	// struct tag on a variable is optional
 	// default uses variable name and secret visibility.
 	Preimage frontend.Variable
 	Hash     frontend.Variable `gnark:",public"`
 }
 
-// Define declares the circuit's constraints
+// Define declares the prover's constraints
 // Hash = mimc(Preimage)
-func (circuit *MimcCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (prover *MimcProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, _ := mimc.NewMiMC("seed", curveID)
 
 	// specify constraints
 	// mimc(preImage) == hash
-	cs.AssertIsEqual(circuit.Hash, mimc.Hash(cs, circuit.Preimage))
+	cs.AssertIsEqual(prover.Hash, mimc.Hash(cs, prover.Preimage))
 
 	return nil
 }

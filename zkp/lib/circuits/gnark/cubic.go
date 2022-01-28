@@ -5,19 +5,19 @@ import (
 	"github.com/consensys/gnark/frontend"
 )
 
-// CubicCircuit defines a simple circuit
+// CubicProver defines a simple prover
 // x**3 + x + 5 == y
-type CubicCircuit struct {
+type CubicProver struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
 	X frontend.Variable
 	Y frontend.Variable `gnark:",public"`
 }
 
-// Define declares the circuit constraints
+// Define declares the prover constraints
 // x**3 + x + 5 == y
-func (circuit *CubicCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	x3 := cs.Mul(circuit.X, circuit.X, circuit.X)
-	cs.AssertIsEqual(circuit.Y, cs.Add(x3, circuit.X, 5))
+func (prover *CubicProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+	x3 := cs.Mul(prover.X, prover.X, prover.X)
+	cs.AssertIsEqual(prover.Y, cs.Add(x3, prover.X, 5))
 	return nil
 }

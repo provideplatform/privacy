@@ -2,9 +2,9 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/provideplatform/privacy)](https://goreportcard.com/report/github.com/provideplatform/privacy)
 
-Microservice providing a circuit registry and compilation, trusted setup, verification and proving capabilities for zero-knowledge circuits.
+Microservice providing a prover registry and compilation, trusted setup, verification and proving capabilities for zero-knowledge provers.
 
-## Supported Circuit Providers
+## Supported Prover Providers
 
 The following zkSNARK toolboxes are supported:
 

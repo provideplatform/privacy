@@ -7,21 +7,21 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 )
 
-// BaselineRollupCircuit defines a mrkle root verification proof
-type BaselineRollupCircuit struct {
+// BaselineRollupProver defines a mrkle root verification proof
+type BaselineRollupProver struct {
 	Proofs, Helpers []frontend.Variable
 	RootHash        frontend.Variable `gnark:",public"`
 }
 
-// Define declares the circuit constraints
-func (circuit *BaselineRollupCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the prover constraints
+func (prover *BaselineRollupProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	// hash function
 	mimc, err := mimc.NewMiMC("seed", curveID)
 	if err != nil {
 		return err
 	}
 
-	merkle.VerifyProof(cs, mimc, circuit.RootHash, circuit.Proofs, circuit.Helpers)
+	merkle.VerifyProof(cs, mimc, prover.RootHash, prover.Proofs, prover.Helpers)
 
 	return nil
 }

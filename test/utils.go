@@ -74,12 +74,12 @@ func userTokenFactory(testID uuid.UUID) (*string, error) {
 	return token.AccessToken, nil
 }
 
-func createProcureToPayWorkflow(token *string, provingScheme string) ([]*privacy.Circuit, error) {
-	circuits := make([]*privacy.Circuit, 0)
+func createProcureToPayWorkflow(token *string, provingScheme string) ([]*privacy.Prover, error) {
+	provers := make([]*privacy.Prover, 0)
 
-	circuit, err := privacy.CreateCircuit(
+	prover, err := privacy.CreateProver(
 		*token,
-		circuitParamsFactory(
+		proverParamsFactory(
 			"BN254",
 			"PO",
 			"purchase_order",
@@ -89,107 +89,107 @@ func createProcureToPayWorkflow(token *string, provingScheme string) ([]*privacy
 		),
 	)
 	if err != nil {
-		common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+		common.Log.Debugf("failed to deploy prover; %s", err.Error())
 		return nil, err
 	}
-	circuits = append(circuits, circuit)
+	provers = append(provers, prover)
 
-	circuit, err = privacy.CreateCircuit(
+	prover, err = privacy.CreateProver(
 		*token,
-		circuitParamsFactory(
+		proverParamsFactory(
 			"BN254",
 			"SO",
 			"sales_order",
 			provingScheme,
-			common.StringOrNil(circuit.NoteStoreID.String()),
-			common.StringOrNil(circuit.NullifierStoreID.String()),
+			common.StringOrNil(prover.NoteStoreID.String()),
+			common.StringOrNil(prover.NullifierStoreID.String()),
 		),
 	)
 	if err != nil {
-		common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+		common.Log.Debugf("failed to deploy prover; %s", err.Error())
 		return nil, err
 	}
-	circuits = append(circuits, circuit)
+	provers = append(provers, prover)
 
-	circuit, err = privacy.CreateCircuit(
+	prover, err = privacy.CreateProver(
 		*token,
-		circuitParamsFactory(
+		proverParamsFactory(
 			"BN254",
 			"SN",
 			"shipment_notification",
 			provingScheme,
-			common.StringOrNil(circuit.NoteStoreID.String()),
-			common.StringOrNil(circuit.NullifierStoreID.String()),
+			common.StringOrNil(prover.NoteStoreID.String()),
+			common.StringOrNil(prover.NullifierStoreID.String()),
 		),
 	)
 	if err != nil {
-		common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+		common.Log.Debugf("failed to deploy prover; %s", err.Error())
 		return nil, err
 	}
-	circuits = append(circuits, circuit)
+	provers = append(provers, prover)
 
-	circuit, err = privacy.CreateCircuit(
+	prover, err = privacy.CreateProver(
 		*token,
-		circuitParamsFactory(
+		proverParamsFactory(
 			"BN254",
 			"GR",
 			"goods_receipt",
 			provingScheme,
-			common.StringOrNil(circuit.NoteStoreID.String()),
-			common.StringOrNil(circuit.NullifierStoreID.String()),
+			common.StringOrNil(prover.NoteStoreID.String()),
+			common.StringOrNil(prover.NullifierStoreID.String()),
 		),
 	)
 	if err != nil {
-		common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+		common.Log.Debugf("failed to deploy prover; %s", err.Error())
 		return nil, err
 	}
-	circuits = append(circuits, circuit)
+	provers = append(provers, prover)
 
-	circuit, err = privacy.CreateCircuit(
+	prover, err = privacy.CreateProver(
 		*token,
-		circuitParamsFactory(
+		proverParamsFactory(
 			"BN254",
 			"Invoice",
 			"invoice",
 			provingScheme,
-			common.StringOrNil(circuit.NoteStoreID.String()),
-			common.StringOrNil(circuit.NullifierStoreID.String()),
+			common.StringOrNil(prover.NoteStoreID.String()),
+			common.StringOrNil(prover.NullifierStoreID.String()),
 		),
 	)
 	if err != nil {
-		common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+		common.Log.Debugf("failed to deploy prover; %s", err.Error())
 		return nil, err
 	}
-	circuits = append(circuits, circuit)
+	provers = append(provers, prover)
 
-	return circuits, nil
+	return provers, nil
 }
 
-func requireCircuits(token *string, circuits []*privacy.Circuit) error {
+func requireProvers(token *string, provers []*privacy.Prover) error {
 	startTime := time.Now()
-	timer := time.NewTicker(requireCircuitTickerInterval)
+	timer := time.NewTicker(requireProverTickerInterval)
 	defer timer.Stop()
 
-	deployStates := make([]bool, len(circuits))
+	deployStates := make([]bool, len(provers))
 
 	for {
 		select {
 		case <-timer.C:
-			for i, circuit := range circuits {
+			for i, prover := range provers {
 				if !deployStates[i] {
-					circuit, err := privacy.GetCircuitDetails(*token, circuit.ID.String())
+					prover, err := privacy.GetProverDetails(*token, prover.ID.String())
 					if err != nil {
-						common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
+						common.Log.Debugf("failed to fetch prover details; %s", err.Error())
 						break
 					}
-					if circuit.Status != nil && *circuit.Status == "provisioned" {
-						common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
-						// if circuit.VerifierContract != nil {
-						// if source, sourceOk := circuit.VerifierContract["source"].(string); sourceOk {
+					if prover.Status != nil && *prover.Status == "provisioned" {
+						common.Log.Debugf("provisioned workflow prover: %s", prover.ID)
+						// if prover.VerifierContract != nil {
+						// if source, sourceOk := prover.VerifierContract["source"].(string); sourceOk {
 						// contractRaw, _ := json.MarshalIndent(source, "", "  ")
 						// src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
 						// common.Log.Debugf("verifier contract: %s", src)
-						// contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
+						// contractName := fmt.Sprintf("%s Verifier", *prover.Name)
 						// DeployContract([]byte(contractName), []byte(src))
 						// }
 						// }
@@ -200,21 +200,21 @@ func requireCircuits(token *string, circuits []*privacy.Circuit) error {
 			}
 
 			x := 0
-			for i := range circuits {
+			for i := range provers {
 				if deployStates[i] {
 					x++
 				}
 			}
-			if x == len(circuits) {
+			if x == len(provers) {
 				return nil
 			}
 		default:
-			if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
-				msg := fmt.Sprintf("failed to provision %d workstep circuit(s)", len(circuits))
+			if startTime.Add(requireProverTimeout).Before(time.Now()) {
+				msg := fmt.Sprintf("failed to provision %d workstep prover(s)", len(provers))
 				common.Log.Warning(msg)
 				return errors.New(msg)
 			} else {
-				time.Sleep(requireCircuitSleepInterval)
+				time.Sleep(requireProverSleepInterval)
 			}
 		}
 	}
@@ -224,9 +224,9 @@ func getNullifier(
 	t *testing.T,
 	token *string,
 	nullifiedIndex uint64,
-	circuit *privacy.Circuit,
+	prover *privacy.Prover,
 ) ([]byte, error) {
-	resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), nullifiedIndex)
+	resp, err := privacy.GetNoteValue(*token, prover.ID.String(), nullifiedIndex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch nullified note value; %s", err.Error())
 	}
@@ -243,7 +243,7 @@ func getNullifier(
 	}
 	t.Logf("retrieved nullifier tree key: %s", hex.EncodeToString(nullifierTreeKey))
 
-	resp, err = privacy.GetNullifierValue(*token, circuit.ID.String(), hex.EncodeToString(nullifierTreeKey))
+	resp, err = privacy.GetNullifierValue(*token, prover.ID.String(), hex.EncodeToString(nullifierTreeKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch nullified note from nullifier tree; %s", err.Error())
 	}
@@ -260,14 +260,14 @@ func getNullifier(
 	return nullifiedValue, nil
 }
 
-func testCircuitLifecycle(
+func testProverLifecycle(
 	t *testing.T,
 	tree merkletree.MerkleTree,
 	hFunc hash.Hash,
 	token *string,
-	circuitIndex uint64,
-	circuit *privacy.Circuit,
-	prevCircuit *privacy.Circuit,
+	proverIndex uint64,
+	prover *privacy.Prover,
+	prevProver *privacy.Prover,
 	payload map[string]interface{},
 ) ([]byte, error) {
 	raw, _ := json.Marshal(payload)
@@ -291,7 +291,7 @@ func testCircuitLifecycle(
 
 	t.Logf("proving witness Document.Hash: %s, Document.PreImage: %s", hashString, preImageString)
 
-	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+	proof, err := privacy.Prove(*token, prover.ID.String(), map[string]interface{}{
 		"witness": witness,
 	})
 	if err != nil {
@@ -305,19 +305,19 @@ func testCircuitLifecycle(
 		},
 	}
 
-	verification, err := privacy.Verify(*token, circuit.ID.String(), note)
+	verification, err := privacy.Verify(*token, prover.ID.String(), note)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify proof; %s", err.Error())
 	}
 
-	t.Logf("%s proof/verification: %s / %v", *circuit.Name, *proof.Proof, verification.Result)
+	t.Logf("%s proof/verification: %s / %v", *prover.Name, *proof.Proof, verification.Result)
 
 	// noteRaw, _ := json.Marshal(note)
 	// index, h := tree.RawAdd(noteRaw)
-	// t.Logf("added %s note to merkle tree, index/hash: %v / %v", *circuit.Name, index, h)
+	// t.Logf("added %s note to merkle tree, index/hash: %v / %v", *prover.Name, index, h)
 
 	// note state
-	resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
+	resp, err := privacy.GetNoteValue(*token, prover.ID.String(), proverIndex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch note value; %s", err.Error())
 	}
@@ -326,16 +326,16 @@ func testCircuitLifecycle(
 	if err != nil {
 		return nil, fmt.Errorf("failed to base64 decode note value; %s", err.Error())
 	}
-	t.Logf("retrieved %d-byte note value: %s at index %d; root: %s", len(noteValue), string(noteValue), circuitIndex, *resp.Root)
+	t.Logf("retrieved %d-byte note value: %s at index %d; root: %s", len(noteValue), string(noteValue), proverIndex, *resp.Root)
 
-	if circuitIndex > 0 && prevCircuit != nil {
-		return getNullifier(t, token, circuitIndex-1, prevCircuit)
+	if proverIndex > 0 && prevProver != nil {
+		return getNullifier(t, token, proverIndex-1, prevProver)
 	}
 
 	return []byte{}, nil
 }
 
-func circuitParamsFactory(curve, name, identifier, provingScheme string, noteStoreID, nullifierStoreID *string) map[string]interface{} {
+func proverParamsFactory(curve, name, identifier, provingScheme string, noteStoreID, nullifierStoreID *string) map[string]interface{} {
 	params := map[string]interface{}{
 		"curve":          curve,
 		"identifier":     identifier,

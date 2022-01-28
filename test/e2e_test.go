@@ -29,9 +29,9 @@ import (
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
-const requireCircuitTimeout = time.Minute * 5
-const requireCircuitTickerInterval = time.Second * 5
-const requireCircuitSleepInterval = time.Millisecond * 500
+const requireProverTimeout = time.Minute * 5
+const requireProverTickerInterval = time.Second * 5
+const requireProverSleepInterval = time.Millisecond * 500
 
 func init() {
 	time.Sleep(time.Second * 20)
@@ -59,55 +59,55 @@ func TestProcureToPayWorkflowGroth16(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
 
-	circuits, err := createProcureToPayWorkflow(token, testProvingSchemeGroth16)
+	provers, err := createProcureToPayWorkflow(token, testProvingSchemeGroth16)
 	if err != nil {
-		t.Errorf("failed to create procure to pay workflow circuits%s", err.Error())
+		t.Errorf("failed to create procure to pay workflow provers%s", err.Error())
 		return
 	}
 
-	for _, circuit := range circuits {
-		t.Logf("deployed circuit %s with id %s", *circuit.Name, circuit.ID)
+	for _, prover := range provers {
+		t.Logf("deployed prover %s with id %s", *prover.Name, prover.ID)
 	}
 
-	requireCircuits(token, circuits)
+	requireProvers(token, provers)
 
-	purchaseOrderCircuit := circuits[0]
-	salesOrderCircuit := circuits[1]
-	shipmentNotificationCircuit := circuits[2]
-	goodsReceiptCircuit := circuits[3]
-	invoiceCircuit := circuits[4]
+	purchaseOrderProver := provers[0]
+	salesOrderProver := provers[1]
+	shipmentNotificationProver := provers[2]
+	goodsReceiptProver := provers[3]
+	invoiceProver := provers[4]
 
 	tt := []struct {
-		circuitIndex uint64
-		circuit      *privacy.Circuit
-		prevCircuit  *privacy.Circuit
+		proverIndex uint64
+		prover      *privacy.Prover
+		prevProver  *privacy.Prover
 		payload      map[string]interface{}
 	}{
-		{0, purchaseOrderCircuit, nil, map[string]interface{}{"value": 11111111, "hello": "world1"}},
-		{1, salesOrderCircuit, purchaseOrderCircuit, map[string]interface{}{"value": 22222222, "hello": "world2"}},
-		{2, shipmentNotificationCircuit, salesOrderCircuit, map[string]interface{}{"value": 33333333, "hello": "world3"}},
-		{3, goodsReceiptCircuit, shipmentNotificationCircuit, map[string]interface{}{"value": 44444444, "hello": "world4"}},
-		{4, invoiceCircuit, goodsReceiptCircuit, map[string]interface{}{"value": 55555555, "hello": "world5"}},
+		{0, purchaseOrderProver, nil, map[string]interface{}{"value": 11111111, "hello": "world1"}},
+		{1, salesOrderProver, purchaseOrderProver, map[string]interface{}{"value": 22222222, "hello": "world2"}},
+		{2, shipmentNotificationProver, salesOrderProver, map[string]interface{}{"value": 33333333, "hello": "world3"}},
+		{3, goodsReceiptProver, shipmentNotificationProver, map[string]interface{}{"value": 44444444, "hello": "world4"}},
+		{4, invoiceProver, goodsReceiptProver, map[string]interface{}{"value": 55555555, "hello": "world5"}},
 	}
 
 	for i, tc := range tt {
-		_, err = testCircuitLifecycle(t, tree, hFunc, token, tc.circuitIndex, tc.circuit, tc.prevCircuit, tc.payload)
+		_, err = testProverLifecycle(t, tree, hFunc, token, tc.proverIndex, tc.prover, tc.prevProver, tc.payload)
 		if err != nil {
-			t.Errorf("failed to test circuit %d; %s", i, err.Error())
+			t.Errorf("failed to test prover %d; %s", i, err.Error())
 			return
 		}
 	}
 }
 
-func TestCircuitReuse(t *testing.T) {
+func TestProverReuse(t *testing.T) {
 	hFunc := mimc.NewMiMC("seed")
 
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
 
-	circuit, err := privacy.CreateCircuit(
+	prover, err := privacy.CreateProver(
 		*token,
-		circuitParamsFactory(
+		proverParamsFactory(
 			"BN254",
 			"PO",
 			"purchase_order",
@@ -117,7 +117,7 @@ func TestCircuitReuse(t *testing.T) {
 		),
 	)
 	if err != nil {
-		t.Errorf("failed to deploy circuit; %s", err.Error())
+		t.Errorf("failed to deploy prover; %s", err.Error())
 		return
 	}
 
@@ -149,7 +149,7 @@ func TestCircuitReuse(t *testing.T) {
 
 	time.Sleep(time.Duration(5) * time.Second)
 
-	proof, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+	proof, err := privacy.Prove(*token, prover.ID.String(), map[string]interface{}{
 		"witness": witness,
 	})
 	if err != nil {
@@ -164,16 +164,16 @@ func TestCircuitReuse(t *testing.T) {
 		},
 	}
 
-	verification, err := privacy.Verify(*token, circuit.ID.String(), note)
+	verification, err := privacy.Verify(*token, prover.ID.String(), note)
 	if err != nil {
 		t.Errorf("failed to verify proof; %s", err.Error())
 		return
 	}
 
-	t.Logf("%s proof/verification: %s / %v", *circuit.Name, *proof.Proof, verification.Result)
+	t.Logf("%s proof/verification: %s / %v", *prover.Name, *proof.Proof, verification.Result)
 
-	circuitIndex := uint64(0)
-	resp, err := privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
+	proverIndex := uint64(0)
+	resp, err := privacy.GetNoteValue(*token, prover.ID.String(), proverIndex)
 	if err != nil {
 		t.Errorf("failed to fetch note value; %s", err.Error())
 	}
@@ -185,7 +185,7 @@ func TestCircuitReuse(t *testing.T) {
 	}
 	t.Logf("retrieved %d-byte note value: %s; root: %s", len(noteValue), string(noteValue), *resp.Root)
 
-	t.Log("proving using new witness and same circuit")
+	t.Log("proving using new witness and same prover")
 
 	payload = map[string]interface{}{
 		"value": 22222222,
@@ -211,7 +211,7 @@ func TestCircuitReuse(t *testing.T) {
 
 	t.Logf("proving witness Document.Hash: %s, Document.PreImage: %s", hashString, preImageString)
 
-	proof, err = privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+	proof, err = privacy.Prove(*token, prover.ID.String(), map[string]interface{}{
 		"witness": witness,
 	})
 	if err != nil {
@@ -226,16 +226,16 @@ func TestCircuitReuse(t *testing.T) {
 		},
 	}
 
-	verification, err = privacy.Verify(*token, circuit.ID.String(), note)
+	verification, err = privacy.Verify(*token, prover.ID.String(), note)
 	if err != nil {
 		t.Errorf("failed to verify proof; %s", err.Error())
 		return
 	}
 
-	t.Logf("%s proof/verification: %s / %v", *circuit.Name, *proof.Proof, verification.Result)
+	t.Logf("%s proof/verification: %s / %v", *prover.Name, *proof.Proof, verification.Result)
 
-	circuitIndex++
-	resp, err = privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
+	proverIndex++
+	resp, err = privacy.GetNoteValue(*token, prover.ID.String(), proverIndex)
 	if err != nil {
 		t.Errorf("failed to fetch note value; %s", err.Error())
 	}
@@ -249,8 +249,8 @@ func TestCircuitReuse(t *testing.T) {
 
 	t.Log("attempting retrieval of original note")
 
-	circuitIndex--
-	resp, err = privacy.GetNoteValue(*token, circuit.ID.String(), circuitIndex)
+	proverIndex--
+	resp, err = privacy.GetNoteValue(*token, prover.ID.String(), proverIndex)
 	if err != nil {
 		t.Errorf("failed to fetch note value; %s", err.Error())
 	}
@@ -270,7 +270,7 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 	testUserID, _ := uuid.NewV4()
 	token, _ := userTokenFactory(testUserID)
 
-	circuits := make([]*privacy.Circuit, 0)
+	provers := make([]*privacy.Prover, 0)
 	notes := make([][]byte, 0)
 
 	workflowCount := 1
@@ -279,50 +279,50 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 
 		t.Logf("procuring workflow %d", workflowIndex)
 
-		workflowCircuits, err := createProcureToPayWorkflow(token, testProvingSchemeGroth16)
+		workflowProvers err := createProcureToPayWorkflow(token, testProvingSchemeGroth16)
 		if err != nil {
-			t.Errorf("failed to create procure to pay workflow circuits%s", err.Error())
+			t.Errorf("failed to create procure to pay workflow provers%s", err.Error())
 			return
 		}
 
-		for _, circuit := range workflowCircuits {
-			t.Logf("deployed circuit %s with id %s", *circuit.Name, circuit.ID)
+		for _, prover := range workflowProvers{
+			t.Logf("deployed prover %s with id %s", *prover.Name, prover.ID)
 		}
 
-		requireCircuits(token, workflowCircuits)
+		requireProverstoken, workflowPProvers
 
-		var firstPrevCircuit *privacy.Circuit
+		var firstPrevProver *privacy.Prover
 		if workflowIndex == 0 {
-			firstPrevCircuit = nil
+			firstPrevProver = nil
 		} else {
-			firstPrevCircuit = circuits[len(circuits)-1]
+			firstPrevProver = provers[len(provers)-1]
 		}
 
-		circuits = append(circuits, workflowCircuits[:]...)
+		provers = append(provers, workflowProvers:]...)
 
-		purchaseOrderCircuit := circuits[workflowIndex*5]
-		salesOrderCircuit := circuits[workflowIndex*5+1]
-		shipmentNotificationCircuit := circuits[workflowIndex*5+2]
-		goodsReceiptCircuit := circuits[workflowIndex*5+3]
-		invoiceCircuit := circuits[workflowIndex*5+4]
+		purchaseOrderProver := provers[workflowIndex*5]
+		salesOrderProver := provers[workflowIndex*5+1]
+		shipmentNotificationProver := provers[workflowIndex*5+2]
+		goodsReceiptProver := provers[workflowIndex*5+3]
+		invoiceProver := provers[workflowIndex*5+4]
 
 		tt := []struct {
-			circuitIndex uint64
-			circuit      *privacy.Circuit
-			prevCircuit  *privacy.Circuit
+			proverIndex uint64
+			prover      *privacy.Prover
+			prevProver  *privacy.Prover
 			payload      map[string]interface{}
 		}{
-			{uint64(0), purchaseOrderCircuit, firstPrevCircuit, map[string]interface{}{"value": 11111111, "hello": "world1"}},
-			{uint64(1), salesOrderCircuit, purchaseOrderCircuit, map[string]interface{}{"value": 22222222, "hello": "world2"}},
-			{uint64(2), shipmentNotificationCircuit, salesOrderCircuit, map[string]interface{}{"value": 33333333, "hello": "world3"}},
-			{uint64(3), goodsReceiptCircuit, shipmentNotificationCircuit, map[string]interface{}{"value": 44444444, "hello": "world4"}},
-			{uint64(4), invoiceCircuit, goodsReceiptCircuit, map[string]interface{}{"value": 55555555, "hello": "world5"}},
+			{uint64(0), purchaseOrderProver, firstPrevProver, map[string]interface{}{"value": 11111111, "hello": "world1"}},
+			{uint64(1), salesOrderProver, purchaseOrderProver, map[string]interface{}{"value": 22222222, "hello": "world2"}},
+			{uint64(2), shipmentNotificationProver, salesOrderProver, map[string]interface{}{"value": 33333333, "hello": "world3"}},
+			{uint64(3), goodsReceiptProver, shipmentNotificationProver, map[string]interface{}{"value": 44444444, "hello": "world4"}},
+			{uint64(4), invoiceProver, goodsReceiptProver, map[string]interface{}{"value": 55555555, "hello": "world5"}},
 		}
 
 		for i, tc := range tt {
-			nullifiedNote, err := testCircuitLifecycle(t, tree, hFunc, token, tc.circuitIndex, tc.circuit, tc.prevCircuit, tc.payload)
+			nullifiedNote, err := testProverLifecycle(t, tree, hFunc, token, tc.proverIndex, tc.prover, tc.prevProver, tc.payload)
 			if err != nil {
-				t.Errorf("failed to test circuit %d; %s", workflowIndex*5+i, err.Error())
+				t.Errorf("failed to test prover %d; %s", workflowIndex*5+i, err.Error())
 				return
 			}
 
@@ -333,7 +333,7 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 
 	}
 
-	t.Logf("successfully deployed %d circuits, stored %d notes", len(circuits), len(notes))
+	t.Logf("successfully deployed %d provers, stored %d notes", len(provers), len(notes))
 
 	buf := new(bytes.Buffer)
 	segmentSize := mimc.BlockSize
@@ -352,7 +352,7 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 		return
 	}
 
-	params := circuitParamsFactory(
+	params := proverParamsFactory(
 		"BN254",
 		"Rollup",
 		"baseline_rollup",
@@ -368,13 +368,13 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 		"Helpers_count": helperCount.String(),
 	}
 
-	rollupCircuit, err := privacy.CreateCircuit(*token, params)
+	rollupProver, err := privacy.CreateProver(*token, params)
 	if err != nil {
-		t.Errorf("failed to deploy rollup circuit; %s", err.Error())
+		t.Errorf("failed to deploy rollup prover; %s", err.Error())
 		return
 	}
 
-	t.Logf("deployed circuit %s with id %s", *rollupCircuit.Name, rollupCircuit.ID)
+	t.Logf("deployed prover %s with id %s", *rollupProver.Name, rollupProver.ID)
 
 	merkleProofHelper := merkle.GenerateProofHelper(proofSet, proofIndex, numLeaves)
 
@@ -397,7 +397,7 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 
 	time.Sleep(time.Second * 5)
 
-	rollupProof, err := privacy.Prove(*token, rollupCircuit.ID.String(), map[string]interface{}{
+	rollupProof, err := privacy.Prove(*token, rollupProver.ID.String(), map[string]interface{}{
 		"witness": witness,
 	})
 	if err != nil {
@@ -414,13 +414,13 @@ func TestProcureToPayWorkflowRollupGroth16(t *testing.T) {
 		},
 	}
 
-	verification, err := privacy.Verify(*token, rollupCircuit.ID.String(), publicWitness)
+	verification, err := privacy.Verify(*token, rollupProver.ID.String(), publicWitness)
 	if err != nil {
 		t.Errorf("failed to verify proof; %s", err.Error())
 		return
 	}
 
-	t.Logf("%s proof/verification: %s / %v", *rollupCircuit.Name, *rollupProof.Proof, verification.Result)
+	t.Logf("%s proof/verification: %s / %v", *rollupProver.Name, *rollupProof.Proof, verification.Result)
 }
 
 type STAGE uint16

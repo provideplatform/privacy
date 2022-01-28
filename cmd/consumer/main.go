@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/kthomas/go-redisutil"
-	_ "github.com/provideplatform/privacy/circuit"
 	"github.com/provideplatform/privacy/common"
+	_ "github.com/provideplatform/privacy/prover"
 )
 
 const natsStreamingSubscriptionStatusTickerInterval = 5 * time.Second
@@ -25,7 +25,7 @@ var (
 
 func init() {
 	if strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) != "true" {
-		common.Log.Panicf("circuit package consumer configured to skip NATS streaming subscription setup")
+		common.Log.Panicf("prover package consumer configured to skip NATS streaming subscription setup")
 		return
 	}
 

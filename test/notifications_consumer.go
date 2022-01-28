@@ -16,18 +16,18 @@ import (
 	"github.com/provideplatform/privacy/common"
 )
 
-const natsCircuitNotificationNoteDeposit = "note.deposited"
-const natsCircuitNotificationNoteNullified = "note.nullified"
-const natsCircuitNotificationExit = "exit"
+const natsProverNotificationNoteDeposit = "note.deposited"
+const natsProverNotificationNoteNullified = "note.nullified"
+const natsProverNotificationExit = "exit"
 
-const natsCircuitNotificationMaxInFlight = 32
-const natsCircuitNotificationAckWait = time.Hour * 1
-const natsCircuitNotificationTimeout = int64(time.Hour * 1)
-const natsCircuitNotificationMaxDeliveries = 5
+const natsProverNotificationMaxInFlight = 32
+const natsProverNotificationAckWait = time.Hour * 1
+const natsProverNotificationTimeout = int64(time.Hour * 1)
+const natsProverNotificationMaxDeliveries = 5
 
 func init() {
 	if os.Getenv("PRIVACY_NOTIFICATION_ORGANIZATION_ID") == "" {
-		common.Log.Debug("circuit consumer not configured to establish org subscriptions")
+		common.Log.Debug("prover consumer not configured to establish org subscriptions")
 		return
 	}
 
@@ -35,12 +35,12 @@ func init() {
 	// TODO-- setup stream
 
 	var waitGroup sync.WaitGroup
-	createNatsCircuitNotificationNoteDepositSubscription(&waitGroup)
-	createNatsCircuitNotificationNoteNullifiedSubscription(&waitGroup)
-	createNatsCircuitNotificationExitSubscription(&waitGroup)
+	createNatsProverNotificationNoteDepositSubscription(&waitGroup)
+	createNatsProverNotificationNoteNullifiedSubscription(&waitGroup)
+	createNatsProverNotificationExitSubscription(&waitGroup)
 }
 
-func natsCircuitNotificationSubject(event string) (*string, error) {
+func natsProverNotificationSubject(event string) (*string, error) {
 	orgUUID, err := uuid.FromString(os.Getenv("PRIVACY_NOTIFICATION_ORGANIZATION_ID"))
 	if err != nil {
 		return nil, err
@@ -49,73 +49,73 @@ func natsCircuitNotificationSubject(event string) (*string, error) {
 	return common.StringOrNil(fmt.Sprintf("org uuid %s event %s", orgUUID.String(), event)), nil
 }
 
-// createNatsCircuitNotificationNoteDepositSubscription
-func createNatsCircuitNotificationNoteDepositSubscription(wg *sync.WaitGroup) {
+// createNatsProverNotificationNoteDepositSubscription
+func createNatsProverNotificationNoteDepositSubscription(wg *sync.WaitGroup) {
 	// subscribe to deposits...
-	subject, err := natsCircuitNotificationSubject(natsCircuitNotificationNoteDeposit)
+	subject, err := natsProverNotificationSubject(natsProverNotificationNoteDeposit)
 	if err != nil {
 		panic(err)
 	}
 
 	natsutil.RequireNatsJetstreamSubscription(wg,
-		natsCircuitNotificationAckWait,
+		natsProverNotificationAckWait,
 		*subject,
 		*subject,
 		*subject,
-		circuitNoteDepositHandler,
-		natsCircuitNotificationAckWait,
-		natsCircuitNotificationMaxInFlight,
-		natsCircuitNotificationMaxDeliveries,
+		proverNoteDepositHandler,
+		natsProverNotificationAckWait,
+		natsProverNotificationMaxInFlight,
+		natsProverNotificationMaxDeliveries,
 		nil,
 	)
 }
 
-// createNatsCircuitNotificationNoteNullifiedSubscription
-func createNatsCircuitNotificationNoteNullifiedSubscription(wg *sync.WaitGroup) {
+// createNatsProverNotificationNoteNullifiedSubscription
+func createNatsProverNotificationNoteNullifiedSubscription(wg *sync.WaitGroup) {
 	// subscribe to note nullifications...
-	subject, err := natsCircuitNotificationSubject(natsCircuitNotificationNoteNullified)
+	subject, err := natsProverNotificationSubject(natsProverNotificationNoteNullified)
 	if err != nil {
 		panic(err)
 	}
 
 	natsutil.RequireNatsJetstreamSubscription(wg,
-		natsCircuitNotificationAckWait,
+		natsProverNotificationAckWait,
 		*subject,
 		*subject,
 		*subject,
-		circuitNoteNullifiedHandler,
-		natsCircuitNotificationAckWait,
-		natsCircuitNotificationMaxInFlight,
-		natsCircuitNotificationMaxDeliveries,
+		proverNoteNullifiedHandler,
+		natsProverNotificationAckWait,
+		natsProverNotificationMaxInFlight,
+		natsProverNotificationMaxDeliveries,
 		nil,
 	)
 }
 
-// createNatsCircuitNotificationExitSubscription
-func createNatsCircuitNotificationExitSubscription(wg *sync.WaitGroup) {
+// createNatsProverNotificationExitSubscription
+func createNatsProverNotificationExitSubscription(wg *sync.WaitGroup) {
 	// subscribe to exits...
-	subject, err := natsCircuitNotificationSubject(natsCircuitNotificationExit)
+	subject, err := natsProverNotificationSubject(natsProverNotificationExit)
 	if err != nil {
 		panic(err)
 	}
 
 	natsutil.RequireNatsJetstreamSubscription(wg,
-		natsCircuitNotificationAckWait,
+		natsProverNotificationAckWait,
 		*subject,
 		*subject,
 		*subject,
-		circuitExitHandler,
-		natsCircuitNotificationAckWait,
-		natsCircuitNotificationMaxInFlight,
-		natsCircuitNotificationMaxDeliveries,
+		proverExitHandler,
+		natsProverNotificationAckWait,
+		natsProverNotificationMaxInFlight,
+		natsProverNotificationMaxDeliveries,
 		nil,
 	)
 }
 
-func circuitNoteDepositHandler(msg *nats.Msg) {
+func proverNoteDepositHandler(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
-			common.Log.Warningf("recovered during circuit note deposit notification handler; %s", r)
+			common.Log.Warningf("recovered during prover note deposit notification handler; %s", r)
 			msg.Nak()
 		}
 	}()
@@ -123,10 +123,10 @@ func circuitNoteDepositHandler(msg *nats.Msg) {
 	// TODO... process it and msg.Ack()
 }
 
-func circuitNoteNullifiedHandler(msg *nats.Msg) {
+func proverNoteNullifiedHandler(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
-			common.Log.Warningf("recovered during circuit note nullified notification handler; %s", r)
+			common.Log.Warningf("recovered during prover note nullified notification handler; %s", r)
 			msg.Nak()
 		}
 	}()
@@ -134,10 +134,10 @@ func circuitNoteNullifiedHandler(msg *nats.Msg) {
 	// TODO... process it and msg.Ack()
 }
 
-func circuitExitHandler(msg *nats.Msg) {
+func proverExitHandler(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
-			common.Log.Warningf("recovered during circuit exit notification handler; %s", r)
+			common.Log.Warningf("recovered during prover exit notification handler; %s", r)
 			msg.Nak()
 		}
 	}()

@@ -16,29 +16,29 @@ type EddsaPrivateKey struct {
 	Lower frontend.Variable
 }
 
-// Document is similar to MimcCircuit
+// Document is similar to MimcProver
 type Document struct {
 	Preimage frontend.Variable
 	Hash     frontend.Variable `gnark:",public"`
 }
 
-// BaselineDocumentCompleteCircuit combines proof of ownership of sk, proof of knowledge of secret preimage to hash and verifies eddsa signature
-type BaselineDocumentCompleteCircuit struct {
+// BaselineDocumentCompleteProver combines proof of ownership of sk, proof of knowledge of secret preimage to hash and verifies eddsa signature
+type BaselineDocumentCompleteProver struct {
 	Doc Document
 	Pk  eddsa.PublicKey `gnark:",public"`
 	Sk  EddsaPrivateKey
 	Sig eddsa.Signature `gnark:",public"`
 }
 
-// Define declares the circuit's contraints
-func (circuit *BaselineDocumentCompleteCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the prover's contraints
+func (prover *BaselineDocumentCompleteProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	params, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {
 		return err
 	}
-	circuit.Pk.Curve = params
+	prover.Pk.Curve = params
 
-	// Reuse existing circuits, eg OwnershipSK?
+	// Reuse existing provers, eg OwnershipSK?
 
 	// Check for ownership of sk
 	var i big.Int
@@ -52,24 +52,24 @@ func (circuit *BaselineDocumentCompleteCircuit) Define(curveID ecc.ID, cs *front
 	scalar := cs.Constant(i)
 
 	computedPk := twistededwards.Point{}
-	computedPk.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk.Upper, circuit.Pk.Curve)
-	computedPk.ScalarMulNonFixedBase(cs, &computedPk, scalar, circuit.Pk.Curve)
+	computedPk.ScalarMulFixedBase(cs, prover.Pk.Curve.BaseX, prover.Pk.Curve.BaseY, prover.Sk.Upper, prover.Pk.Curve)
+	computedPk.ScalarMulNonFixedBase(cs, &computedPk, scalar, prover.Pk.Curve)
 	lower := twistededwards.Point{}
-	lower.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk.Lower, circuit.Pk.Curve)
+	lower.ScalarMulFixedBase(cs, prover.Pk.Curve.BaseX, prover.Pk.Curve.BaseY, prover.Sk.Lower, prover.Pk.Curve)
 
-	computedPk.AddGeneric(cs, &lower, &computedPk, circuit.Pk.Curve)
-	computedPk.MustBeOnCurve(cs, circuit.Pk.Curve)
+	computedPk.AddGeneric(cs, &lower, &computedPk, prover.Pk.Curve)
+	computedPk.MustBeOnCurve(cs, prover.Pk.Curve)
 
-	cs.AssertIsEqual(circuit.Pk.A.X, computedPk.X)
-	cs.AssertIsEqual(circuit.Pk.A.Y, computedPk.Y)
+	cs.AssertIsEqual(prover.Pk.A.X, computedPk.X)
+	cs.AssertIsEqual(prover.Pk.A.Y, computedPk.Y)
 
 	// Check for valid signature
-	eddsa.Verify(cs, circuit.Sig, circuit.Doc.Hash, circuit.Pk)
+	eddsa.Verify(cs, prover.Sig, prover.Doc.Hash, prover.Pk)
 
 	// Check for knowledge of preimage
 	// Hash = mimc(Preimage)
 	mimc, _ := mimc.NewMiMC("seed", curveID)
-	cs.AssertIsEqual(circuit.Doc.Hash, mimc.Hash(cs, circuit.Doc.Preimage))
+	cs.AssertIsEqual(prover.Doc.Hash, mimc.Hash(cs, prover.Doc.Preimage))
 
 	return nil
 }

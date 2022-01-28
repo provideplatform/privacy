@@ -1,4 +1,4 @@
-package circuit
+package prover
 
 import (
 	"encoding/base64"
@@ -17,41 +17,41 @@ import (
 	"github.com/provideplatform/provide-go/common/util"
 )
 
-func resolveCircuitsQuery(db *gorm.DB, circuitID, orgID, appID, userID *uuid.UUID) *gorm.DB {
-	query := db.Select("circuits.*")
-	if circuitID != nil {
-		query = query.Where("circuits.id = ?", circuitID)
+func resolveProversQuery(db *gorm.DB, proverID, orgID, appID, userID *uuid.UUID) *gorm.DB {
+	query := db.Select("provers.*")
+	if proverID != nil {
+		query = query.Where("provers.id = ?", proverID)
 	}
 	if orgID != nil {
-		query = query.Where("circuits.organization_id = ?", orgID)
+		query = query.Where("provers.organization_id = ?", orgID)
 	}
 	if appID != nil {
-		query = query.Where("circuits.application_id = ?", appID)
+		query = query.Where("provers.application_id = ?", appID)
 	}
 	if userID != nil {
-		query = query.Where("circuits.user_id = ?", userID)
+		query = query.Where("provers.user_id = ?", userID)
 	}
 	return query
 }
 
-// InstallAPI registers the circuit registry API handlers with gin
+// InstallAPI registers the prover registry API handlers with gin
 func InstallAPI(r *gin.Engine) {
-	r.GET("/api/v1/circuits", listCircuitsHandler)
-	r.POST("/api/v1/circuits", createCircuitHandler)
-	r.GET("/api/v1/circuits/:id", circuitDetailsHandler)
+	r.GET("/api/v1/provers", listProversHandler)
+	r.POST("/api/v1/provers", createProverHandler)
+	r.GET("/api/v1/provers/:id", proverDetailsHandler)
 
-	r.POST("/api/v1/circuits/:id/prove", proveCircuitHandler)
-	// r.GET("/api/v1/circuits/:id/prove/:proofId", proofDetailsHandler)
+	r.POST("/api/v1/provers/:id/prove", proveProverHandler)
+	// r.GET("/api/v1/provers/:id/prove/:proofId", proofDetailsHandler)
 
-	r.POST("/api/v1/circuits/:id/verify", verifyCircuitHandler)
-	// r.GET("/api/v1/circuits/:id/verify/:verifyId", proofDetailsHandler)
+	r.POST("/api/v1/provers/:id/verify", verifyProverHandler)
+	// r.GET("/api/v1/provers/:id/verify/:verifyId", proofDetailsHandler)
 
-	r.GET("/api/v1/circuits/:id/notes/:index", circuitNoteStoreValueHandler)
-	r.GET("/api/v1/circuits/:id/nullifiers/:index", circuitNullifierStoreValueHandler)
+	r.GET("/api/v1/provers/:id/notes/:index", proverNoteStoreValueHandler)
+	r.GET("/api/v1/provers/:id/nullifiers/:index", proverNullifierStoreValueHandler)
 }
 
-// list/query available circuits in the registry
-func listCircuitsHandler(c *gin.Context) {
+// list/query available provers in the registry
+func listProversHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -61,15 +61,15 @@ func listCircuitsHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	query := resolveCircuitsQuery(db, nil, orgID, appID, userID)
+	query := resolveProversQuery(db, nil, orgID, appID, userID)
 
-	var circuits []*Circuit
-	provide.Paginate(c, query, &Circuit{}).Find(&circuits)
-	provide.Render(circuits, 200, c)
+	var provers []*Prover
+	provide.Paginate(c, query, &Prover{}).Find(&provers)
+	provide.Render(provers, 200, c)
 }
 
 // compile, setup, export verifier
-func createCircuitHandler(c *gin.Context) {
+func createProverHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -91,27 +91,27 @@ func createCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	circuit := &Circuit{}
-	err = json.Unmarshal(buf, circuit)
+	prover := &Prover{}
+	err = json.Unmarshal(buf, prover)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return
 	}
 
 	if appID != nil {
-		circuit.ApplicationID = appID
+		prover.ApplicationID = appID
 	}
 
 	if orgID != nil {
-		circuit.OrganizationID = orgID
+		prover.OrganizationID = orgID
 	}
 
 	if userID != nil {
-		circuit.UserID = userID
+		prover.UserID = userID
 	}
 
 	if srs, ok := params["srs"].(string); ok {
-		circuit.srs, err = hex.DecodeString(srs)
+		prover.srs, err = hex.DecodeString(srs)
 		if err != nil {
 			provide.RenderError(err.Error(), 422, c)
 			return
@@ -120,17 +120,17 @@ func createCircuitHandler(c *gin.Context) {
 
 	variables := params["variables"]
 
-	if circuit.Create(variables) {
-		provide.Render(circuit, 201, c)
+	if prover.Create(variables) {
+		provide.Render(prover, 201, c)
 	} else {
 		obj := map[string]interface{}{}
-		obj["errors"] = circuit.Errors
+		obj["errors"] = prover.Errors
 		provide.Render(obj, 422, c)
 	}
 }
 
-// fetch circuit details
-func circuitDetailsHandler(c *gin.Context) {
+// fetch prover details
+func proverDetailsHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -140,38 +140,38 @@ func circuitDetailsHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	circuitID, err := uuid.FromString(c.Param("id"))
+	proverID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError("bad request", 400, c)
 		return
 	}
 
-	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
+	prover := &Prover{}
+	resolveProversQuery(db, &proverID, orgID, appID, userID).Find(&prover)
 
-	if circuit == nil || circuit.ID == uuid.Nil {
-		provide.RenderError("circuit not found", 404, c)
+	if prover == nil || prover.ID == uuid.Nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.ApplicationID != nil && appID != nil && prover.ApplicationID.String() != appID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if appID != nil && circuit.ApplicationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if appID != nil && prover.ApplicationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.OrganizationID != nil && orgID != nil && prover.OrganizationID.String() != orgID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if orgID != nil && circuit.OrganizationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if orgID != nil && prover.OrganizationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
 	}
 
-	circuit.enrich()
-	provide.Render(circuit, 200, c)
+	prover.enrich()
+	provide.Render(prover, 200, c)
 }
 
 // generate a proof
-func proveCircuitHandler(c *gin.Context) {
+func proveProverHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -194,28 +194,28 @@ func proveCircuitHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	circuitID, err := uuid.FromString(c.Param("id"))
+	proverID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError("bad request", 400, c)
 		return
 	}
 
-	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
-	if circuit == nil || circuit.ID == uuid.Nil {
-		provide.RenderError("circuit not found", 404, c)
+	prover := &Prover{}
+	resolveProversQuery(db, &proverID, orgID, appID, userID).Find(&prover)
+	if prover == nil || prover.ID == uuid.Nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.ApplicationID != nil && appID != nil && prover.ApplicationID.String() != appID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if appID != nil && circuit.ApplicationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if appID != nil && prover.ApplicationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.OrganizationID != nil && orgID != nil && prover.OrganizationID.String() != orgID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if orgID != nil && circuit.OrganizationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if orgID != nil && prover.OrganizationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
 	}
 
@@ -225,7 +225,7 @@ func proveCircuitHandler(c *gin.Context) {
 		return
 	}
 
-	proof, err := circuit.Prove(witness)
+	proof, err := prover.Prove(witness)
 	if err != nil {
 		provide.Render(&privacy.ProveResponse{
 			Errors: []*api.Error{{Message: common.StringOrNil(err.Error())}},
@@ -240,7 +240,7 @@ func proveCircuitHandler(c *gin.Context) {
 }
 
 // verify a proof
-func verifyCircuitHandler(c *gin.Context) {
+func verifyProverHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -263,28 +263,28 @@ func verifyCircuitHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	circuitID, err := uuid.FromString(c.Param("id"))
+	proverID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError("bad request", 400, c)
 		return
 	}
 
-	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
-	if circuit == nil || circuit.ID == uuid.Nil {
-		provide.RenderError("circuit not found", 404, c)
+	prover := &Prover{}
+	resolveProversQuery(db, &proverID, orgID, appID, userID).Find(&prover)
+	if prover == nil || prover.ID == uuid.Nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.ApplicationID != nil && appID != nil && prover.ApplicationID.String() != appID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if appID != nil && circuit.ApplicationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if appID != nil && prover.ApplicationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.OrganizationID != nil && orgID != nil && prover.OrganizationID.String() != orgID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if orgID != nil && circuit.OrganizationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if orgID != nil && prover.OrganizationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
 	}
 
@@ -305,7 +305,7 @@ func verifyCircuitHandler(c *gin.Context) {
 		store = _store
 	}
 
-	result, err := circuit.Verify(proof, witness, store)
+	result, err := prover.Verify(proof, witness, store)
 	if err != nil {
 		provide.Render(&privacy.VerificationResponse{
 			Errors: []*api.Error{{Message: common.StringOrNil(err.Error())}},
@@ -319,8 +319,8 @@ func verifyCircuitHandler(c *gin.Context) {
 	}, 200, c)
 }
 
-// circuit note store value hanbdler
-func circuitNoteStoreValueHandler(c *gin.Context) {
+// prover note store value hanbdler
+func proverNoteStoreValueHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -330,29 +330,29 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	circuitID, err := uuid.FromString(c.Param("id"))
+	proverID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError("bad request", 400, c)
 		return
 	}
 
-	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
+	prover := &Prover{}
+	resolveProversQuery(db, &proverID, orgID, appID, userID).Find(&prover)
 
-	if circuit == nil || circuit.ID == uuid.Nil {
-		provide.RenderError("circuit not found", 404, c)
+	if prover == nil || prover.ID == uuid.Nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.ApplicationID != nil && appID != nil && prover.ApplicationID.String() != appID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if appID != nil && circuit.ApplicationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if appID != nil && prover.ApplicationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.OrganizationID != nil && orgID != nil && prover.OrganizationID.String() != orgID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if orgID != nil && circuit.OrganizationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if orgID != nil && prover.OrganizationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
 	}
 
@@ -362,13 +362,13 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	root, err := circuit.NoteStoreRoot()
+	root, err := prover.NoteStoreRoot()
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
 		return
 	}
 
-	value, nullifierKey, err := circuit.NoteValueAt(index)
+	value, nullifierKey, err := prover.NoteValueAt(index)
 	if err != nil {
 		common.Log.Warningf("failed to retrieve note value at index: %d; %s", index, err.Error())
 		provide.RenderError(err.Error(), 404, c)
@@ -382,8 +382,8 @@ func circuitNoteStoreValueHandler(c *gin.Context) {
 	}, 200, c)
 }
 
-// circuit proof store value hanbdler
-func circuitNullifierStoreValueHandler(c *gin.Context) {
+// prover proof store value hanbdler
+func proverNullifierStoreValueHandler(c *gin.Context) {
 	appID := util.AuthorizedSubjectID(c, "application")
 	orgID := util.AuthorizedSubjectID(c, "organization")
 	userID := util.AuthorizedSubjectID(c, "user")
@@ -393,33 +393,33 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	circuitID, err := uuid.FromString(c.Param("id"))
+	proverID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError("bad request", 400, c)
 		return
 	}
 
-	circuit := &Circuit{}
-	resolveCircuitsQuery(db, &circuitID, orgID, appID, userID).Find(&circuit)
+	prover := &Prover{}
+	resolveProversQuery(db, &proverID, orgID, appID, userID).Find(&prover)
 
-	if circuit == nil || circuit.ID == uuid.Nil {
-		provide.RenderError("circuit not found", 404, c)
+	if prover == nil || prover.ID == uuid.Nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.ApplicationID != nil && appID != nil && circuit.ApplicationID.String() != appID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.ApplicationID != nil && appID != nil && prover.ApplicationID.String() != appID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if appID != nil && circuit.ApplicationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if appID != nil && prover.ApplicationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if circuit.OrganizationID != nil && orgID != nil && circuit.OrganizationID.String() != orgID.String() {
-		provide.RenderError("circuit not found", 404, c)
+	} else if prover.OrganizationID != nil && orgID != nil && prover.OrganizationID.String() != orgID.String() {
+		provide.RenderError("prover not found", 404, c)
 		return
-	} else if orgID != nil && circuit.OrganizationID == nil {
-		provide.RenderError("circuit not found", 404, c)
+	} else if orgID != nil && prover.OrganizationID == nil {
+		provide.RenderError("prover not found", 404, c)
 		return
 	}
 
-	root, err := circuit.NullifierStoreRoot()
+	root, err := prover.NullifierStoreRoot()
 	if err != nil {
 		provide.RenderError(err.Error(), 500, c)
 		return
@@ -431,7 +431,7 @@ func circuitNullifierStoreValueHandler(c *gin.Context) {
 		return
 	}
 
-	value, err := circuit.NullifierValueAt(key)
+	value, err := prover.NullifierValueAt(key)
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return

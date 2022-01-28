@@ -9,19 +9,19 @@ import (
 	"github.com/consensys/gnark/std/signature/eddsa"
 )
 
-// OwnershipSkCircuit defines circuit for prove of ownership of sk
-type OwnershipSkCircuit struct {
+// OwnershipSkProver defines prover for prove of ownership of sk
+type OwnershipSkProver struct {
 	Pk eddsa.PublicKey `gnark:",public"`
 	Sk EddsaPrivateKey
 }
 
-// Define declares the circuit's constraints
-func (circuit *OwnershipSkCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+// Define declares the prover's constraints
+func (prover *OwnershipSkProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	params, err := twistededwards.NewEdCurve(curveID)
 	if err != nil {
 		return err
 	}
-	circuit.Pk.Curve = params
+	prover.Pk.Curve = params
 
 	var i big.Int
 	if curveID == ecc.BW6_761 {
@@ -34,16 +34,16 @@ func (circuit *OwnershipSkCircuit) Define(curveID ecc.ID, cs *frontend.Constrain
 	scalar := cs.Constant(i)
 
 	computedPk := twistededwards.Point{}
-	computedPk.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk.Upper, circuit.Pk.Curve)
-	computedPk.ScalarMulNonFixedBase(cs, &computedPk, scalar, circuit.Pk.Curve)
+	computedPk.ScalarMulFixedBase(cs, prover.Pk.Curve.BaseX, prover.Pk.Curve.BaseY, prover.Sk.Upper, prover.Pk.Curve)
+	computedPk.ScalarMulNonFixedBase(cs, &computedPk, scalar, prover.Pk.Curve)
 	lower := twistededwards.Point{}
-	lower.ScalarMulFixedBase(cs, circuit.Pk.Curve.BaseX, circuit.Pk.Curve.BaseY, circuit.Sk.Lower, circuit.Pk.Curve)
+	lower.ScalarMulFixedBase(cs, prover.Pk.Curve.BaseX, prover.Pk.Curve.BaseY, prover.Sk.Lower, prover.Pk.Curve)
 
-	computedPk.AddGeneric(cs, &lower, &computedPk, circuit.Pk.Curve)
-	computedPk.MustBeOnCurve(cs, circuit.Pk.Curve)
+	computedPk.AddGeneric(cs, &lower, &computedPk, prover.Pk.Curve)
+	computedPk.MustBeOnCurve(cs, prover.Pk.Curve)
 
-	cs.AssertIsEqual(circuit.Pk.A.X, computedPk.X)
-	cs.AssertIsEqual(circuit.Pk.A.Y, computedPk.Y)
+	cs.AssertIsEqual(prover.Pk.A.X, computedPk.X)
+	cs.AssertIsEqual(prover.Pk.A.Y, computedPk.Y)
 
 	return nil
 }

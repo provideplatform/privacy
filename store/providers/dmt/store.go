@@ -227,7 +227,7 @@ func (s *DMT) StateAt(epoch uint64) (*state.State, error) {
 		// ID        uuid.UUID  `json:"id"`
 		// AccountID *uuid.UUID `json:"account_id"`
 		// Address   *string    `json:"address"` // FIXME... int type this address
-		CircuitID:   s.id,
+		ProverID:    s.id,
 		Epoch:       epoch,
 		StateClaims: claims,
 	}

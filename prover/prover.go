@@ -1,4 +1,4 @@
-package circuit
+package prover
 
 import (
 	"bytes"
@@ -25,19 +25,19 @@ import (
 	util "github.com/provideplatform/provide-go/common/util"
 )
 
-const circuitProvingSchemeGroth16 = "groth16"
-const circuitProvingSchemePlonk = "plonk"
+const proverProvingSchemeGroth16 = "groth16"
+const proverProvingSchemePlonk = "plonk"
 
-const circuitStatusFailed = "failed"
-const circuitStatusCompiling = "compiling"
-const circuitStatusCompiled = "compiled"
-const circuitStatusPendingSetup = "pending_setup"
-const circuitStatusRunningSetup = "running_setup"
-const circuitStatusDeployingArtifacts = "deploying_artifacts" // optional -- if i.e. verifier contract should be deployed to blockchain
-const circuitStatusProvisioned = "provisioned"
+const proverStatusFailed = "failed"
+const proverStatusCompiling = "compiling"
+const proverStatusCompiled = "compiled"
+const proverStatusPendingSetup = "pending_setup"
+const proverStatusRunningSetup = "running_setup"
+const proverStatusDeployingArtifacts = "deploying_artifacts" // optional -- if i.e. verifier contract should be deployed to blockchain
+const proverStatusProvisioned = "provisioned"
 
-// Circuit model
-type Circuit struct {
+// Prover model
+type Prover struct {
 	provide.Model
 
 	// Artifacts, i.e., r1cs, ABI, etc
@@ -96,26 +96,26 @@ type Circuit struct {
 	mutex sync.Mutex
 }
 
-func (c *Circuit) circuitProviderFactory() zkp.ZKSnarkCircuitProvider {
+func (c *Prover) proverProviderFactory() zkp.ZKSnarkProverProvider {
 	if c.Provider == nil {
-		common.Log.Warning("failed to initialize circuit provider; no provider defined")
+		common.Log.Warning("failed to initialize prover provider; no provider defined")
 		return nil
 	}
 
 	switch *c.Provider {
-	case zkp.ZKSnarkCircuitProviderGnark:
-		return zkp.InitGnarkCircuitProvider(c.Curve, c.ProvingScheme)
-	case zkp.ZKSnarkCircuitProviderZoKrates:
+	case zkp.ZKSnarkProverProviderGnark:
+		return zkp.InitGnarkProverProvider(c.Curve, c.ProvingScheme)
+	case zkp.ZKSnarkProverProviderZoKrates:
 		return nil // not implemented
 	default:
-		common.Log.Warningf("failed to initialize circuit provider; unknown provider: %s", *c.Provider)
+		common.Log.Warningf("failed to initialize prover provider; unknown provider: %s", *c.Provider)
 	}
 
 	return nil
 }
 
-// Create a circuit
-func (c *Circuit) Create(variables interface{}) bool {
+// Create a prover
+func (c *Prover) Create(variables interface{}) bool {
 	if !c.validate() {
 		return false
 	}
@@ -141,13 +141,13 @@ func (c *Circuit) Create(variables interface{}) bool {
 		if !db.NewRecord(c) {
 			success := rowsAffected > 0
 			if success {
-				common.Log.Debugf("initialized %s %s %s circuit: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
+				common.Log.Debugf("initialized %s %s %s prover: %s", *c.Provider, *c.ProvingScheme, *c.Identifier, c.ID)
 
 				if c.NoteStoreID == nil || c.NullifierStoreID == nil {
 					err := c.initStorage()
 					if err != nil {
 						common.Log.Warning(err.Error())
-						c.updateStatus(db, circuitStatusFailed, common.StringOrNil(err.Error()))
+						c.updateStatus(db, proverStatusFailed, common.StringOrNil(err.Error()))
 						c.Errors = append(c.Errors, &provide.Error{
 							Message: common.StringOrNil(err.Error()),
 						})
@@ -166,28 +166,28 @@ func (c *Circuit) Create(variables interface{}) bool {
 				if c.srsRequired() {
 					if c.srs == nil || len(c.srs) == 0 {
 						c.Errors = append(c.Errors, &provide.Error{
-							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),
+							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s prover with identifier %s; required SRS was not present", *c.ProvingScheme, *c.Identifier)),
 						})
 						return false
 					}
 
 					if !c.persistSRS() {
 						c.Errors = append(c.Errors, &provide.Error{
-							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s circuit with identifier %s; SRS not persisted", *c.ProvingScheme, *c.Identifier)),
+							Message: common.StringOrNil(fmt.Sprintf("failed to setup %s prover with identifier %s; SRS not persisted", *c.ProvingScheme, *c.Identifier)),
 						})
 						return false
 					}
 				}
 
 				if c.setupRequired() {
-					c.updateStatus(db, circuitStatusPendingSetup, nil)
+					c.updateStatus(db, proverStatusPendingSetup, nil)
 
 					payload, _ := json.Marshal(map[string]interface{}{
-						"circuit_id": c.ID.String(),
+						"prover_id": c.ID.String(),
 					})
-					natsutil.NatsJetstreamPublish(natsCreatedCircuitSetupSubject, payload)
+					natsutil.NatsJetstreamPublish(natsCreatedProverSetupSubject, payload)
 				} else if isImport {
-					c.updateStatus(db, circuitStatusProvisioned, nil)
+					c.updateStatus(db, proverStatusProvisioned, nil)
 				}
 			}
 
@@ -199,13 +199,13 @@ func (c *Circuit) Create(variables interface{}) bool {
 }
 
 // NoteStoreHeight returns the underlying note store height
-func (c *Circuit) NoteStoreHeight() (*int, error) {
+func (c *Prover) NoteStoreHeight() (*int, error) {
 	if c.noteStore == nil && c.NoteStoreID != nil {
 		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
 	if c.noteStore == nil {
-		return nil, fmt.Errorf("failed to resolve note store height for circuit %s", c.ID)
+		return nil, fmt.Errorf("failed to resolve note store height for prover %s", c.ID)
 	}
 
 	height := c.noteStore.Height()
@@ -213,13 +213,13 @@ func (c *Circuit) NoteStoreHeight() (*int, error) {
 }
 
 // NullifierStoreHeight returns the underlying nullifier store height
-func (c *Circuit) NullifierStoreHeight() (*int, error) {
+func (c *Prover) NullifierStoreHeight() (*int, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
 	if c.nullifierStore == nil {
-		return nil, fmt.Errorf("failed to resolve nullifier store height for circuit %s", c.ID)
+		return nil, fmt.Errorf("failed to resolve nullifier store height for prover %s", c.ID)
 	}
 
 	height := c.nullifierStore.Height()
@@ -227,26 +227,26 @@ func (c *Circuit) NullifierStoreHeight() (*int, error) {
 }
 
 // NoteStoreRoot returns the underlying note store root
-func (c *Circuit) NoteStoreRoot() (*string, error) {
+func (c *Prover) NoteStoreRoot() (*string, error) {
 	if c.noteStore == nil && c.NoteStoreID != nil {
 		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
 	if c.noteStore == nil {
-		return nil, fmt.Errorf("failed to resolve note store root for circuit %s", c.ID)
+		return nil, fmt.Errorf("failed to resolve note store root for prover %s", c.ID)
 	}
 
 	return c.noteStore.Root()
 }
 
 // NoteValueAt returns the decrypted note and key for nullified note from the underlying note storage provider
-func (c *Circuit) NoteValueAt(index uint64) ([]byte, []byte, error) {
+func (c *Prover) NoteValueAt(index uint64) ([]byte, []byte, error) {
 	if c.noteStore == nil && c.NoteStoreID != nil {
 		c.noteStore = storage.Find(*c.NoteStoreID)
 	}
 
 	if c.noteStore == nil {
-		return nil, nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s", index, c.ID)
+		return nil, nil, fmt.Errorf("failed to resolve note store value for index %d for prover %s", index, c.ID)
 	}
 
 	val, err := c.noteStore.ValueAt(new(big.Int).SetUint64(index).Bytes())
@@ -263,7 +263,7 @@ func (c *Circuit) NoteValueAt(index uint64) ([]byte, []byte, error) {
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to resolve note store value for index %d for circuit %s; failed to decrypt note; %s", index, c.ID, err.Error())
+		return nil, nil, fmt.Errorf("failed to resolve note store value for index %d for prover %s; failed to decrypt note; %s", index, c.ID, err.Error())
 	}
 
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
@@ -282,52 +282,52 @@ func (c *Circuit) NoteValueAt(index uint64) ([]byte, []byte, error) {
 }
 
 // NullifierStoreRoot returns the underlying nullifier store root
-func (c *Circuit) NullifierStoreRoot() (*string, error) {
+func (c *Prover) NullifierStoreRoot() (*string, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
 	if c.nullifierStore == nil {
-		return nil, fmt.Errorf("failed to resolve nullifier store root for circuit %s", c.ID)
+		return nil, fmt.Errorf("failed to resolve nullifier store root for prover %s", c.ID)
 	}
 
 	return c.nullifierStore.Root()
 }
 
 // NullifierValueAt returns the hashed note from the underlying nullifier proof storage provider
-func (c *Circuit) NullifierValueAt(key []byte) ([]byte, error) {
+func (c *Prover) NullifierValueAt(key []byte) ([]byte, error) {
 	if c.nullifierStore == nil && c.NullifierStoreID != nil {
 		c.nullifierStore = storage.Find(*c.NullifierStoreID)
 	}
 
 	if c.nullifierStore == nil {
-		return nil, fmt.Errorf("failed to resolve proof store value for key %s for circuit %s", string(key), c.ID)
+		return nil, fmt.Errorf("failed to resolve proof store value for key %s for prover %s", string(key), c.ID)
 	}
 
 	return c.nullifierStore.ValueAt(key)
 }
 
 // Prove generates a proof for the given witness
-func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
+func (c *Prover) Prove(witness map[string]interface{}) (*string, error) {
 	err := c.enrich()
 	if err != nil {
-		common.Log.Warningf("enrich failed for proving circuit %s; %s", c.ID, err.Error())
+		common.Log.Warningf("enrich failed for proving prover %s; %s", c.ID, err.Error())
 	}
 
-	provider := c.circuitProviderFactory()
+	provider := c.proverProviderFactory()
 	if provider == nil {
-		return nil, fmt.Errorf("failed to resolve circuit provider")
+		return nil, fmt.Errorf("failed to resolve prover provider")
 	}
 
 	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness, false)
 	if err != nil {
-		common.Log.Warningf("failed to read serialized witness for circuit %s; %s", c.ID, err.Error())
+		common.Log.Warningf("failed to read serialized witness for prover %s; %s", c.ID, err.Error())
 		return nil, err
 	}
 
 	proof, err := provider.Prove(c.Binary, c.provingKey, witval, c.srs)
 	if err != nil {
-		common.Log.Warningf("failed to generate proof for circuit %s; %s", c.ID, err.Error())
+		common.Log.Warningf("failed to generate proof for prover %s; %s", c.ID, err.Error())
 		return nil, err
 	}
 
@@ -335,18 +335,18 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 	_, err = proof.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proof for circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proof for prover %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
 		})
 		return nil, err
 	}
 
 	_proof := common.StringOrNil(hex.EncodeToString(buf.Bytes()))
-	common.Log.Debugf("generated proof for circuit %s with identifier %s: %s", c.ID, *c.Identifier, *_proof)
+	common.Log.Debugf("generated proof for prover %s with identifier %s: %s", c.ID, *c.Identifier, *_proof)
 
 	err = c.updateState(*_proof, witness)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to update state for prover %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
 		})
 		return nil, err
 	}
@@ -355,28 +355,28 @@ func (c *Circuit) Prove(witness map[string]interface{}) (*string, error) {
 }
 
 // Verify a proof to be verifiable for the given witness
-func (c *Circuit) Verify(proof string, witness map[string]interface{}, store bool) (bool, error) {
+func (c *Prover) Verify(proof string, witness map[string]interface{}, store bool) (bool, error) {
 	err := c.enrich()
 	if err != nil {
-		common.Log.Warningf("enrich failed for verifying circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())
+		common.Log.Warningf("enrich failed for verifying prover %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())
 	}
 
-	provider := c.circuitProviderFactory()
+	provider := c.proverProviderFactory()
 	if provider == nil {
-		return false, fmt.Errorf("failed to resolve circuit provider")
+		return false, fmt.Errorf("failed to resolve prover provider")
 	}
 
 	var _proof []byte
 
 	_proof, err = hex.DecodeString(proof)
 	if err != nil {
-		common.Log.Debugf("failed to decode proof as hex for verification of circuit %s; %s", c.ID, err.Error())
+		common.Log.Debugf("failed to decode proof as hex for verification of prover %s; %s", c.ID, err.Error())
 		_proof = []byte(proof)
 	}
 
 	witval, err := provider.WitnessFactory(*c.Identifier, *c.Curve, witness, true)
 	if err != nil {
-		common.Log.Warningf("failed to read serialized witness for circuit %s; %s", c.ID, err.Error())
+		common.Log.Warningf("failed to read serialized witness for prover %s; %s", c.ID, err.Error())
 		return false, err
 	}
 
@@ -389,24 +389,24 @@ func (c *Circuit) Verify(proof string, witness map[string]interface{}, store boo
 		err = c.updateState(string(_proof), witness)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to update state for circuit %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to update state for prover %s with identifier %s; %s", c.ID, *c.Identifier, err.Error())),
 			})
 			return false, err
 		}
 	}
 
-	common.Log.Debugf("witness verified for circuit %s; proof: %s", c.ID, proof)
+	common.Log.Debugf("witness verified for prover %s; proof: %s", c.ID, proof)
 	return true, nil
 }
 
-// compile attempts to compile the circuit
-func (c *Circuit) compile(db *gorm.DB, variables interface{}) bool {
-	c.updateStatus(db, circuitStatusCompiling, nil)
+// compile attempts to compile the prover
+func (c *Prover) compile(db *gorm.DB, variables interface{}) bool {
+	c.updateStatus(db, proverStatusCompiling, nil)
 
-	provider := c.circuitProviderFactory()
+	provider := c.proverProviderFactory()
 	if provider == nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil("failed to resolve circuit provider"),
+			Message: common.StringOrNil("failed to resolve prover provider"),
 		})
 		return false
 	}
@@ -415,19 +415,19 @@ func (c *Circuit) compile(db *gorm.DB, variables interface{}) bool {
 	var err error
 
 	if c.Identifier != nil {
-		circuit := provider.CircuitFactory(*c.Identifier)
+		prover := provider.ProverFactory(*c.Identifier)
 
-		if circuit != nil {
-			artifacts, err = provider.Compile(circuit, variables)
+		if prover != nil {
+			artifacts, err = provider.Compile(prover, variables)
 			if err != nil {
 				c.Errors = append(c.Errors, &provide.Error{
-					Message: common.StringOrNil(fmt.Sprintf("failed to compile circuit with identifier %s; %s", *c.Identifier, err.Error())),
+					Message: common.StringOrNil(fmt.Sprintf("failed to compile prover with identifier %s; %s", *c.Identifier, err.Error())),
 				})
 				return false
 			}
 		} else {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to resolve circuit for provider: %s", *c.Provider)),
+				Message: common.StringOrNil(fmt.Sprintf("failed to resolve prover for provider: %s", *c.Provider)),
 			})
 			return false
 		}
@@ -437,23 +437,23 @@ func (c *Circuit) compile(db *gorm.DB, variables interface{}) bool {
 	_, err = artifacts.(io.WriterTo).WriteTo(buf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary artifacts for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary artifacts for prover with identifier %s; %s", *c.Identifier, err.Error())),
 		})
 		return false
 	}
 	c.Binary = buf.Bytes()
 
-	c.updateStatus(db, circuitStatusCompiled, nil)
+	c.updateStatus(db, proverStatusCompiled, nil)
 	return len(c.Errors) == 0
 }
 
-// canExportVerifier returns true if the circuit instance supports exporting a verifier smart contract
-func (c *Circuit) canExportVerifier() bool {
-	return c.VerifierContract == nil && strings.ToLower(*c.ProvingScheme) == circuitProvingSchemeGroth16 && strings.ToLower(*c.Curve) == ecc.BN254.String()
+// canExportVerifier returns true if the prover instance supports exporting a verifier smart contract
+func (c *Prover) canExportVerifier() bool {
+	return c.VerifierContract == nil && strings.ToLower(*c.ProvingScheme) == proverProvingSchemeGroth16 && strings.ToLower(*c.Curve) == ecc.BN254.String()
 }
 
-// enrich the circuit
-func (c *Circuit) enrich() error {
+// enrich the prover
+func (c *Prover) enrich() error {
 	if (c.provingKey == nil || len(c.provingKey) == 0) && c.ProvingKeyID != nil {
 		secret, err := vault.FetchSecret(
 			util.DefaultVaultAccessJWT,
@@ -545,7 +545,7 @@ func (c *Circuit) enrich() error {
 	if c.canExportVerifier() {
 		err := c.exportVerifier()
 		if err != nil {
-			common.Log.Debugf("failed to export verifier contract for circuit %s; %s", c.ID, err.Error())
+			common.Log.Debugf("failed to export verifier contract for prover %s; %s", c.ID, err.Error())
 		} else if c.verifierContractSource != nil && len(c.verifierContractSource) > 0 {
 			c.VerifierContract = map[string]interface{}{
 				"source": string(c.verifierContractSource),
@@ -559,8 +559,8 @@ func (c *Circuit) enrich() error {
 	return nil
 }
 
-// // exportState exports the state of the circuit at the given epoch
-// func (c *Circuit) exportState(epoch uint64) (*state.State, error) {
+// // exportState exports the state of the prover at the given epoch
+// func (c *Prover) exportState(epoch uint64) (*state.State, error) {
 // 	noteState, _ := c.noteStore.StateAt(epoch)
 // 	nullifiedState, _ := c.nullifierStore.StateAt(epoch) // spent
 
@@ -568,10 +568,10 @@ func (c *Circuit) enrich() error {
 // 	return nullifiedState, nil
 // }
 
-func (c *Circuit) exportVerifier() error {
-	provider := c.circuitProviderFactory()
+func (c *Prover) exportVerifier() error {
+	provider := c.proverProviderFactory()
 	if provider == nil {
-		return fmt.Errorf("failed to resolve circuit provider")
+		return fmt.Errorf("failed to resolve prover provider")
 	}
 
 	verifierContract, err := provider.ExportVerifier(string(c.verifyingKey))
@@ -583,10 +583,10 @@ func (c *Circuit) exportVerifier() error {
 	return nil
 }
 
-// importArtifacts attempts to import the circuit from existing artifacts
-func (c *Circuit) importArtifacts(db *gorm.DB) bool {
+// importArtifacts attempts to import the prover from existing artifacts
+func (c *Prover) importArtifacts(db *gorm.DB) bool {
 	if c.Artifacts == nil {
-		common.Log.Tracef("short-circuiting the creation of circuit %s from binary artifacts", c.ID)
+		common.Log.Tracef("short-provering the creation of prover %s from binary artifacts", c.ID)
 		return false
 	}
 
@@ -596,7 +596,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.Binary, err = hex.DecodeString(binary)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import binary artifact for circuit %s; %s", c.ID, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import binary artifact for prover %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}
@@ -606,7 +606,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.provingKey, err = hex.DecodeString(provingKey)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import proving key for circuit %s; %s", c.ID, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import proving key for prover %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}
@@ -616,7 +616,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.verifyingKey, err = hex.DecodeString(verifyingKey)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import verifying key for circuit %s; %s", c.ID, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import verifying key for prover %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}
@@ -626,7 +626,7 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 		c.srs, err = hex.DecodeString(srs)
 		if err != nil {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to import SRS for circuit %s; %s", c.ID, err.Error())),
+				Message: common.StringOrNil(fmt.Sprintf("failed to import SRS for prover %s; %s", c.ID, err.Error())),
 			})
 			return false
 		}
@@ -648,8 +648,8 @@ func (c *Circuit) importArtifacts(db *gorm.DB) bool {
 }
 
 // initStorage attempts to initialize storage for notes (dense) and nullifiers (sparse)
-// for the circuit instance; no-op for each store type if it has already been initialized
-func (c *Circuit) initStorage() error {
+// for the prover instance; no-op for each store type if it has already been initialized
+func (c *Prover) initStorage() error {
 	if c.NoteStoreID == nil {
 		err := c.initNoteStorage()
 		if err != nil {
@@ -664,71 +664,71 @@ func (c *Circuit) initStorage() error {
 	return nil
 }
 
-// initNoteStorage initializes dense merkle tree storage for the circuit instance
-func (c *Circuit) initNoteStorage() error {
+// initNoteStorage initializes dense merkle tree storage for the prover instance
+func (c *Prover) initNoteStorage() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	if c.NoteStoreID != nil {
-		return fmt.Errorf("failed to initialize notes storage provider for circuit %s; notes store has already been initialized", c.ID)
+		return fmt.Errorf("failed to initialize notes storage provider for prover %s; notes store has already been initialized", c.ID)
 	}
 
-	common.Log.Debugf("attempting to initialize notes storage for circuit %s", c.ID)
+	common.Log.Debugf("attempting to initialize notes storage for prover %s", c.ID)
 
 	store := &storage.Store{
-		Name:     common.StringOrNil(fmt.Sprintf("notes merkle tree storage for circuit %s", c.ID)),
+		Name:     common.StringOrNil(fmt.Sprintf("notes merkle tree storage for prover %s", c.ID)),
 		Provider: common.StringOrNil(storeprovider.StoreProviderDenseMerkleTree),
 		Curve:    common.StringOrNil(*c.Curve),
 	}
 
 	if store.Create() {
-		common.Log.Debugf("initialized notes storage for circuit with identifier %s", c.ID)
+		common.Log.Debugf("initialized notes storage for prover with identifier %s", c.ID)
 		c.NoteStoreID = &store.ID
 		c.noteStore = store
 	} else {
-		return fmt.Errorf("failed to initialize notes storage provider for circuit %s; store not persisted", c.ID)
+		return fmt.Errorf("failed to initialize notes storage provider for prover %s; store not persisted", c.ID)
 	}
 
 	return nil
 }
 
-// initNullifierStorage initializes sparse merkle tree storage for hashed proofs for the circuit instance
-func (c *Circuit) initNullifierStorage() error {
+// initNullifierStorage initializes sparse merkle tree storage for hashed proofs for the prover instance
+func (c *Prover) initNullifierStorage() error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	if c.NullifierStoreID != nil {
-		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store has already been initialized", c.ID)
+		return fmt.Errorf("failed to initialize proof storage provider for prover %s; store has already been initialized", c.ID)
 	}
 
-	common.Log.Debugf("attempting to initialize proof storage for circuit %s", c.ID)
+	common.Log.Debugf("attempting to initialize proof storage for prover %s", c.ID)
 
 	store := &storage.Store{
-		Name:     common.StringOrNil(fmt.Sprintf("nullifiers merkle tree storage for circuit %s", c.ID)),
+		Name:     common.StringOrNil(fmt.Sprintf("nullifiers merkle tree storage for prover %s", c.ID)),
 		Provider: common.StringOrNil(storeprovider.StoreProviderSparseMerkleTree),
 		Curve:    common.StringOrNil(*c.Curve),
 	}
 
 	if store.Create() {
-		common.Log.Debugf("initialized proof storage for circuit with identifier %s", c.ID)
+		common.Log.Debugf("initialized proof storage for prover with identifier %s", c.ID)
 		c.NullifierStoreID = &store.ID
 		c.nullifierStore = store
 	} else {
-		return fmt.Errorf("failed to initialize proof storage provider for circuit %s; store not persisted", c.ID)
+		return fmt.Errorf("failed to initialize proof storage provider for prover %s; store not persisted", c.ID)
 	}
 
 	return nil
 }
 
 // generateEncryptionKey attempts to generate an AES-256-GCM symmetric key for encrypting
-// notes and persist the key id on the circuit instance
-func (c *Circuit) generateEncryptionKey() bool {
+// notes and persist the key id on the prover instance
+func (c *Prover) generateEncryptionKey() bool {
 	key, err := vault.CreateKey(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
 		map[string]interface{}{
-			"name":        fmt.Sprintf("%s circuit note encryption key", *c.Name),
-			"description": fmt.Sprintf("%s circuit key for encrypted note storage", *c.Name),
+			"name":        fmt.Sprintf("%s prover note encryption key", *c.Name),
+			"description": fmt.Sprintf("%s prover key for encrypted note storage", *c.Name),
 			"spec":        "AES-256-GCM",
 			"type":        "symmetric",
 			"usage":       "encrypt/decrypt",
@@ -736,7 +736,7 @@ func (c *Circuit) generateEncryptionKey() bool {
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to generate symmetric key material for encrypted notes storage for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to generate symmetric key material for encrypted notes storage for prover %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
 		})
 		return false
 	}
@@ -747,18 +747,18 @@ func (c *Circuit) generateEncryptionKey() bool {
 
 // persistKeys attempts to persist the proving and verifying keys as secrets
 // in the configured vault instance
-func (c *Circuit) persistKeys() bool {
+func (c *Prover) persistKeys() bool {
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
 		hex.EncodeToString(c.provingKey),
-		fmt.Sprintf("%s circuit proving key", *c.Name),
-		fmt.Sprintf("%s circuit %s proving key", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s prover proving key", *c.Name),
+		fmt.Sprintf("%s prover %s proving key", *c.Name, *c.ProvingScheme),
 		fmt.Sprintf("%s proving key", *c.ProvingScheme),
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to store proving key for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to store proving key for prover %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
 		})
 		return false
 	}
@@ -768,13 +768,13 @@ func (c *Circuit) persistKeys() bool {
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
 		hex.EncodeToString(c.verifyingKey),
-		fmt.Sprintf("%s circuit verifying key", *c.Name),
-		fmt.Sprintf("%s circuit %s verifying key", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s prover verifying key", *c.Name),
+		fmt.Sprintf("%s prover %s verifying key", *c.Name, *c.ProvingScheme),
 		fmt.Sprintf("%s verifying key", *c.ProvingScheme),
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to store verifying key for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to store verifying key for prover %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
 		})
 		return false
 	}
@@ -783,19 +783,19 @@ func (c *Circuit) persistKeys() bool {
 	return c.ProvingKeyID != nil && c.VerifyingKeyID != nil
 }
 
-// persistSRS attempts to persist the circuit SRS as a secret in the configured vault instance
-func (c *Circuit) persistSRS() bool {
+// persistSRS attempts to persist the prover SRS as a secret in the configured vault instance
+func (c *Prover) persistSRS() bool {
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
 		hex.EncodeToString(c.srs),
-		fmt.Sprintf("%s circuit SRS", *c.Name),
-		fmt.Sprintf("%s circuit %s SRS", *c.Name, *c.ProvingScheme),
+		fmt.Sprintf("%s prover SRS", *c.Name),
+		fmt.Sprintf("%s prover %s SRS", *c.Name, *c.ProvingScheme),
 		fmt.Sprintf("%s SRS", *c.ProvingScheme),
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to store SRS for circuit %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to store SRS for prover %s in vault %s; %s", *c.Identifier, c.VaultID.String(), err.Error())),
 		})
 		return false
 	}
@@ -803,55 +803,55 @@ func (c *Circuit) persistSRS() bool {
 	return c.StructuredReferenceStringID != nil
 }
 
-func (c *Circuit) setupRequired() bool {
-	return c.ProvingScheme != nil && (*c.ProvingScheme == circuitProvingSchemeGroth16 || *c.ProvingScheme == circuitProvingSchemePlonk) && c.Status != nil && (*c.Status == circuitStatusCompiled || *c.Status == circuitStatusPendingSetup)
+func (c *Prover) setupRequired() bool {
+	return c.ProvingScheme != nil && (*c.ProvingScheme == proverProvingSchemeGroth16 || *c.ProvingScheme == proverProvingSchemePlonk) && c.Status != nil && (*c.Status == proverStatusCompiled || *c.Status == proverStatusPendingSetup)
 }
 
-// setup attempts to setup the circuit
-func (c *Circuit) setup(db *gorm.DB) bool {
+// setup attempts to setup the prover
+func (c *Prover) setup(db *gorm.DB) bool {
 	if !c.setupRequired() {
-		common.Log.Warningf("attempted to setup circuit for which setup is not required")
+		common.Log.Warningf("attempted to setup prover for which setup is not required")
 		return false
 	}
 
-	c.updateStatus(db, circuitStatusRunningSetup, nil)
+	c.updateStatus(db, proverStatusRunningSetup, nil)
 
 	if c.Binary == nil || len(c.Binary) == 0 {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to setup circuit with identifier %s; no compiled artifacts", *c.Identifier)),
+			Message: common.StringOrNil(fmt.Sprintf("failed to setup prover with identifier %s; no compiled artifacts", *c.Identifier)),
 		})
-		common.Log.Warningf("failed to setup circuit with identifier %s; no compiled artifacts", *c.Identifier)
+		common.Log.Warningf("failed to setup prover with identifier %s; no compiled artifacts", *c.Identifier)
 		return false
 	}
 
-	provider := c.circuitProviderFactory()
+	provider := c.proverProviderFactory()
 	if provider == nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil("failed to resolve circuit provider"),
+			Message: common.StringOrNil("failed to resolve prover provider"),
 		})
 		return false
 	}
 
 	if c.srsRequired() && (c.srs == nil || len(c.srs) == 0) {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to acquire srs before setup for circuit with identifier %s", *c.Identifier)),
+			Message: common.StringOrNil(fmt.Sprintf("failed to acquire srs before setup for prover with identifier %s", *c.Identifier)),
 		})
-		common.Log.Warningf("failed to acquire srs before Setup for circuit with identifier %s", *c.Identifier)
+		common.Log.Warningf("failed to acquire srs before Setup for prover with identifier %s", *c.Identifier)
 		return false
 	}
 	pk, vk, err := provider.Setup(c.Binary, c.srs)
 
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("error during setup of verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("error during setup of verifier and proving keys for prover with identifier %s; %s", *c.Identifier, err.Error())),
 		})
-		common.Log.Warningf("error during setup of verifier and proving keys for circuit with identifier %s; %s", *c.Identifier, err.Error())
+		common.Log.Warningf("error during setup of verifier and proving keys for prover with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	} else if vk == nil || pk == nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for circuit with identifier %s", *c.Identifier)),
+			Message: common.StringOrNil(fmt.Sprintf("failed to setup verifier and proving keys for prover with identifier %s", *c.Identifier)),
 		})
-		common.Log.Warningf("failed to setup verifier and proving keys for circuit with identifier %s", *c.Identifier)
+		common.Log.Warningf("failed to setup verifier and proving keys for prover with identifier %s", *c.Identifier)
 		return false
 	}
 
@@ -859,9 +859,9 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 	_, err = pk.(io.WriterTo).WriteTo(pkBuf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary proving key for prover with identifier %s; %s", *c.Identifier, err.Error())),
 		})
-		common.Log.Warningf("failed to marshal binary proving key for circuit with identifier %s; %s", *c.Identifier, err.Error())
+		common.Log.Warningf("failed to marshal binary proving key for prover with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	}
 	c.provingKey = pkBuf.Bytes()
@@ -870,64 +870,64 @@ func (c *Circuit) setup(db *gorm.DB) bool {
 	_, err = vk.(io.WriterTo).WriteTo(vkBuf)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to marshal binary verifying key for prover with identifier %s; %s", *c.Identifier, err.Error())),
 		})
-		common.Log.Warningf("failed to marshal binary verifying key for circuit with identifier %s; %s", *c.Identifier, err.Error())
+		common.Log.Warningf("failed to marshal binary verifying key for prover with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	}
 	c.verifyingKey = vkBuf.Bytes()
 
 	if len(c.Errors) != 0 {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("errors found while setting up circuit with identifier %s", *c.Identifier)),
+			Message: common.StringOrNil(fmt.Sprintf("errors found while setting up prover with identifier %s", *c.Identifier)),
 		})
-		common.Log.Warningf("errors found while setting up circuit with identifier %s", *c.Identifier)
+		common.Log.Warningf("errors found while setting up prover with identifier %s", *c.Identifier)
 		return false
 	}
 
 	if !c.generateEncryptionKey() {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to persist encryption key for circuit with identifier %s", *c.Identifier)),
+			Message: common.StringOrNil(fmt.Sprintf("failed to persist encryption key for prover with identifier %s", *c.Identifier)),
 		})
-		common.Log.Warningf("failed to persist encryption key for circuit with identifier %s", *c.Identifier)
+		common.Log.Warningf("failed to persist encryption key for prover with identifier %s", *c.Identifier)
 		return false
 	}
 
 	if !c.persistKeys() {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to persist proving and verifying keys for circuit with identifier %s", *c.Identifier)),
+			Message: common.StringOrNil(fmt.Sprintf("failed to persist proving and verifying keys for prover with identifier %s", *c.Identifier)),
 		})
-		common.Log.Warningf("failed to persist proving and verifying keys for circuit with identifier %s", *c.Identifier)
+		common.Log.Warningf("failed to persist proving and verifying keys for prover with identifier %s", *c.Identifier)
 		return false
 	}
 
 	err = c.enrich()
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to enrich circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to enrich prover with identifier %s; %s", *c.Identifier, err.Error())),
 		})
-		common.Log.Warningf("failed to enrich circuit with identifier %s; %s", *c.Identifier, err.Error())
+		common.Log.Warningf("failed to enrich prover with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	}
 
-	err = c.updateStatus(db, circuitStatusProvisioned, nil)
+	err = c.updateStatus(db, proverStatusProvisioned, nil)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to update status of circuit with identifier %s; %s", *c.Identifier, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to update status of prover with identifier %s; %s", *c.Identifier, err.Error())),
 		})
-		common.Log.Warningf("failed to update status of circuit with identifier %s; %s", *c.Identifier, err.Error())
+		common.Log.Warningf("failed to update status of prover with identifier %s; %s", *c.Identifier, err.Error())
 		return false
 	}
 
 	return true
 }
 
-func (c *Circuit) srsRequired() bool {
-	return c.ProvingScheme != nil && *c.ProvingScheme == circuitProvingSchemePlonk
+func (c *Prover) srsRequired() bool {
+	return c.ProvingScheme != nil && *c.ProvingScheme == proverProvingSchemePlonk
 }
 
-// updateStatus updates the circuit status and optional description
-func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) error {
+// updateStatus updates the prover status and optional description
+func (c *Prover) updateStatus(db *gorm.DB, status string, description *string) error {
 	// FIXME-- use distributed lock here
 	c.Status = common.StringOrNil(status)
 	c.Description = description
@@ -947,7 +947,7 @@ func (c *Circuit) updateStatus(db *gorm.DB, status string, description *string) 
 }
 
 // TODO-- add object, witness
-func (c *Circuit) updateState(proof string, witness map[string]interface{}) error {
+func (c *Prover) updateState(proof string, witness map[string]interface{}) error {
 	var note []byte
 
 	// FIXME -- adopt proper Note structure
@@ -970,19 +970,19 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 			string(note),
 		)
 		if err != nil {
-			common.Log.Warningf("failed to update state; failed to encrypt note for circuit %s; %s", c.ID, err.Error())
+			common.Log.Warningf("failed to update state; failed to encrypt note for prover %s; %s", c.ID, err.Error())
 			return err
 		}
 
 		data, err = hex.DecodeString(resp.Data)
 		if err != nil {
-			common.Log.Warningf("failed to update state; failed to encrypt note for circuit %s; %s", c.ID, err.Error())
+			common.Log.Warningf("failed to update state; failed to encrypt note for prover %s; %s", c.ID, err.Error())
 			return err
 		}
 
 		nullifiedIndex, err = c.noteStore.Size()
 		if err != nil {
-			common.Log.Warningf("failed to get size of note store for circuit %s; %s", c.ID, err.Error())
+			common.Log.Warningf("failed to get size of note store for prover %s; %s", c.ID, err.Error())
 			return err
 		}
 
@@ -991,18 +991,18 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 		if nullifiedIndex >= 0 && c.nullifierStore != nil {
 			nullifiedNote, err = c.noteStore.ValueAt(new(big.Int).SetUint64(uint64(nullifiedIndex)).Bytes())
 			if err != nil {
-				common.Log.Warningf("failed to update state; note not inserted for circuit %s; failed to check double-spend; %s", c.ID, err.Error())
+				common.Log.Warningf("failed to update state; note not inserted for prover %s; failed to check double-spend; %s", c.ID, err.Error())
 				return err
 			}
 
 			nullifierExists, err = c.nullifierStore.Contains(string(nullifiedNote))
 			if err != nil {
-				common.Log.Warningf("failed to update state; unable to determine if nullifier exists for circuit %s; %s", c.ID, err.Error())
+				common.Log.Warningf("failed to update state; unable to determine if nullifier exists for prover %s; %s", c.ID, err.Error())
 				return err
 			}
 
 			if nullifierExists {
-				err := fmt.Errorf("attempt to double-spend %d-byte note for circuit %s", len(note), c.ID)
+				err := fmt.Errorf("attempt to double-spend %d-byte note for prover %s", len(note), c.ID)
 				common.Log.Warning(err.Error())
 				return err
 			}
@@ -1010,16 +1010,16 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 
 		_, err = c.noteStore.Insert(string(data))
 		if err != nil {
-			common.Log.Warningf("failed to update state; note not inserted for circuit %s; %s", c.ID, err.Error())
+			common.Log.Warningf("failed to update state; note not inserted for prover %s; %s", c.ID, err.Error())
 			return err
 		}
 
-		_, err = c.dispatchNotification(natsCircuitNotificationNoteDeposit)
+		_, err = c.dispatchNotification(natsProverNotificationNoteDeposit)
 		if err != nil {
-			common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationNoteDeposit, c.ID, err.Error())
+			common.Log.Warningf("failed to dispatch %s notification for prover %s; %s", natsProverNotificationNoteDeposit, c.ID, err.Error())
 		}
 
-		common.Log.Debugf("inserted %d-byte note for circuit %s", len(note), c.ID)
+		common.Log.Debugf("inserted %d-byte note for prover %s", len(note), c.ID)
 	}
 
 	if nullifiedIndex >= 0 && c.nullifierStore != nil {
@@ -1027,86 +1027,86 @@ func (c *Circuit) updateState(proof string, witness map[string]interface{}) erro
 
 		root, err := c.nullifierStore.Insert(string(nullifiedNote))
 		if err != nil {
-			common.Log.Warningf("failed to insert nullifier for circuit %s; %s", c.ID, err.Error())
+			common.Log.Warningf("failed to insert nullifier for prover %s; %s", c.ID, err.Error())
 			return err
 		} else {
 			nullifierExists, err = c.nullifierStore.Contains(string(nullifiedNote))
 			if err != nil {
-				common.Log.Warningf("failed to update state; unable to determine if nullifier exists for circuit %s; %s", c.ID, err.Error())
+				common.Log.Warningf("failed to update state; unable to determine if nullifier exists for prover %s; %s", c.ID, err.Error())
 				return err
 			}
 
 			if !nullifierExists {
-				err := fmt.Errorf("inserted nullifier for circuit %s resulted in internal inconsistency for %d-byte note", c.ID, len(note))
+				err := fmt.Errorf("inserted nullifier for prover %s resulted in internal inconsistency for %d-byte note", c.ID, len(note))
 				common.Log.Warning(err.Error())
 				return err
 			}
 
-			_, err = c.dispatchNotification(natsCircuitNotificationNoteNullified)
+			_, err = c.dispatchNotification(natsProverNotificationNoteNullified)
 			if err != nil {
-				common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationNoteNullified, c.ID, err.Error())
+				common.Log.Warningf("failed to dispatch %s notification for prover %s; %s", natsProverNotificationNoteNullified, c.ID, err.Error())
 			}
 
-			common.Log.Debugf("inserted %d-byte nullifier for circuit %s: root: %s", len(data), c.ID, hex.EncodeToString(root))
+			common.Log.Debugf("inserted %d-byte nullifier for prover %s: root: %s", len(data), c.ID, hex.EncodeToString(root))
 		}
 	}
 
 	return nil
 }
 
-// exited returns true if the circuit, or its logical parent, has exited
-// a circuit can exit iff !exited()
-func (c *Circuit) exited() bool {
+// exited returns true if the prover, or its logical parent, has exited
+// a prover can exit iff !exited()
+func (c *Prover) exited() bool {
 
 	return false
 }
 
-// exit the given circuit by nullifying its final valid state
+// exit the given prover by nullifying its final valid state
 //
-// 1. Set all values in the note object to zero and encrypt. This will always lead to the same string and thus nullifier index for the note and nullifier tree for a given circuit.
+// 1. Set all values in the note object to zero and encrypt. This will always lead to the same string and thus nullifier index for the note and nullifier tree for a given prover.
 // 2. Check if the last index value is the value to ensure that the note tree has not already been exited. If yes, then error out, if no continue
 // 3. Check if the nullifier tree has that entry too. If yes, then error out, if no continue
 // 4. Update the note store
 // 5. Update the nullifier tree. This seals both note and nullifier trees to further changes.
 //
 // TODO: add function to check if a workflow has been exited by checking to see if the last note is the exit note and if it has been nullified in the SMT
-func (c *Circuit) exit() error {
+func (c *Prover) exit() error {
 	var err error
 	// TODO: check to ensure an exit is possible...
 
-	_, err = c.dispatchNotification(natsCircuitNotificationExit)
+	_, err = c.dispatchNotification(natsProverNotificationExit)
 	if err != nil {
-		common.Log.Warningf("failed to dispatch %s notification for circuit %s; %s", natsCircuitNotificationExit, c.ID, err.Error())
+		common.Log.Warningf("failed to dispatch %s notification for prover %s; %s", natsProverNotificationExit, c.ID, err.Error())
 	}
 
 	return nil
 }
 
-// validate the circuit params
-func (c *Circuit) validate() bool {
+// validate the prover params
+func (c *Prover) validate() bool {
 	c.Errors = make([]*provide.Error, 0)
 
 	if c.Curve == nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil("circuit curve id required"),
+			Message: common.StringOrNil("prover curve id required"),
 		})
 	}
 
 	if c.Provider == nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil("circuit provider required"),
+			Message: common.StringOrNil("prover provider required"),
 		})
 	}
 
 	if c.ProvingScheme == nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil("circuit proving scheme required"),
+			Message: common.StringOrNil("prover proving scheme required"),
 		})
 	}
 
 	if c.Identifier == nil {
 		c.Errors = append(c.Errors, &provide.Error{
-			Message: common.StringOrNil("circuit identifier required"),
+			Message: common.StringOrNil("prover identifier required"),
 		})
 	}
 

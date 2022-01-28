@@ -19,61 +19,61 @@ import (
 	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
 
-// GnarkCircuitProvider interacts with the go-native gnark package
-type GnarkCircuitProvider struct {
+// GnarkProverProvider interacts with the go-native gnark package
+type GnarkProverProvider struct {
 	curveID         ecc.ID
 	provingSchemeID backend.ID
-	circuitLibrary  map[string]interface{}
+	proverLibrary   map[string]interface{}
 }
 
-// InitGnarkCircuitProvider initializes and configures a new GnarkCircuitProvider instance
-func InitGnarkCircuitProvider(curveID *string, provingScheme *string) *GnarkCircuitProvider {
-	return &GnarkCircuitProvider{
+// InitGnarkProverProvider initializes and configures a new GnarkProverProvider instance
+func InitGnarkProverProvider(curveID *string, provingScheme *string) *GnarkProverProvider {
+	return &GnarkProverProvider{
 		curveID:         common.GnarkCurveIDFactory(curveID),
 		provingSchemeID: common.GnarkProvingSchemeFactory(provingScheme),
-		circuitLibrary: map[string]interface{}{
-			GnarkCircuitIdentifierCubic:                       &gnark.CubicCircuit{},
-			GnarkCircuitIdentifierMimc:                        &gnark.MimcCircuit{},
-			GnarkCircuitIdentifierBaselineRollup:              &gnark.BaselineRollupCircuit{},
-			GnarkCircuitIdentifierPurchaseOrderCircuit:        &gnark.PurchaseOrderCircuit{},
-			GnarkCircuitIdentifierSalesOrderCircuit:           &gnark.SalesOrderCircuit{},
-			GnarkCircuitIdentifierShipmentNotificationCircuit: &gnark.ShipmentNotificationCircuit{},
-			GnarkCircuitIdentifierGoodsReceiptCircuit:         &gnark.GoodsReceiptCircuit{},
-			GnarkCircuitIdentifierInvoiceCircuit:              &gnark.InvoiceCircuit{},
-			GnarkCircuitIdentifierProofHashCircuit:            &gnark.ProofHashCircuit{},
-			GnarkCircuitIdentifierProofEddsaCircuit:           &gnark.ProofEddsaCircuit{},
+		proverLibrary: map[string]interface{}{
+			GnarkProverIdentifierCubic:                      &gnark.CubicProver{},
+			GnarkProverIdentifierMimc:                       &gnark.MimcProver{},
+			GnarkProverIdentifierBaselineRollup:             &gnark.BaselineRollupProver{},
+			GnarkProverIdentifierPurchaseOrderProver:        &gnark.PurchaseOrderProver{},
+			GnarkProverIdentifierSalesOrderProver:           &gnark.SalesOrderProver{},
+			GnarkProverIdentifierShipmentNotificationProver: &gnark.ShipmentNotificationProver{},
+			GnarkProverIdentifierGoodsReceiptProver:         &gnark.GoodsReceiptProver{},
+			GnarkProverIdentifierInvoiceProver:              &gnark.InvoiceProver{},
+			GnarkProverIdentifierProofHashProver:            &gnark.ProofHashProver{},
+			GnarkProverIdentifierProofEddsaProver:           &gnark.ProofEddsaProver{},
 		},
 	}
 }
 
-// CircuitFactory returns a library circuit by name
-func (p *GnarkCircuitProvider) CircuitFactory(identifier string) interface{} {
+// ProverFactory returns a library prover by name
+func (p *GnarkProverProvider) ProverFactory(identifier string) interface{} {
 	id := strings.ToLower(identifier)
-	circuit, circuitOk := p.circuitLibrary[id]
-	if circuitOk {
-		return circuit
+	prover, proverOk := p.proverLibrary[id]
+	if proverOk {
+		return prover
 	}
 
 	return nil
 }
 
-// AddCircuit adds a gnark circuit to the library
-func (p *GnarkCircuitProvider) AddCircuit(identifier string, circuit interface{}) error {
-	c, cOk := circuit.(frontend.Circuit)
+// AddProver adds a gnark prover to the library
+func (p *GnarkProverProvider) AddProver(identifier string, prover interface{}) error {
+	c, cOk := prover.(frontend.Circuit)
 	if !cOk {
-		return fmt.Errorf("invalid gnark circuit type %T; expected frontend.Circuit", circuit)
+		return fmt.Errorf("invalid gnark prover type %T; expected frontend.Circuit", prover)
 	}
 
 	id := strings.ToLower(identifier)
-	p.circuitLibrary[id] = c
+	p.proverLibrary[id] = c
 
 	return nil
 }
 
-// allocateVariablesForCircuit allocates slices for the given circuit if needed
-// inputs should be of the form map[string]interface{}{"CircuitMemberName_count": "3"}
-func allocateVariablesForCircuit(circuit frontend.Circuit, inputs map[string]interface{}) error {
-	witval := reflect.Indirect(reflect.ValueOf(circuit))
+// allocateVariablesForProver allocates slices for the given prover if needed
+// inputs should be of the form map[string]interface{}{"ProverMemberName_count": "3"}
+func allocateVariablesForProver(prover frontend.Circuit, inputs map[string]interface{}) error {
+	witval := reflect.Indirect(reflect.ValueOf(prover))
 
 	for k := range inputs {
 		if !strings.Contains(k, "_count") {
@@ -108,14 +108,14 @@ func allocateVariablesForCircuit(circuit frontend.Circuit, inputs map[string]int
 	return nil
 }
 
-// WitnessFactory generates a valid witness for the given circuit identifier, curve and named inputs
-func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, inputs interface{}, isPublic bool) (interface{}, error) {
-	w := p.CircuitFactory(identifier)
+// WitnessFactory generates a valid witness for the given prover identifier, curve and named inputs
+func (p *GnarkProverProvider) WitnessFactory(identifier string, curve string, inputs interface{}, isPublic bool) (interface{}, error) {
+	w := p.ProverFactory(identifier)
 	if w == nil {
-		return nil, fmt.Errorf("failed to serialize witness; %s circuit not resolved", identifier)
+		return nil, fmt.Errorf("failed to serialize witness; %s prover not resolved", identifier)
 	}
 
-	err := allocateVariablesForCircuit(w.(frontend.Circuit), inputs.(map[string]interface{}))
+	err := allocateVariablesForProver(w.(frontend.Circuit), inputs.(map[string]interface{}))
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize witness; %s", err.Error())
 	}
@@ -134,17 +134,17 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 				field = field.FieldByName(strings.Split(f, "[")[0])
 			}
 			if !field.CanSet() {
-				return nil, fmt.Errorf("failed to serialize witness; field %s does not exist on %s circuit", k, identifier)
+				return nil, fmt.Errorf("failed to serialize witness; field %s does not exist on %s prover", k, identifier)
 			}
 			if (field.Kind() == reflect.Array || field.Kind() == reflect.Slice) && strings.Contains(f, "[") {
 				indexStr := strings.Split(f, "[")[1]
 				indexStr = strings.TrimRight(indexStr, "]")
 				index, err := strconv.Atoi(indexStr)
 				if err != nil {
-					return nil, fmt.Errorf("failed to serialize witness; unable to extract index from witness on %s circuit", identifier)
+					return nil, fmt.Errorf("failed to serialize witness; unable to extract index from witness on %s prover", identifier)
 				}
 				if index >= field.Len() {
-					return nil, fmt.Errorf("failed to serialize witness; invalid index %d for field %s on %s circuit", index, k, identifier)
+					return nil, fmt.Errorf("failed to serialize witness; invalid index %d for field %s on %s prover", index, k, identifier)
 				}
 				field = field.Index(index)
 			}
@@ -162,17 +162,17 @@ func (p *GnarkCircuitProvider) WitnessFactory(identifier string, curve string, i
 			_, errWrite = witness.WriteFullTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
 		}
 		if errWrite != nil {
-			common.Log.Warningf("failed to serialize witness for %s circuit; %s", identifier, errWrite.Error())
+			common.Log.Warningf("failed to serialize witness for %s prover; %s", identifier, errWrite.Error())
 			return nil, errWrite
 		}
 
 		return w, nil
 	}
 
-	return nil, fmt.Errorf("failed to serialize witness for %s circuit", identifier)
+	return nil, fmt.Errorf("failed to serialize witness for %s prover", identifier)
 }
 
-func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {
+func (p *GnarkProverProvider) decodeR1CS(encodedR1CS []byte) (frontend.CompiledConstraintSystem, error) {
 	var decodedR1CS frontend.CompiledConstraintSystem
 
 	switch p.provingSchemeID {
@@ -193,7 +193,7 @@ func (p *GnarkCircuitProvider) decodeR1CS(encodedR1CS []byte) (frontend.Compiled
 	return decodedR1CS, nil
 }
 
-func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (interface{}, error) {
+func (p *GnarkProverProvider) decodeProvingKey(pk []byte) (interface{}, error) {
 	var n int64
 	var err error
 	var provingKey interface{}
@@ -220,7 +220,7 @@ func (p *GnarkCircuitProvider) decodeProvingKey(pk []byte) (interface{}, error) 
 	return provingKey, nil
 }
 
-func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (interface{}, error) {
+func (p *GnarkProverProvider) decodeVerifyingKey(vk []byte) (interface{}, error) {
 	var n int64
 	var err error
 	var verifyingKey interface{}
@@ -247,7 +247,7 @@ func (p *GnarkCircuitProvider) decodeVerifyingKey(vk []byte) (interface{}, error
 	return verifyingKey, nil
 }
 
-func (p *GnarkCircuitProvider) decodeProof(proof []byte) (interface{}, error) {
+func (p *GnarkProverProvider) decodeProof(proof []byte) (interface{}, error) {
 	var err error
 	var prf interface{}
 
@@ -273,23 +273,23 @@ func (p *GnarkCircuitProvider) decodeProof(proof []byte) (interface{}, error) {
 	return prf, nil
 }
 
-// Compile the circuit...
-func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error) {
-	circuit := argv[0].(frontend.Circuit)
+// Compile the prover...
+func (p *GnarkProverProvider) Compile(argv ...interface{}) (interface{}, error) {
+	prover := argv[0].(frontend.Circuit)
 	if len(argv) > 1 {
 		inputs, ok := argv[1].(map[string]interface{})
 
 		if ok {
-			err := allocateVariablesForCircuit(circuit, inputs)
+			err := allocateVariablesForProver(prover, inputs)
 			if err != nil {
-				common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
+				common.Log.Warningf("failed to compile prover to r1cs using gnark; %s", err.Error())
 				return nil, err
 			}
 		}
 	}
-	r1cs, err := frontend.Compile(p.curveID, p.provingSchemeID, circuit)
+	r1cs, err := frontend.Compile(p.curveID, p.provingSchemeID, prover)
 	if err != nil {
-		common.Log.Warningf("failed to compile circuit to r1cs using gnark; %s", err.Error())
+		common.Log.Warningf("failed to compile prover to r1cs using gnark; %s", err.Error())
 		return nil, err
 	}
 
@@ -297,12 +297,12 @@ func (p *GnarkCircuitProvider) Compile(argv ...interface{}) (interface{}, error)
 }
 
 // ComputeWitness computes a witness for the given inputs
-func (p *GnarkCircuitProvider) ComputeWitness(artifacts interface{}, argv ...interface{}) (interface{}, error) {
+func (p *GnarkProverProvider) ComputeWitness(artifacts interface{}, argv ...interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("gnark does not implement ComputeWitness()")
 }
 
 // ExportVerifier exports the verifier contract, if supported; returns nil if the `Verify` method should be called
-func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{}, error) {
+func (p *GnarkProverProvider) ExportVerifier(verifyingKey string) (interface{}, error) {
 	if p.provingSchemeID != backend.GROTH16 {
 		return nil, fmt.Errorf("export verifier not supported for proving scheme %s", p.provingSchemeID.String())
 	}
@@ -322,14 +322,14 @@ func (p *GnarkCircuitProvider) ExportVerifier(verifyingKey string) (interface{},
 }
 
 // GenerateProof generates a proof
-func (p *GnarkCircuitProvider) GenerateProof(circuit interface{}, witness interface{}, provingKey string) (interface{}, error) {
+func (p *GnarkProverProvider) GenerateProof(prover interface{}, witness interface{}, provingKey string) (interface{}, error) {
 	return nil, fmt.Errorf("gnark does not implement GenerateProof()")
 }
 
-// Setup runs the circuit setup; if srs is non-nil, it is intended to be
+// Setup runs the prover setup; if srs is non-nil, it is intended to be
 // the input from a MPC process
-func (p *GnarkCircuitProvider) Setup(circuit interface{}, srs []byte) (interface{}, interface{}, error) {
-	r1cs, err := p.decodeR1CS(circuit.([]byte))
+func (p *GnarkProverProvider) Setup(prover interface{}, srs []byte) (interface{}, interface{}, error) {
+	r1cs, err := p.decodeR1CS(prover.([]byte))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -347,10 +347,10 @@ func (p *GnarkCircuitProvider) Setup(circuit interface{}, srs []byte) (interface
 }
 
 // Prove generates a proof
-func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interface{}, srs []byte) (interface{}, error) {
+func (p *GnarkProverProvider) Prove(prover, provingKey []byte, witness interface{}, srs []byte) (interface{}, error) {
 	var err error
 
-	r1cs, err := p.decodeR1CS(circuit)
+	r1cs, err := p.decodeR1CS(prover)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +377,7 @@ func (p *GnarkCircuitProvider) Prove(circuit, provingKey []byte, witness interfa
 }
 
 // Verify the given proof and witness
-func (p *GnarkCircuitProvider) Verify(proof, verifyingKey []byte, witness interface{}, srs []byte) error {
+func (p *GnarkProverProvider) Verify(proof, verifyingKey []byte, witness interface{}, srs []byte) error {
 	var err error
 
 	prf, err := p.decodeProof(proof)

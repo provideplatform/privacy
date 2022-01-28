@@ -1,5 +1,6 @@
 ALTER TABLE ONLY provers RENAME TO circuits;
 
+ALTER INDEX idx_provers_application_id RENAME TO idx_circuits_application_id;
 ALTER INDEX idx_provers_organization_id RENAME TO idx_circuits_organization_id;
 ALTER INDEX idx_provers_user_id RENAME TO idx_circuits_user_id;
 ALTER INDEX idx_provers_provider RENAME TO idx_circuits_provider;

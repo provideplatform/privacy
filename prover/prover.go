@@ -427,7 +427,7 @@ func (c *Prover) compile(db *gorm.DB, variables interface{}) bool {
 			}
 		} else {
 			c.Errors = append(c.Errors, &provide.Error{
-				Message: common.StringOrNil(fmt.Sprintf("failed to resolve prover for provider: %s", *c.Provider)),
+				Message: common.StringOrNil(fmt.Sprintf("failed to resolve prover %s for provider: %s", *c.Identifier, *c.Provider)),
 			})
 			return false
 		}

@@ -52,6 +52,10 @@ const proverStatusRunningSetup = "running_setup"
 const proverStatusDeployingArtifacts = "deploying_artifacts" // optional -- if i.e. verifier contract should be deployed to blockchain
 const proverStatusProvisioned = "provisioned"
 
+const proverVaultTypePrivacyProvingKey = "privacy_proving_key"
+const proverVaultTypePrivacyVerifyingKey = "privacy_verifying_key"
+const proverVaultTypePrivacySRS = "privacy_srs"
+
 // Prover model
 type Prover struct {
 	provide.Model
@@ -767,10 +771,12 @@ func (c *Prover) persistKeys() bool {
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
-		hex.EncodeToString(c.provingKey),
-		fmt.Sprintf("%s prover proving key", *c.Name),
-		fmt.Sprintf("%s prover %s proving key", *c.Name, *c.ProvingScheme),
-		fmt.Sprintf("%s proving key", *c.ProvingScheme),
+		map[string]interface{}{
+			"description": fmt.Sprintf("%s prover %s proving key", *c.Name, *c.ProvingScheme),
+			"name":        fmt.Sprintf("%s prover proving key", *c.Name),
+			"type":        proverVaultTypePrivacyProvingKey,
+			"value":       hex.EncodeToString(c.provingKey),
+		},
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
@@ -783,10 +789,12 @@ func (c *Prover) persistKeys() bool {
 	secret, err = vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
-		hex.EncodeToString(c.verifyingKey),
-		fmt.Sprintf("%s prover verifying key", *c.Name),
-		fmt.Sprintf("%s prover %s verifying key", *c.Name, *c.ProvingScheme),
-		fmt.Sprintf("%s verifying key", *c.ProvingScheme),
+		map[string]interface{}{
+			"description": fmt.Sprintf("%s prover %s verifying key", *c.Name, *c.ProvingScheme),
+			"name":        fmt.Sprintf("%s prover verifying key", *c.Name),
+			"type":        proverVaultTypePrivacyVerifyingKey,
+			"value":       hex.EncodeToString(c.verifyingKey),
+		},
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{
@@ -804,10 +812,12 @@ func (c *Prover) persistSRS() bool {
 	secret, err := vault.CreateSecret(
 		util.DefaultVaultAccessJWT,
 		c.VaultID.String(),
-		hex.EncodeToString(c.srs),
-		fmt.Sprintf("%s prover SRS", *c.Name),
-		fmt.Sprintf("%s prover %s SRS", *c.Name, *c.ProvingScheme),
-		fmt.Sprintf("%s SRS", *c.ProvingScheme),
+		map[string]interface{}{
+			"description": fmt.Sprintf("%s prover %s SRS", *c.Name, *c.ProvingScheme),
+			"name":        fmt.Sprintf("%s prover SRS", *c.Name),
+			"type":        proverVaultTypePrivacySRS,
+			"value":       hex.EncodeToString(c.srs),
+		},
 	)
 	if err != nil {
 		c.Errors = append(c.Errors, &provide.Error{

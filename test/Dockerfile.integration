@@ -1,0 +1,10 @@
+FROM golang:1.17
+
+RUN mkdir -p /go/src/github.com/provideplatform
+ADD . /go/src/github.com/provideplatform/privacy
+
+WORKDIR /go/src/github.com/provideplatform/privacy
+# RUN make build
+
+ENV TAGS=integration
+ENTRYPOINT ["./ops/run_local_tests.sh"]

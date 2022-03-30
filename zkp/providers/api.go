@@ -16,41 +16,45 @@
 
 package providers
 
-// GnarkProverIdentifierCubic gnark cubic prover
-const GnarkProverIdentifierCubic = "cubic"
+const PreimageHashProver = "preimage_hash"
 
-// GnarkProverIdentifierOwnershipSk gnark ownership sk prover
-const GnarkProverIdentifierOwnershipSk = "ownership_sk"
+const RecursiveProofProver = "recursive_proof"
 
-// GnarkProverIdentifierMimc gnark mimc prover
-const GnarkProverIdentifierMimc = "mimc"
+// // GnarkProverIdentifierCubic gnark cubic prover
+// const GnarkProverIdentifierCubic = "cubic"
 
-// GnarkProverIdentifierBaselineDocumentComplete baseline document complete prover
-const GnarkProverIdentifierBaselineDocumentComplete = "baseline_document_complete"
+// // GnarkProverIdentifierOwnershipSk gnark ownership sk prover
+// const GnarkProverIdentifierOwnershipSk = "ownership_sk"
 
-// GnarkProverIdentifierBaselineRollup gnark prover
-const GnarkProverIdentifierBaselineRollup = "baseline_rollup"
+// // GnarkProverIdentifierMimc gnark mimc prover
+// const GnarkProverIdentifierMimc = "mimc"
 
-// GnarkProverIdentifierPurchaseOrderProver gnark prover
-const GnarkProverIdentifierPurchaseOrderProver = "purchase_order"
+// // GnarkProverIdentifierBaselineDocumentComplete baseline document complete prover
+// const GnarkProverIdentifierBaselineDocumentComplete = "baseline_document_complete"
 
-// GnarkProverIdentifierSalesOrderProver gnark prover
-const GnarkProverIdentifierSalesOrderProver = "sales_order"
+// // GnarkProverIdentifierBaselineRollup gnark prover
+// const GnarkProverIdentifierBaselineRollup = "baseline_rollup"
 
-// GnarkProverIdentifierShipmentNotificationProver gnark prover
-const GnarkProverIdentifierShipmentNotificationProver = "shipment_notification"
+// // GnarkProverIdentifierPurchaseOrderProver gnark prover
+// const GnarkProverIdentifierPurchaseOrderProver = "purchase_order"
 
-// GnarkProverIdentifierGoodsReceiptProver gnark prover
-const GnarkProverIdentifierGoodsReceiptProver = "goods_receipt"
+// // GnarkProverIdentifierSalesOrderProver gnark prover
+// const GnarkProverIdentifierSalesOrderProver = "sales_order"
 
-// GnarkProverIdentifierInvoiceProver gnark prover
-const GnarkProverIdentifierInvoiceProver = "invoice"
+// // GnarkProverIdentifierShipmentNotificationProver gnark prover
+// const GnarkProverIdentifierShipmentNotificationProver = "shipment_notification"
 
-// GnarkProverIdentifierProofHashProver gnark prover
-const GnarkProverIdentifierProofHashProver = "proof_hash"
+// // GnarkProverIdentifierGoodsReceiptProver gnark prover
+// const GnarkProverIdentifierGoodsReceiptProver = "goods_receipt"
 
-// GnarkProverIdentifierProofEddsaProver gnark prover
-const GnarkProverIdentifierProofEddsaProver = "proof_eddsa"
+// // GnarkProverIdentifierInvoiceProver gnark prover
+// const GnarkProverIdentifierInvoiceProver = "invoice"
+
+// // GnarkProverIdentifierProofHashProver gnark prover
+// const GnarkProverIdentifierProofHashProver = "proof_hash"
+
+// // GnarkProverIdentifierProofEddsaProver gnark prover
+// const GnarkProverIdentifierProofEddsaProver = "proof_eddsa"
 
 // ZKSnarkProverProviderGnark gnark zksnark prover provider
 const ZKSnarkProverProviderGnark = "gnark"

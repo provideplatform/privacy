@@ -1,24 +1,30 @@
 #!/bin/bash
 
-#
-# Copyright 2017-2022 Provide Technologies Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+function cleanup {
+    docker compose -f ./ops/docker-compose.yml down
+    docker image rm -f privacy-integration
+}
+trap cleanup EXIT
 
 docker build -t privacy-under-test .
-# docker build -f test/Dockerfile -t privacy-tests .
+docker build -f ./test/Dockerfile.integration -t privacy-integration .
 
-docker-compose -f ./ops/docker-compose-integration.yml up -d
-TAGS=integration ./ops/run_local_tests.sh
-docker-compose -f ./ops/docker-compose-integration.yml down
+docker compose -f ./ops/docker-compose.yml up -d --force-recreate
+sleep 30
+
+# database env provided so the test suite can connect directly
+# to the privacy db to extract proving/verifiying key ids, which
+# are not exposed by the API as they are internal to the service...
+
+docker run -it \
+           -e DATABASE_HOST=host.docker.internal \
+           -e DATABASE_PASSWORD=privacy \
+           -e DATABASE_USER=privacy \
+           -e DATABASE_NAME=privacy_dev \
+           -e IDENT_API_SCHEME=http \
+           -e IDENT_API_HOST=host.docker.internal:8081 \
+           -e PRIVACY_API_SCHEME=http \
+           -e PRIVACY_API_HOST=host.docker.internal:8080 \
+           -e VAULT_API_SCHEME=http \
+           -e VAULT_API_HOST=host.docker.internal:8082 \
+           privacy-integration

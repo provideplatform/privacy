@@ -203,7 +203,7 @@ func (c *Prover) Make(includeImportHeader bool) (string, error) {
 	fmt.Fprintf(&prover, "}\n\n")
 
 	// Define function
-	fmt.Fprintf(&prover, "func (prover *%s) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {\n", c.Name)
+	fmt.Fprintf(&prover, "func (prover *%s) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {\n", c.Name)
 	logic, err := c.makeProverLogic()
 	if err != nil {
 		return "", fmt.Errorf("invalid operator type")

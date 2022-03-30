@@ -85,20 +85,29 @@ func GnarkCurveIDFactory(curveID *string) ecc.ID {
 		return ecc.UNKNOWN
 	}
 
-	switch strings.ToLower(*curveID) {
-	case ecc.BLS12_377.String():
-		return ecc.BLS12_377
-	case ecc.BLS12_381.String():
-		return ecc.BLS12_381
-	case ecc.BN254.String():
-		return ecc.BN254
-	case ecc.BW6_761.String():
-		return ecc.BW6_761
-	case ecc.BLS24_315.String():
-		return ecc.BLS24_315
-	default:
-		return ecc.UNKNOWN
+	fn := func(cid string) ecc.ID {
+		switch cid {
+		case ecc.BLS12_377.String():
+			return ecc.BLS12_377
+		case ecc.BLS12_381.String():
+			return ecc.BLS12_381
+		case ecc.BN254.String():
+			return ecc.BN254
+		case ecc.BW6_761.String():
+			return ecc.BW6_761
+		case ecc.BLS24_315.String():
+			return ecc.BLS24_315
+		default:
+			return ecc.UNKNOWN
+		}
 	}
+
+	cid := fn(strings.ToLower(*curveID))
+	if cid == ecc.UNKNOWN {
+		cid = fn(strings.ToUpper(*curveID))
+	}
+
+	return cid
 }
 
 const gnarkProvingSchemeGroth16 = "groth16"

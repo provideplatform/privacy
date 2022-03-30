@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 /*
  * Copyright 2017-2022 Provide Technologies Inc.
  *
@@ -13,8 +16,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-// +build integration
 
 package test
 
@@ -35,8 +36,6 @@ import (
 	"github.com/provideplatform/privacy/store/providers/merkletree"
 	provide "github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/privacy"
-
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
 
 	vault "github.com/provideplatform/provide-go/api/vault"
 	util "github.com/provideplatform/provide-go/common/util"
@@ -198,19 +197,32 @@ func requireProvers(token *string, provers []*privacy.Prover) error {
 						common.Log.Debugf("failed to fetch prover details; %s", err.Error())
 						break
 					}
+
 					if prover.Status != nil && *prover.Status == "provisioned" {
 						common.Log.Debugf("provisioned workflow prover: %s", prover.ID)
-						// if prover.VerifierContract != nil {
-						// if source, sourceOk := prover.VerifierContract["source"].(string); sourceOk {
-						// contractRaw, _ := json.MarshalIndent(source, "", "  ")
-						// src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
-						// common.Log.Debugf("verifier contract: %s", src)
-						// contractName := fmt.Sprintf("%s Verifier", *prover.Name)
-						// DeployContract([]byte(contractName), []byte(src))
-						// }
-						// }
 
-						deployStates[i] = true
+						// var _prover *prover.Prover
+						// dbconf.DatabaseConnection().Where("id = ?", preimageHashProver.ID).Find(&_prover)
+						if prover.ProvingKeyID == nil {
+							common.Log.Errorf("prover response contained nil proving key id for proving scheme: %s; prover id: %s", *prover.ProvingScheme, prover.ID.String())
+						} else if prover.VerifyingKeyID == nil {
+							common.Log.Errorf("prover response contained nil verifying key id for proving scheme: %s; prover id: %s", *prover.ProvingScheme, prover.ID.String())
+						} else {
+							common.Log.Debugf("proving key id: %s", prover.ProvingKeyID.String())
+							common.Log.Debugf("verifying key id: %s", prover.VerifyingKeyID.String())
+
+							// if prover.VerifierContract != nil {
+							// if source, sourceOk := prover.VerifierContract["source"].(string); sourceOk {
+							// contractRaw, _ := json.MarshalIndent(source, "", "  ")
+							// src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
+							// common.Log.Debugf("verifier contract: %s", src)
+							// contractName := fmt.Sprintf("%s Verifier", *prover.Name)
+							// DeployContract([]byte(contractName), []byte(src))
+							// }
+							// }
+
+							deployStates[i] = true
+						}
 					}
 				}
 			}
@@ -297,8 +309,8 @@ func testProverLifecycle(
 	preImage := hFunc.Sum(nil)
 	preImageString := i.SetBytes(preImage).String()
 
-	hash, _ := mimc.Sum("seed", preImage)
-	hashString := i.SetBytes(hash).String()
+	// hash := mimc.NewMiMC()
+	hashString := i.SetBytes(preImage).String()
 
 	witness := map[string]interface{}{
 		"Document.Preimage": preImageString,

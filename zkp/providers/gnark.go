@@ -31,6 +31,7 @@ import (
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/provideplatform/privacy/common"
 	"github.com/provideplatform/privacy/zkp/lib/circuits/gnark"
 )
@@ -48,16 +49,18 @@ func InitGnarkProverProvider(curveID *string, provingScheme *string) *GnarkProve
 		curveID:         common.GnarkCurveIDFactory(curveID),
 		provingSchemeID: common.GnarkProvingSchemeFactory(provingScheme),
 		proverLibrary: map[string]interface{}{
-			GnarkProverIdentifierCubic:                      &gnark.CubicProver{},
-			GnarkProverIdentifierMimc:                       &gnark.MimcProver{},
-			GnarkProverIdentifierBaselineRollup:             &gnark.BaselineRollupProver{},
-			GnarkProverIdentifierPurchaseOrderProver:        &gnark.PurchaseOrderProver{},
-			GnarkProverIdentifierSalesOrderProver:           &gnark.SalesOrderProver{},
-			GnarkProverIdentifierShipmentNotificationProver: &gnark.ShipmentNotificationProver{},
-			GnarkProverIdentifierGoodsReceiptProver:         &gnark.GoodsReceiptProver{},
-			GnarkProverIdentifierInvoiceProver:              &gnark.InvoiceProver{},
-			GnarkProverIdentifierProofHashProver:            &gnark.ProofHashProver{},
-			GnarkProverIdentifierProofEddsaProver:           &gnark.ProofEddsaProver{},
+			PreimageHashProver:   &gnark.PreimageHashCircuit{},
+			RecursiveProofProver: &gnark.RecursiveProofCircuit{},
+			// GnarkProverIdentifierCubic:                      &gnark.CubicProver{},
+			// GnarkProverIdentifierMimc:                       &gnark.MimcProver{},
+			// GnarkProverIdentifierBaselineRollup:             &gnark.BaselineRollupProver{},
+			// GnarkProverIdentifierPurchaseOrderProver:        &gnark.PurchaseOrderProver{},
+			// GnarkProverIdentifierSalesOrderProver:           &gnark.SalesOrderProver{},
+			// GnarkProverIdentifierShipmentNotificationProver: &gnark.ShipmentNotificationProver{},
+			// GnarkProverIdentifierGoodsReceiptProver:         &gnark.GoodsReceiptProver{},
+			// GnarkProverIdentifierInvoiceProver:              &gnark.InvoiceProver{},
+			// GnarkProverIdentifierProofHashProver:            &gnark.ProofHashProver{},
+			// GnarkProverIdentifierProofEddsaProver:           &gnark.ProofEddsaProver{},
 		},
 	}
 }
@@ -92,9 +95,7 @@ func allocateVariablesForProver(prover frontend.Circuit, inputs map[string]inter
 	witval := reflect.Indirect(reflect.ValueOf(prover))
 
 	for k := range inputs {
-		if !strings.Contains(k, "_count") {
-			continue
-		}
+		common.Log.Debugf("input %s === %s", k, inputs[k])
 
 		field := witval
 		// handle variables in nested structs
@@ -104,20 +105,24 @@ func allocateVariablesForProver(prover frontend.Circuit, inputs map[string]inter
 			field = field.FieldByName(strings.Split(f, "[")[0])
 		}
 
-		if field.Kind() == reflect.Slice && field.Len() == 0 {
-			countString, countStringOk := inputs[k+"_count"]
-			if !countStringOk {
-				continue
-			}
-			countInt, countIntOk := new(big.Int).SetString(countString.(string), 10)
-			if !countIntOk {
-				continue
-			}
-			count := int(countInt.Int64())
+		if strings.Contains(k, "_count") {
+			if field.Kind() == reflect.Slice && field.Len() == 0 {
+				countString, countStringOk := inputs[k+"_count"]
+				if !countStringOk {
+					continue
+				}
+				countInt, countIntOk := new(big.Int).SetString(countString.(string), 10)
+				if !countIntOk {
+					continue
+				}
+				count := int(countInt.Int64())
 
-			t := reflect.TypeOf(frontend.Variable{})
-			slice := reflect.MakeSlice(reflect.SliceOf(t), count, count)
-			field.Set(slice)
+				t := reflect.TypeOf(new(frontend.Variable))
+				slice := reflect.MakeSlice(reflect.SliceOf(t), count, count)
+				field.Set(slice)
+			}
+		} else {
+			field.Set(reflect.ValueOf(inputs[k]))
 		}
 	}
 
@@ -165,17 +170,22 @@ func (p *GnarkProverProvider) WitnessFactory(identifier string, curve string, in
 				field = field.Index(index)
 			}
 
-			v := frontend.Variable{}
-			v.Assign(witmap[k])
-			field.Set(reflect.ValueOf(v))
+			// v := new(frontend.Variable)
+			// v = frontend.Variable{witmap[k]}
+			// v.Assign(witmap[k])
+			field.Set(reflect.ValueOf(witmap[k]))
 		}
 
 		buf := new(bytes.Buffer)
+
+		witness, _ := frontend.NewWitness(w.(frontend.Circuit), common.GnarkCurveIDFactory(&curve))
 		var errWrite error
+
 		if isPublic {
-			_, errWrite = witness.WritePublicTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
+			publicWitness, _ := witness.Public()
+			_, errWrite = publicWitness.Vector.WriteTo(buf)
 		} else {
-			_, errWrite = witness.WriteFullTo(buf, common.GnarkCurveIDFactory(&curve), w.(frontend.Circuit))
+			_, errWrite = witness.Vector.WriteTo(buf)
 		}
 		if errWrite != nil {
 			common.Log.Warningf("failed to serialize witness for %s prover; %s", identifier, errWrite.Error())
@@ -303,7 +313,7 @@ func (p *GnarkProverProvider) Compile(argv ...interface{}) (interface{}, error) 
 			}
 		}
 	}
-	r1cs, err := frontend.Compile(p.curveID, p.provingSchemeID, prover)
+	r1cs, err := frontend.Compile(p.curveID, r1cs.NewBuilder, prover)
 	if err != nil {
 		common.Log.Warningf("failed to compile prover to r1cs using gnark; %s", err.Error())
 		return nil, err
@@ -363,7 +373,7 @@ func (p *GnarkProverProvider) Setup(prover interface{}, srs []byte) (interface{}
 }
 
 // Prove generates a proof
-func (p *GnarkProverProvider) Prove(prover, provingKey []byte, witness interface{}, srs []byte) (interface{}, error) {
+func (p *GnarkProverProvider) Prove(prover, provingKey []byte, wtnss interface{}, srs []byte) (interface{}, error) {
 	var err error
 
 	r1cs, err := p.decodeR1CS(prover)
@@ -378,7 +388,7 @@ func (p *GnarkProverProvider) Prove(prover, provingKey []byte, witness interface
 
 	switch p.provingSchemeID {
 	case backend.GROTH16:
-		return groth16.Prove(r1cs, pk.(groth16.ProvingKey), witness.(frontend.Circuit))
+		return groth16.Prove(r1cs, pk.(groth16.ProvingKey), wtnss.(*witness.Witness))
 	case backend.PLONK:
 		kzgsrs := kzg.NewSRS(p.curveID)
 		kzgsrs.ReadFrom(bytes.NewReader(srs))
@@ -386,14 +396,14 @@ func (p *GnarkProverProvider) Prove(prover, provingKey []byte, witness interface
 		if err != nil {
 			return nil, err
 		}
-		return plonk.Prove(r1cs, pk.(plonk.ProvingKey), witness.(frontend.Circuit))
+		return plonk.Prove(r1cs, pk.(plonk.ProvingKey), wtnss.(*witness.Witness))
 	}
 
 	return nil, fmt.Errorf("invalid proving scheme for Prove")
 }
 
 // Verify the given proof and witness
-func (p *GnarkProverProvider) Verify(proof, verifyingKey []byte, witness interface{}, srs []byte) error {
+func (p *GnarkProverProvider) Verify(proof, verifyingKey []byte, wtnss interface{}, srs []byte) error {
 	var err error
 
 	prf, err := p.decodeProof(proof)
@@ -408,7 +418,7 @@ func (p *GnarkProverProvider) Verify(proof, verifyingKey []byte, witness interfa
 
 	switch p.provingSchemeID {
 	case backend.GROTH16:
-		return groth16.Verify(prf.(groth16.Proof), vk.(groth16.VerifyingKey), witness.(frontend.Circuit))
+		return groth16.Verify(prf.(groth16.Proof), vk.(groth16.VerifyingKey), wtnss.(*witness.Witness))
 	case backend.PLONK:
 		kzgsrs := kzg.NewSRS(p.curveID)
 		kzgsrs.ReadFrom(bytes.NewReader(srs))
@@ -416,7 +426,7 @@ func (p *GnarkProverProvider) Verify(proof, verifyingKey []byte, witness interfa
 		if err != nil {
 			return err
 		}
-		return plonk.Verify(prf.(plonk.Proof), vk.(plonk.VerifyingKey), witness.(frontend.Circuit))
+		return plonk.Verify(prf.(plonk.Proof), vk.(plonk.VerifyingKey), wtnss.(*witness.Witness))
 	}
 
 	return fmt.Errorf("invalid proving scheme for Verify")

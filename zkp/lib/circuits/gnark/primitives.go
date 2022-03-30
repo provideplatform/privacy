@@ -16,133 +16,125 @@
 
 package gnark
 
-import (
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/algebra/twistededwards"
-	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/gnark/std/signature/eddsa"
-)
+// // RelationProver defines generic relation R between Val and RelVal
+// type RelationProver struct {
+// 	Val    frontend.Variable `gnark:",public"`
+// 	RelVal frontend.Variable
+// }
 
-// RelationProver defines generic relation R between Val and RelVal
-type RelationProver struct {
-	Val    frontend.Variable `gnark:",public"`
-	RelVal frontend.Variable
-}
+// // EqualProver defines an equality verification prover
+// type EqualProver struct {
+// 	Vals RelationProver
+// }
 
-// EqualProver defines an equality verification prover
-type EqualProver struct {
-	Vals RelationProver
-}
+// // Define declares the prover constraints
+// func (prover *EqualProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	cs.AssertIsLessOrEqual(prover.Vals.Val, prover.Vals.RelVal)
+// 	cs.AssertIsLessOrEqual(prover.Vals.RelVal, prover.Vals.Val) // AssertIsEqual having trouble with this prover, this is a workaround
+// 	//diff := cs.Sub(prover.Vals.Val, prover.Vals.RelVal)
+// 	//diffIsZero := cs.IsZero(diff, curveID)
+// 	//cs.AssertIsEqual(diffIsZero, cs.Constant(1))
+// 	return nil
+// }
 
-// Define declares the prover constraints
-func (prover *EqualProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(prover.Vals.Val, prover.Vals.RelVal)
-	cs.AssertIsLessOrEqual(prover.Vals.RelVal, prover.Vals.Val) // AssertIsEqual having trouble with this prover, this is a workaround
-	//diff := cs.Sub(prover.Vals.Val, prover.Vals.RelVal)
-	//diffIsZero := cs.IsZero(diff, curveID)
-	//cs.AssertIsEqual(diffIsZero, cs.Constant(1))
-	return nil
-}
+// // NotEqualProver defines an inequality verification prover
+// type NotEqualProver struct {
+// 	Vals RelationProver
+// }
 
-// NotEqualProver defines an inequality verification prover
-type NotEqualProver struct {
-	Vals RelationProver
-}
+// // Define declares the prover constraints
+// func (prover *NotEqualProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	diff := cs.Sub(prover.Vals.Val, prover.Vals.RelVal)
+// 	diffIsZero := cs.IsZero(diff, curveID)
+// 	cs.AssertIsEqual(diffIsZero, cs.Constant(0))
+// 	return nil
+// }
 
-// Define declares the prover constraints
-func (prover *NotEqualProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	diff := cs.Sub(prover.Vals.Val, prover.Vals.RelVal)
-	diffIsZero := cs.IsZero(diff, curveID)
-	cs.AssertIsEqual(diffIsZero, cs.Constant(0))
-	return nil
-}
+// // LessOrEqualProver defines a <= verification prover
+// type LessOrEqualProver struct {
+// 	Vals RelationProver
+// }
 
-// LessOrEqualProver defines a <= verification prover
-type LessOrEqualProver struct {
-	Vals RelationProver
-}
+// // Define declares the prover constraints
+// func (prover *LessOrEqualProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	cs.AssertIsLessOrEqual(prover.Vals.Val, prover.Vals.RelVal)
+// 	return nil
+// }
 
-// Define declares the prover constraints
-func (prover *LessOrEqualProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(prover.Vals.Val, prover.Vals.RelVal)
-	return nil
-}
+// // GreaterOrEqualProver defines a >= verification prover
+// type GreaterOrEqualProver struct {
+// 	Vals RelationProver
+// }
 
-// GreaterOrEqualProver defines a >= verification prover
-type GreaterOrEqualProver struct {
-	Vals RelationProver
-}
+// // Define declares the prover constraints
+// func (prover *GreaterOrEqualProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	cs.AssertIsLessOrEqual(prover.Vals.RelVal, prover.Vals.Val)
+// 	return nil
+// }
 
-// Define declares the prover constraints
-func (prover *GreaterOrEqualProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(prover.Vals.RelVal, prover.Vals.Val)
-	return nil
-}
+// // LessProver defines a < verification prover
+// type LessProver struct {
+// 	Vals RelationProver
+// }
 
-// LessProver defines a < verification prover
-type LessProver struct {
-	Vals RelationProver
-}
+// // Define declares the prover constraints
+// func (prover *LessProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	cs.AssertIsLessOrEqual(prover.Vals.Val, cs.Sub(prover.Vals.RelVal, 1))
+// 	return nil
+// }
 
-// Define declares the prover constraints
-func (prover *LessProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(prover.Vals.Val, cs.Sub(prover.Vals.RelVal, 1))
-	return nil
-}
+// // GreaterProver defines a > verification prover
+// type GreaterProver struct {
+// 	Vals RelationProver
+// }
 
-// GreaterProver defines a > verification prover
-type GreaterProver struct {
-	Vals RelationProver
-}
+// // Define declares the prover constraints
+// func (prover *GreaterProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	cs.AssertIsLessOrEqual(prover.Vals.RelVal, cs.Sub(prover.Vals.Val, 1))
+// 	return nil
+// }
 
-// Define declares the prover constraints
-func (prover *GreaterProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	cs.AssertIsLessOrEqual(prover.Vals.RelVal, cs.Sub(prover.Vals.Val, 1))
-	return nil
-}
+// // ProofHashProver defines hash(Proof[]) == Hash
+// type ProofHashProver struct {
+// 	Proof [6]frontend.Variable
+// 	Hash  frontend.Variable `gnark:",public"`
+// }
 
-// ProofHashProver defines hash(Proof[]) == Hash
-type ProofHashProver struct {
-	Proof [6]frontend.Variable
-	Hash  frontend.Variable `gnark:",public"`
-}
+// // Define declares the prover constraints
+// func (prover *ProofHashProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	hFunc, err := mimc.NewMiMC("seed", curveID)
+// 	if err != nil {
+// 		return err
+// 	}
 
-// Define declares the prover constraints
-func (prover *ProofHashProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	hFunc, err := mimc.NewMiMC("seed", curveID)
-	if err != nil {
-		return err
-	}
+// 	hash := hFunc.Hash(cs, prover.Proof[:]...)
+// 	cs.AssertIsEqual(hash, prover.Hash)
 
-	hash := hFunc.Hash(cs, prover.Proof[:]...)
-	cs.AssertIsEqual(hash, prover.Hash)
+// 	return nil
+// }
 
-	return nil
-}
+// // ProofEddsaProver defines eddsa.Verify(hash(Msg[])) of PubKey and Sig
+// type ProofEddsaProver struct {
+// 	Msg    [32]frontend.Variable
+// 	PubKey eddsa.PublicKey `gnark:",public"`
+// 	Sig    eddsa.Signature `gnark:",public"`
+// }
 
-// ProofEddsaProver defines eddsa.Verify(hash(Msg[])) of PubKey and Sig
-type ProofEddsaProver struct {
-	Msg    [32]frontend.Variable
-	PubKey eddsa.PublicKey `gnark:",public"`
-	Sig    eddsa.Signature `gnark:",public"`
-}
+// // Define declares the ProofEddsaProver prover constraints
+// func (prover *ProofEddsaProver) Define(curveID ecc.ID, cs *cs.ConstraintSystem) error {
+// 	curve, err := twistededwards.NewEdCurve(curveID)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	prover.PubKey.Curve = curve
 
-// Define declares the ProofEddsaProver prover constraints
-func (prover *ProofEddsaProver) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
-	curve, err := twistededwards.NewEdCurve(curveID)
-	if err != nil {
-		return err
-	}
-	prover.PubKey.Curve = curve
+// 	hFunc, err := mimc.NewMiMC("seed", curveID)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	hFunc, err := mimc.NewMiMC("seed", curveID)
-	if err != nil {
-		return err
-	}
+// 	hash := hFunc.Hash(cs, prover.Msg[:]...)
+// 	eddsa.Verify(cs, prover.Sig, hash, prover.PubKey)
 
-	hash := hFunc.Hash(cs, prover.Msg[:]...)
-	eddsa.Verify(cs, prover.Sig, hash, prover.PubKey)
-
-	return nil
-}
+// 	return nil
+// }

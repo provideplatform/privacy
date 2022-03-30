@@ -67,15 +67,15 @@ func InitSparseMerkleTreeStoreProvider(id uuid.UUID, curve *string) (*smt.SMT, e
 func hashFactory(curve *string) (hash.Hash, error) {
 	switch strings.ToLower(*curve) {
 	case ecc.BLS12_377.String():
-		return gnarkhash.MIMC_BLS12_377.New("seed"), nil
+		return gnarkhash.MIMC_BLS12_377.New(), nil
 	case ecc.BLS12_381.String():
-		return gnarkhash.MIMC_BLS12_381.New("seed"), nil
+		return gnarkhash.MIMC_BLS12_381.New(), nil
 	case ecc.BN254.String():
-		return gnarkhash.MIMC_BN254.New("seed"), nil
+		return gnarkhash.MIMC_BN254.New(), nil
 	case ecc.BW6_761.String():
-		return gnarkhash.MIMC_BW6_761.New("seed"), nil
+		return gnarkhash.MIMC_BW6_761.New(), nil
 	case ecc.BLS24_315.String():
-		return gnarkhash.MIMC_BLS24_315.New("seed"), nil
+		return gnarkhash.MIMC_BLS24_315.New(), nil
 	default:
 		return nil, fmt.Errorf("failed to resolve hash type string; unknown or unsupported curve: %s", *curve)
 	}

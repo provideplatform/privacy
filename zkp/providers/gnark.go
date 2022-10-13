@@ -95,7 +95,9 @@ func allocateVariablesForProver(prover frontend.Circuit, inputs map[string]inter
 	witval := reflect.Indirect(reflect.ValueOf(prover))
 
 	for k := range inputs {
-		common.Log.Debugf("input %s === %s", k, inputs[k])
+		if !strings.Contains(k, "_count") {
+			continue
+		}
 
 		field := witval
 		// handle variables in nested structs
@@ -105,24 +107,20 @@ func allocateVariablesForProver(prover frontend.Circuit, inputs map[string]inter
 			field = field.FieldByName(strings.Split(f, "[")[0])
 		}
 
-		if strings.Contains(k, "_count") {
-			if field.Kind() == reflect.Slice && field.Len() == 0 {
-				countString, countStringOk := inputs[k+"_count"]
-				if !countStringOk {
-					continue
-				}
-				countInt, countIntOk := new(big.Int).SetString(countString.(string), 10)
-				if !countIntOk {
-					continue
-				}
-				count := int(countInt.Int64())
-
-				t := reflect.TypeOf(new(frontend.Variable))
-				slice := reflect.MakeSlice(reflect.SliceOf(t), count, count)
-				field.Set(slice)
+		if field.Kind() == reflect.Slice && field.Len() == 0 {
+			countString, countStringOk := inputs[k+"_count"]
+			if !countStringOk {
+				continue
 			}
-		} else {
-			field.Set(reflect.ValueOf(inputs[k]))
+			countInt, countIntOk := new(big.Int).SetString(countString.(string), 10)
+			if !countIntOk {
+				continue
+			}
+			count := int(countInt.Int64())
+
+			t := reflect.TypeOf(new(frontend.Variable))
+			slice := reflect.MakeSlice(reflect.SliceOf(t), count, count)
+			field.Set(slice)
 		}
 	}
 

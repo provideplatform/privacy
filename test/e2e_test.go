@@ -20,10 +20,14 @@
 package test
 
 import (
+	"encoding/json"
+	"math/big"
 	"testing"
 	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	gnarkhash "github.com/consensys/gnark-crypto/hash"
+
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
@@ -61,4 +65,35 @@ func TestPreimageHashProver(t *testing.T) {
 	}
 
 	requireProvers(token, []*privacy.Prover{preimageHashProver})
+
+	hash := gnarkhash.MIMC_BLS12_377.New()
+	var i big.Int
+
+	payload := map[string]interface{}{
+		"value": 22222222,
+		"hello": "world2",
+	}
+	raw, _ := json.Marshal(payload)
+	hash.Reset()
+	hash.Write(raw)
+
+	// preimage is itself a digest due to the field element size limitation of the curve
+	preImage := hash.Sum(nil)
+	preImageStr := i.SetBytes(preImage).String()
+
+	_hash := gnarkhash.MIMC_BLS12_377.New()
+	_hash.Write(preImage)
+	hashStr := i.SetBytes(_hash.Sum(nil)).String()
+
+	proof, err := privacy.Prove(*token, preimageHashProver.ID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"Preimage": preImageStr,
+			"Hash":     hashStr,
+		}, // HACK!!! this will soon be replaced by a circuit-specific witness factory...
+	})
+	if err != nil {
+		t.Errorf("failed to generate proof; %s", err.Error())
+	}
+
+	t.Logf("generated zero-knowledge proof %s", *proof.Proof)
 }

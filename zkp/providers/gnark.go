@@ -384,9 +384,14 @@ func (p *GnarkProverProvider) Prove(prover, provingKey []byte, wtnss interface{}
 		return nil, err
 	}
 
+	witness, err := frontend.NewWitness(wtnss.(frontend.Circuit), p.curveID)
+	if err != nil {
+		return nil, err
+	}
+
 	switch p.provingSchemeID {
 	case backend.GROTH16:
-		return groth16.Prove(r1cs, pk.(groth16.ProvingKey), wtnss.(*witness.Witness))
+		return groth16.Prove(r1cs, pk.(groth16.ProvingKey), witness)
 	case backend.PLONK:
 		kzgsrs := kzg.NewSRS(p.curveID)
 		kzgsrs.ReadFrom(bytes.NewReader(srs))
@@ -394,7 +399,7 @@ func (p *GnarkProverProvider) Prove(prover, provingKey []byte, wtnss interface{}
 		if err != nil {
 			return nil, err
 		}
-		return plonk.Prove(r1cs, pk.(plonk.ProvingKey), wtnss.(*witness.Witness))
+		return plonk.Prove(r1cs, pk.(plonk.ProvingKey), witness)
 	}
 
 	return nil, fmt.Errorf("invalid proving scheme for Prove")

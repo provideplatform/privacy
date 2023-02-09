@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/consensys/gnark v0.7.1
 	github.com/consensys/gnark-crypto v0.7.0
-	github.com/gin-gonic/gin v1.7.0
+	github.com/gin-gonic/gin v1.7.7
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jinzhu/gorm v1.9.16
 	github.com/joho/godotenv v1.3.0

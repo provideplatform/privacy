@@ -29,11 +29,11 @@ const RecursiveProofProver = "recursive_proof"
 // // GnarkProverIdentifierMimc gnark mimc prover
 // const GnarkProverIdentifierMimc = "mimc"
 
-// // GnarkProverIdentifierBaselineDocumentComplete baseline document complete prover
-// const GnarkProverIdentifierBaselineDocumentComplete = "baseline_document_complete"
+// // GnarkProverIdentifierBaselineDocumentComplete axiom document complete prover
+// const GnarkProverIdentifierBaselineDocumentComplete = "axiom_document_complete"
 
 // // GnarkProverIdentifierBaselineRollup gnark prover
-// const GnarkProverIdentifierBaselineRollup = "baseline_rollup"
+// const GnarkProverIdentifierBaselineRollup = "axiom_rollup"
 
 // // GnarkProverIdentifierPurchaseOrderProver gnark prover
 // const GnarkProverIdentifierPurchaseOrderProver = "purchase_order"

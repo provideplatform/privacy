@@ -29,7 +29,6 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/provideplatform/privacy/common"
@@ -419,9 +418,14 @@ func (p *GnarkProverProvider) Verify(proof, verifyingKey []byte, wtnss interface
 		return err
 	}
 
+	witness, err := frontend.NewWitness(wtnss.(frontend.Circuit), p.curveID)
+	if err != nil {
+		return err
+	}
+
 	switch p.provingSchemeID {
 	case backend.GROTH16:
-		return groth16.Verify(prf.(groth16.Proof), vk.(groth16.VerifyingKey), wtnss.(*witness.Witness))
+		return groth16.Verify(prf.(groth16.Proof), vk.(groth16.VerifyingKey), witness)
 	case backend.PLONK:
 		kzgsrs := kzg.NewSRS(p.curveID)
 		kzgsrs.ReadFrom(bytes.NewReader(srs))
@@ -429,7 +433,7 @@ func (p *GnarkProverProvider) Verify(proof, verifyingKey []byte, wtnss interface
 		if err != nil {
 			return err
 		}
-		return plonk.Verify(prf.(plonk.Proof), vk.(plonk.VerifyingKey), wtnss.(*witness.Witness))
+		return plonk.Verify(prf.(plonk.Proof), vk.(plonk.VerifyingKey), witness)
 	}
 
 	return fmt.Errorf("invalid proving scheme for Verify")

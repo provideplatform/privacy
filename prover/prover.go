@@ -402,6 +402,7 @@ func (c *Prover) Verify(proof string, witness map[string]interface{}, store bool
 
 	err = provider.Verify(_proof, c.verifyingKey, witval, c.srs)
 	if err != nil {
+		common.Log.Debugf("failed to verify witness for prover %s; proof: %s; %s", c.ID, proof, err.Error())
 		return false, err
 	}
 

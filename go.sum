@@ -340,8 +340,8 @@ github.com/providenetwork/smt v0.2.1-0.20210730053242-2e71de60adeb/go.mod h1:GhL
 github.com/provideplatform/ident v0.9.10-0.20210801033801-297a9eac7ffc h1:GAhoRMHNCn61FfGhLnsFivGHQULqIJ6HUbZ5/qzM4GM=
 github.com/provideplatform/ident v0.9.10-0.20210801033801-297a9eac7ffc/go.mod h1:A0IzIOtqzS+MgpSTTKSQITY4kPH48IsGXw5pDCcegTU=
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
-github.com/provideplatform/provide-go v0.0.0-20231115025119-a525faf20a39 h1:YErkLzJ72G6OTADphFO6XGJ6BeF5SyNyulYQSlqdIEY=
-github.com/provideplatform/provide-go v0.0.0-20231115025119-a525faf20a39/go.mod h1:3XKCmsPvXOLfHQhMwmJGwK7CD/OqW2Y4HMJVfvkBIys=
+github.com/provideplatform/provide-go v0.0.0-20231124233146-30b51fac29fc h1:Lf1A1vqv2YAdEQrsi7Ctsl5H+FRN5qaargW3xNJo4rg=
+github.com/provideplatform/provide-go v0.0.0-20231124233146-30b51fac29fc/go.mod h1:3XKCmsPvXOLfHQhMwmJGwK7CD/OqW2Y4HMJVfvkBIys=
 github.com/rjeczalik/notify v0.9.1/go.mod h1:rKwnCoCGeuQnwBtTSPL9Dad03Vh2n40ePRrjvIXnJho=
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
